@@ -1877,6 +1877,11 @@
     min-width:112px;
 }
 
+
+/* Character 0011: raise main/mini battle sprite by 8% of its own height.
+   Independent translate preserves the existing action transforms and cutscene. */
+#hero[src*="/battle_char_0011_"],
+#mini-battle-hero[src*="/battle_char_0011_"] { translate: 0 -8%; }
 </style>
 <link rel="stylesheet" href="assets/ui/art-edition.css"/>
 
