@@ -1,0 +1,55 @@
+{
+  "version": 2,
+  "items": [
+    {
+      "id": "char_0001",
+      "index": 0,
+      "name": "루미",
+      "title": "별빛의 항해자",
+      "tier": "R",
+      "path": "assets/art/characters/char_0001.png",
+      "defaultOwned": true,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0002",
+      "index": 1,
+      "name": "아린",
+      "title": "붉은 새벽의 검사",
+      "tier": "R",
+      "path": "assets/art/characters/char_0002.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0003",
+      "index": 2,
+      "name": "세라",
+      "title": "달빛의 궁수",
+      "tier": "SR",
+      "path": "assets/art/characters/char_0003.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0004",
+      "index": 3,
+      "name": "미엘",
+      "title": "수정의 마법사",
+      "tier": "SSR",
+      "path": "assets/art/characters/char_0004.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0005",
+      "index": 4,
+      "name": "엘리시아",
+      "title": "태양의 수호자",
+      "tier": "UR",
+      "path": "assets/art/characters/char_0005.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    }
+  ]
+}

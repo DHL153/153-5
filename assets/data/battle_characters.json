@@ -1,0 +1,120 @@
+{
+  "version": 4,
+  "items": [
+    {
+      "id": "battle_char_0001",
+      "index": 0,
+      "name": "루미",
+      "skillName": "스타라이트 브레이크",
+      "tier": "R",
+      "idle": "assets/art/battle_characters/battle_char_0001_Idle.png",
+      "attack": "assets/art/battle_characters/battle_char_0001_Idle.png",
+      "skill": "assets/art/battle_characters/battle_char_0001_Idle.png",
+      "victory": "assets/art/battle_characters/battle_char_0001_Idle.png",
+      "runFrames": [
+        "assets/art/battle_characters/battle_char_0001_run_01.png",
+        "assets/art/battle_characters/battle_char_0001_run_02.png",
+        "assets/art/battle_characters/battle_char_0001_run_03.png",
+        "assets/art/battle_characters/battle_char_0001_run_04.png",
+        "assets/art/battle_characters/battle_char_0001_run_05.png",
+        "assets/art/battle_characters/battle_char_0001_run_06.png"
+      ],
+      "portrait": "assets/art/characters/char_0001.png",
+      "defaultOwned": true,
+      "gachaEnabled": true,
+      "linkedCharacter": "char_0001"
+    },
+    {
+      "id": "battle_char_0002",
+      "index": 1,
+      "name": "아린",
+      "skillName": "블레이즈 피어스",
+      "tier": "SR",
+      "idle": "assets/art/battle_characters/battle_char_0002_Idle.png",
+      "attack": "assets/art/battle_characters/battle_char_0002_Idle.png",
+      "skill": "assets/art/battle_characters/battle_char_0002_Idle.png",
+      "victory": "assets/art/battle_characters/battle_char_0002_Idle.png",
+      "runFrames": [
+        "assets/art/battle_characters/battle_char_0002_run_01.png",
+        "assets/art/battle_characters/battle_char_0002_run_02.png",
+        "assets/art/battle_characters/battle_char_0002_run_03.png",
+        "assets/art/battle_characters/battle_char_0002_run_04.png",
+        "assets/art/battle_characters/battle_char_0002_run_05.png",
+        "assets/art/battle_characters/battle_char_0002_run_06.png"
+      ],
+      "portrait": "assets/art/characters/char_0002.png",
+      "defaultOwned": false,
+      "gachaEnabled": true,
+      "linkedCharacter": "char_0002"
+    },
+    {
+      "id": "battle_char_0003",
+      "index": 2,
+      "name": "세라",
+      "skillName": "문라이트 애로우",
+      "tier": "SSR",
+      "idle": "assets/art/battle_characters/battle_char_0003_Idle.png",
+      "attack": "assets/art/battle_characters/battle_char_0003_Idle.png",
+      "skill": "assets/art/battle_characters/battle_char_0003_Idle.png",
+      "victory": "assets/art/battle_characters/battle_char_0003_Idle.png",
+      "runFrames": [
+        "assets/art/battle_characters/battle_char_0003_run_01.png",
+        "assets/art/battle_characters/battle_char_0003_run_02.png",
+        "assets/art/battle_characters/battle_char_0003_run_03.png",
+        "assets/art/battle_characters/battle_char_0003_run_04.png",
+        "assets/art/battle_characters/battle_char_0003_run_05.png",
+        "assets/art/battle_characters/battle_char_0003_run_06.png"
+      ],
+      "portrait": "assets/art/characters/char_0003.png",
+      "defaultOwned": false,
+      "gachaEnabled": true,
+      "linkedCharacter": "char_0003"
+    },
+    {
+      "id": "battle_char_0004",
+      "index": 3,
+      "name": "미엘",
+      "skillName": "크리스탈 노바",
+      "tier": "UR",
+      "idle": "assets/art/battle_characters/battle_char_0004_Idle.png",
+      "attack": "assets/art/battle_characters/battle_char_0004_Idle.png",
+      "skill": "assets/art/battle_characters/battle_char_0004_Idle.png",
+      "victory": "assets/art/battle_characters/battle_char_0004_Idle.png",
+      "runFrames": [
+        "assets/art/battle_characters/battle_char_0004_run_01.png",
+        "assets/art/battle_characters/battle_char_0004_run_02.png",
+        "assets/art/battle_characters/battle_char_0004_run_03.png",
+        "assets/art/battle_characters/battle_char_0004_run_04.png",
+        "assets/art/battle_characters/battle_char_0004_run_05.png",
+        "assets/art/battle_characters/battle_char_0004_run_06.png"
+      ],
+      "portrait": "assets/art/characters/char_0004.png",
+      "defaultOwned": false,
+      "gachaEnabled": true,
+      "linkedCharacter": "char_0004"
+    },
+    {
+      "id": "battle_char_0005",
+      "index": 4,
+      "name": "엘리시아",
+      "skillName": "솔라 이지스",
+      "tier": "UR",
+      "idle": "assets/art/battle_characters/battle_char_0005_Idle.png",
+      "attack": "assets/art/battle_characters/battle_char_0005_Idle.png",
+      "skill": "assets/art/battle_characters/battle_char_0005_Idle.png",
+      "victory": "assets/art/battle_characters/battle_char_0005_Idle.png",
+      "runFrames": [
+        "assets/art/battle_characters/battle_char_0005_run_01.png",
+        "assets/art/battle_characters/battle_char_0005_run_02.png",
+        "assets/art/battle_characters/battle_char_0005_run_03.png",
+        "assets/art/battle_characters/battle_char_0005_run_04.png",
+        "assets/art/battle_characters/battle_char_0005_run_05.png",
+        "assets/art/battle_characters/battle_char_0005_run_06.png"
+      ],
+      "portrait": "assets/art/characters/char_0005.png",
+      "defaultOwned": false,
+      "gachaEnabled": true,
+      "linkedCharacter": "char_0005"
+    }
+  ]
+}

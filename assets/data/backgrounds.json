@@ -1,0 +1,161 @@
+{
+  "version": 2,
+  "items": [
+    {
+      "id": "bg_battle_0001",
+      "kind": "battle",
+      "index": 1,
+      "name": "새벽의 하늘항",
+      "tier": "R",
+      "path": "assets/art/backgrounds/battle/bg_battle_0001.png",
+      "defaultOwned": true,
+      "gachaEnabled": true,
+      "focusX": 50,
+      "focusY": 50
+    },
+    {
+      "id": "bg_battle_0002",
+      "kind": "battle",
+      "index": 2,
+      "name": "빛의 숲",
+      "tier": "SR",
+      "path": "assets/art/backgrounds/battle/bg_battle_0002.png",
+      "defaultOwned": false,
+      "gachaEnabled": true,
+      "focusX": 50,
+      "focusY": 50
+    },
+    {
+      "id": "bg_battle_0003",
+      "kind": "battle",
+      "index": 3,
+      "name": "달의 유적",
+      "tier": "SSR",
+      "path": "assets/art/backgrounds/battle/bg_battle_0003.png",
+      "defaultOwned": false,
+      "gachaEnabled": true,
+      "focusX": 50,
+      "focusY": 50
+    },
+    {
+      "id": "bg_battle_0004",
+      "kind": "battle",
+      "index": 4,
+      "name": "황금 궁전",
+      "tier": "UR",
+      "path": "assets/art/backgrounds/battle/bg_battle_0004.png",
+      "defaultOwned": false,
+      "gachaEnabled": true,
+      "focusX": 50,
+      "focusY": 50
+    },
+    {
+      "id": "bg_merge_0001",
+      "kind": "merge",
+      "index": 1,
+      "name": "별빛 유리",
+      "tier": "R",
+      "path": "assets/art/backgrounds/merge/bg_merge_0001.png",
+      "defaultOwned": true,
+      "gachaEnabled": true,
+      "focusX": 50,
+      "focusY": 50
+    },
+    {
+      "id": "bg_merge_0002",
+      "kind": "merge",
+      "index": 2,
+      "name": "정원의 숨결",
+      "tier": "SR",
+      "path": "assets/art/backgrounds/merge/bg_merge_0002.png",
+      "defaultOwned": false,
+      "gachaEnabled": true,
+      "focusX": 50,
+      "focusY": 50
+    },
+    {
+      "id": "bg_merge_0003",
+      "kind": "merge",
+      "index": 3,
+      "name": "수정 관측소",
+      "tier": "SSR",
+      "path": "assets/art/backgrounds/merge/bg_merge_0003.png",
+      "defaultOwned": false,
+      "gachaEnabled": true,
+      "focusX": 50,
+      "focusY": 50
+    },
+    {
+      "id": "bg_merge_0004",
+      "kind": "merge",
+      "index": 4,
+      "name": "황금의 정원",
+      "tier": "UR",
+      "path": "assets/art/backgrounds/merge/bg_merge_0004.png",
+      "defaultOwned": false,
+      "gachaEnabled": true,
+      "focusX": 50,
+      "focusY": 50
+    },
+    {
+      "id": "bg_lobby_0001",
+      "kind": "lobby",
+      "index": 1,
+      "name": "하늘항 테라스",
+      "tier": "R",
+      "path": "assets/art/backgrounds/lobby/bg_lobby_0001.png",
+      "defaultOwned": true,
+      "gachaEnabled": true,
+      "focusX": 50,
+      "focusY": 50
+    },
+    {
+      "id": "bg_lobby_0002",
+      "kind": "lobby",
+      "index": 2,
+      "name": "허브 아틀리에",
+      "tier": "R",
+      "path": "assets/art/backgrounds/lobby/bg_lobby_0002.png",
+      "defaultOwned": false,
+      "gachaEnabled": true,
+      "focusX": 50,
+      "focusY": 50
+    },
+    {
+      "id": "bg_lobby_0003",
+      "kind": "lobby",
+      "index": 3,
+      "name": "달빛 관측소",
+      "tier": "SR",
+      "path": "assets/art/backgrounds/lobby/bg_lobby_0003.png",
+      "defaultOwned": false,
+      "gachaEnabled": true,
+      "focusX": 50,
+      "focusY": 50
+    },
+    {
+      "id": "bg_lobby_0004",
+      "kind": "lobby",
+      "index": 4,
+      "name": "수정 성소",
+      "tier": "SSR",
+      "path": "assets/art/backgrounds/lobby/bg_lobby_0004.png",
+      "defaultOwned": false,
+      "gachaEnabled": true,
+      "focusX": 50,
+      "focusY": 50
+    },
+    {
+      "id": "bg_lobby_0005",
+      "kind": "lobby",
+      "index": 5,
+      "name": "가을 궁전 정원",
+      "tier": "UR",
+      "path": "assets/art/backgrounds/lobby/bg_lobby_0005.png",
+      "defaultOwned": false,
+      "gachaEnabled": true,
+      "focusX": 50,
+      "focusY": 50
+    }
+  ]
+}
