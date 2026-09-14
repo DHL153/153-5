@@ -1882,6 +1882,11 @@
    Independent translate preserves the existing action transforms and cutscene. */
 #hero[src*="/battle_char_0011_"],
 #mini-battle-hero[src*="/battle_char_0011_"] { translate: 0 -8%; }
+/* Individual vehicle alignment; percentages follow sprite height. */
+#hero[src*="/battle_char_0015_"],
+#mini-battle-hero[src*="/battle_char_0015_"] { translate: 0 15%; }
+#hero[src*="/battle_char_0016_"],
+#mini-battle-hero[src*="/battle_char_0016_"] { translate: 0 -20%; }
 </style>
 <link rel="stylesheet" href="assets/ui/art-edition.css"/>
 
@@ -2620,7 +2625,7 @@ html.game-booting #app{visibility:hidden!important;}
 </div>
 </div>
 </div><div class="collection-page" id="view-skin">
-<div class="view-title">구슬 스킨 관리</div>
+
 <div class="view-content">
 <div class="panel skin-level-panel">
 <div class="skin-step-label">① 적용할 구슬 레벨 선택</div>
@@ -2634,7 +2639,7 @@ html.game-booting #app{visibility:hidden!important;}
 </div>
 </div>
 </div><div class="collection-page" id="view-bg">
-<div class="view-title">배경 스킨 설정</div><div class="bg-preview-panel" style="margin:10px 12px 0;">
+<div class="bg-preview-panel" style="margin:10px 12px 0;">
 <div class="bg-preview-title"><span>👀 적용 미리보기</span><span style="font-size:9px;color:#95a5a6;font-weight:800;">선택 즉시 반영</span></div>
 <div class="bg-live-grid">
 <div class="mini-stage" id="mini-battle-stage"><img id="mini-battle-hero" src="assets/art/battle_characters/battle_char_0001_Idle.png"/><div class="mini-enemy"><img alt="보랏빛 박쥐" src="assets/art/villains/villain_0004.png"/></div><div class="mini-label">⚔️ 전투</div></div>
