@@ -2341,13 +2341,13 @@ html.game-booting #app{visibility:hidden!important;}
 #app #char-item-list.emoji-library .unowned,#app #item-collection-grid.emoji-picker-grid .unowned{opacity:.6!important;filter:none!important;}
 #app .emoji-picker-grid .lock-mark,#app .emoji-library .lock-mark{inset:auto 2px 0 auto;font-size:9px;}
 </style><style id="vehicle-collection-layout">
-#app #collection-subnav{grid-template-columns:repeat(4,minmax(0,1fr))!important;}
+#app #collection-subnav{grid-template-columns:minmax(0,1fr) minmax(0,1.8fr) minmax(0,1fr)!important;}
 #app #collection-subnav .subnav-btn{padding:8px 3px;font-size:11px;line-height:1.25;min-width:0;overflow-wrap:anywhere;}
 #val-score,#mini-score,#menu-current-score,#record-break-score,#go-final-score,.leader-score,.lifetime-record-value{font-variant-numeric:tabular-nums;white-space:nowrap;min-width:0;max-width:100%;}
 #val-score,#mini-score{font-size:clamp(11px,3vw,17px);letter-spacing:-.03em;}
 #go-final-score,#record-break-score{display:inline-block;font-size:clamp(20px,6vw,34px);}
 #app .mini-score-stat{min-width:0;flex-shrink:1;}
-#view-battle-char .view-content{overflow-y:auto;min-height:0;}
+#view-bg .view-content{overflow-y:auto;min-height:0;}
 </style></head>
 <body>
 <div id="game-startup-screen" role="status" aria-live="polite"><strong>MERGE &amp; RUN</strong><span id="game-startup-message">게임을 준비하고 있어요…</span><button id="game-startup-retry" hidden onclick="location.reload()">다시 불러오기</button></div>
@@ -2568,9 +2568,8 @@ html.game-booting #app{visibility:hidden!important;}
 
 <div class="view-container" id="view-collection"><div class="subnav-row" id="collection-subnav">
 <button class="subnav-btn active" data-page="character" onclick="switchCollectionPage('character')">🐾 캐릭터</button>
-<button class="subnav-btn" data-page="battle-char" onclick="switchCollectionPage('battle-char')">전투 캐릭터</button>
+<button class="subnav-btn" data-page="bg" onclick="switchCollectionPage('bg')">전투 캐릭터/게임 배경</button>
 <button class="subnav-btn" data-page="skin" onclick="switchCollectionPage('skin')">🔮 구슬 스킨</button>
-<button class="subnav-btn" data-page="bg" onclick="switchCollectionPage('bg')">🖼️ 배경/전투 캐릭터</button>
 </div><div class="collection-page active" id="view-character">
 <div class="char-custom-layout char-panel-closed">
 <div id="char-preview-zone">
@@ -2634,7 +2633,7 @@ html.game-booting #app{visibility:hidden!important;}
 <div class="inventory-grid" id="skin-inventory-grid"></div>
 </div>
 </div>
-</div><div class="collection-page" id="view-battle-char"><div class="view-title">전투 캐릭터</div><div class="view-content"><div class="panel"><div class="panel-title"><span>전투 캐릭터</span><span style="font-size:11px;color:#999;font-weight:normal;">보유 캐릭터만 선택 가능</span></div><div class="inventory-grid" id="battle-character-grid"></div></div></div></div><div class="collection-page" id="view-bg">
+</div><div class="collection-page" id="view-bg">
 <div class="view-title">배경 스킨 설정</div><div class="bg-preview-panel" style="margin:10px 12px 0;">
 <div class="bg-preview-title"><span>👀 적용 미리보기</span><span style="font-size:9px;color:#95a5a6;font-weight:800;">선택 즉시 반영</span></div>
 <div class="bg-live-grid">
@@ -2643,6 +2642,7 @@ html.game-booting #app{visibility:hidden!important;}
 </div>
 </div>
 <div class="view-content">
+<div class="panel"><div class="panel-title"><span>전투 캐릭터</span><span style="font-size:11px;color:#999;font-weight:normal;">보유 캐릭터만 선택 가능</span></div><div class="inventory-grid" id="battle-character-grid"></div></div>
 <div class="panel">
 <div class="panel-title">전투 배경 (Battle)</div>
 <div class="inventory-grid" id="bg-battle-grid"></div>
@@ -6264,10 +6264,11 @@ html.game-booting #app{visibility:hidden!important;}
     let currentMenu = 'battle';
     let activeCollectionPage='character'; let activeMenuPage='stats';
     window.switchCollectionPage=function(page){
+        if(page==='battle-char')page='bg';
         activeCollectionPage=page;
         document.querySelectorAll('#view-collection .collection-page').forEach(el=>el.classList.toggle('active',el.id===`view-${page}`));
         document.querySelectorAll('#collection-subnav .subnav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
-        if(page==='character')initCharUI(); else if(page==='battle-char')updateBattleCharacterUI(); else if(page==='skin')updateSkinUI(); else if(page==='bg')initBgUI(); else if(page==='item')updateItemUI();
+        if(page==='character')initCharUI(); else if(page==='skin')updateSkinUI(); else if(page==='bg')initBgUI(); else if(page==='item')updateItemUI();
     };
     window.switchMenuPage=function(page){
         activeMenuPage=page;
