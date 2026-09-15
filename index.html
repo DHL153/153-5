@@ -6936,11 +6936,12 @@ html.game-booting #app{visibility:hidden!important;}
     function positionMergeSheet(fx){
         const progress=Math.min(1,fx.age/MERGE_FX_DURATION);
         const growth=.4+.6*(progress*progress*(3-2*progress));
-        const scale=fx.area.clientWidth/CANVAS_WIDTH;
+        const scale=fx.area.clientWidth/CANVAS_WIDTH*(window.mergeFlightZoom||1);
+        const point=window.mergeViewPoint?window.mergeViewPoint(fx.body.position.x,fx.body.position.y):fx.body.position;
         const cell=mergeSheetCell(mergeSheetFrame(fx.age));
         fx.el.style.backgroundPosition=`${cell.col*25}% ${cell.row*25}%`;
-        fx.el.style.left=`${fx.body.position.x/CANVAS_WIDTH*100}%`;
-        fx.el.style.top=`${fx.body.position.y/CANVAS_HEIGHT*100}%`;
+        fx.el.style.left=`${point.x/CANVAS_WIDTH*100}%`;
+        fx.el.style.top=`${point.y/CANVAS_HEIGHT*100}%`;
         fx.el.style.width=fx.el.style.height=`${fx.size*scale*growth}px`;
         fx.el.style.opacity=String(.86*Math.min(1,fx.age/25,(MERGE_FX_DURATION-fx.age)/70));
     }
@@ -7046,11 +7047,12 @@ html.game-booting #app{visibility:hidden!important;}
         const warningBanner = document.getElementById('warning-banner');
         const syncDeadlineVisual = () => {
             const scaleY = physicsArea.clientHeight > 0 ? (physicsArea.clientHeight / CANVAS_HEIGHT) : 1;
-            const visualY = physicsArea.offsetTop + (DEADLINE_Y * scaleY);
+            const point=window.mergeViewPoint?window.mergeViewPoint(0,DEADLINE_Y):{x:0,y:DEADLINE_Y};
+            const visualY = physicsArea.offsetTop + (point.y * scaleY);
             if (deadlineLine) {
                 deadlineLine.style.top = `${visualY}px`;
-                deadlineLine.style.left = `${physicsArea.offsetLeft}px`;
-                deadlineLine.style.width = `${physicsArea.clientWidth}px`;
+                deadlineLine.style.left = `${physicsArea.offsetLeft+point.x*physicsArea.clientWidth/CANVAS_WIDTH}px`;
+                deadlineLine.style.width = `${physicsArea.clientWidth*(window.mergeFlightZoom||1)}px`;
                 deadlineLine.style.right = 'auto';
             }
             if (warningBanner) warningBanner.style.top = `${visualY}px`;
@@ -7105,30 +7107,80 @@ html.game-booting #app{visibility:hidden!important;}
             }
         });
         window.gameRender=render;
+        // Extra flight space is part of the same world in every display mode.
+        const MERGE_FLIGHT_TOP=-600, MERGE_AIRTIME_LIMIT=6500;
+        window.mergeFlightZoom=1;
+        window.mergeViewPoint=function(x,y){
+            const z=window.mergeFlightZoom||1;
+            return {x:CANVAS_WIDTH/2+(x-CANVAS_WIDTH/2)*z,y:CANVAS_HEIGHT+(y-CANVAS_HEIGHT)*z};
+        };
+        window.mergePointerX=function(x){return CANVAS_WIDTH/2+(x-CANVAS_WIDTH/2)/(window.mergeFlightZoom||1);};
+        function applyMergeFlightBounds(){
+            const z=window.mergeFlightZoom||1,padding=window.mergeTopPadding||0;
+            render.options.hasBounds=true;
+            render.bounds.min.x=(CANVAS_WIDTH-CANVAS_WIDTH/z)/2;
+            render.bounds.max.x=CANVAS_WIDTH-render.bounds.min.x;
+            render.bounds.min.y=CANVAS_HEIGHT-(CANVAS_HEIGHT+padding)/z;
+            render.bounds.max.y=CANVAS_HEIGHT;
+        }
         window.syncMergeViewport=function(){
             const h=physicsArea.clientHeight;if(h<=0)return;
             const padding=Math.max(0,physicsArea.offsetTop/(h/CANVAS_HEIGHT));
             const height=CANVAS_HEIGHT+padding;
-            render.options.hasBounds=true;
-            render.bounds.min.x=0;render.bounds.min.y=-padding;
-            render.bounds.max.x=CANVAS_WIDTH;render.bounds.max.y=CANVAS_HEIGHT;
             const changed=render.options.height!==height||render.options.width!==CANVAS_WIDTH;
             render.options.width=CANVAS_WIDTH;render.options.height=height;
             physicsArea.style.setProperty('--mr-canvas-top',(-physicsArea.offsetTop)+'px');
             physicsArea.style.setProperty('--mr-canvas-height',(h+physicsArea.offsetTop)+'px');
             if(changed)Render.setPixelRatio(render,render.options.pixelRatio||GAME_RENDER_PIXEL_RATIO);
-            window.mergeVisibleTop=-padding;
-            const roof=window.mergeWorldBounds?.ceiling;
-            if(roof)Matter.Body.setPosition(roof,{x:CANVAS_WIDTH/2,y:-padding-500});
+            window.mergeTopPadding=padding;window.mergeVisibleTop=-padding;
+            applyMergeFlightBounds();
         };
-        window.keepMergeBallVisible=function(b){
-            const radius=b.circleRadius||LEVELS[b.level]?.radius||0;
-            const top=(window.mergeVisibleTop||0)+radius;
-            if(b.position.y<top){
-                Matter.Body.setPosition(b,{x:b.position.x,y:top});
-                if(b.velocity.y<0)Matter.Body.setVelocity(b,{x:b.velocity.x,y:Math.min(4,-b.velocity.y*.22)});
+        // Recover only beyond the distant safety bounds or after a full flight timeout.
+        // Engine time pauses with the game; no old setTimeout can affect a restarted run.
+        window.guardMergeFlight=function(b){
+            const r=b.circleRadius||LEVELS[b.level]?.radius||14;
+            const clampX=x=>Math.max(r,Math.min(CANVAS_WIDTH-r,Number.isFinite(x)?x:CANVAS_WIDTH/2));
+            const time=engine.timing.timestamp;
+            const recover=()=>{
+                Matter.Body.setPosition(b,{x:clampX(b.position.x),y:r+8});
+                Matter.Body.setVelocity(b,{x:0,y:4});
+                Matter.Body.setAngularVelocity(b,0);b.force.x=0;b.force.y=0;
+                b.mergeAirSince=null;
+            };
+            if(!Number.isFinite(b.position.x)||!Number.isFinite(b.position.y)||!Number.isFinite(b.velocity.y)||!Number.isFinite(b.velocity.x)){recover();return;}
+            if(b.position.y>CANVAS_HEIGHT+r+120){recover();return;}
+            if(b.position.x<r||b.position.x>CANVAS_WIDTH-r){
+                const vx=b.position.x<r?Math.abs(b.velocity.x): -Math.abs(b.velocity.x);
+                Matter.Body.setPosition(b,{x:clampX(b.position.x),y:b.position.y});
+                Matter.Body.setVelocity(b,{x:vx*.35,y:b.velocity.y});
             }
+            if(b.position.y-r<MERGE_FLIGHT_TOP){
+                Matter.Body.setPosition(b,{x:b.position.x,y:MERGE_FLIGHT_TOP+r});
+                Matter.Body.setVelocity(b,{x:b.velocity.x,y:Math.max(5,Math.min(12,Math.abs(b.velocity.y)*.25))});
+            }
+            if(b.position.y+r<0){
+                if(b.mergeAirSince==null)b.mergeAirSince=time;
+                if(time-b.mergeAirSince>MERGE_AIRTIME_LIMIT)recover();
+            }else b.mergeAirSince=null;
         };
+        Events.on(render,'beforeRender',()=>{
+            if(physicsArea.clientHeight<=0)return;
+            const padding=window.mergeTopPadding||0;
+            let top=-padding;
+            for(const b of Composite.allBodies(window.world)){
+                if(b.level===undefined)continue;
+                const r=b.circleRadius||LEVELS[b.level].radius;
+                top=Math.min(top,b.position.y-r+Math.min(0,b.velocity.y)*2-12);
+            }
+            const target=Math.min(1,(CANVAS_HEIGHT+padding)/(CANVAS_HEIGHT-top));
+            const old=window.mergeFlightZoom||1;
+            // Open fast enough to contain every bead; ease back only after it falls.
+            const z=target<old?target:Math.min(1,old+(target-old)*.08);
+            window.mergeFlightZoom=z>.9995?1:z;applyMergeFlightBounds();
+            if(Math.abs(old-window.mergeFlightZoom)>.00001){
+                syncDeadlineVisual();if(typeof window.updatePreview==='function')window.updatePreview();
+            }
+        });
         if(window.ResizeObserver)new ResizeObserver(()=>window.syncMergeViewport()).observe(physicsArea);
         window.addEventListener('resize',()=>window.syncMergeViewport());
 
@@ -7154,12 +7206,12 @@ html.game-booting #app{visibility:hidden!important;}
         const floor = Bodies.rectangle(CANVAS_WIDTH / 2, CANVAS_HEIGHT + 50, CANVAS_WIDTH * 5, 100, wallOptions);
         const leftWall = Bodies.rectangle(-50, CANVAS_HEIGHT / 2, 100, CANVAS_HEIGHT * 5, wallOptions);
         const rightWall = Bodies.rectangle(CANVAS_WIDTH + 50, CANVAS_HEIGHT / 2, 100, CANVAS_HEIGHT * 5, wallOptions);
-        const ceiling = Bodies.rectangle(CANVAS_WIDTH / 2, -2000, CANVAS_WIDTH * 5, 1000, wallOptions);
+        const ceiling = Bodies.rectangle(CANVAS_WIDTH / 2, MERGE_FLIGHT_TOP-500, CANVAS_WIDTH * 5, 1000, wallOptions);
         Composite.add(window.world, [floor, leftWall, rightWall, ceiling]);
         window.mergeWorldBounds={floor,leftWall,rightWall,ceiling};
         window.syncMergeViewport();
         Events.on(engine,'afterUpdate',()=>{
-            Composite.allBodies(window.world).filter(b=>b.level!==undefined).forEach(window.keepMergeBallVisible);
+            Composite.allBodies(window.world).filter(b=>b.level!==undefined).forEach(window.guardMergeFlight);
         });
 
         Events.on(engine, 'collisionStart', (event) => {
@@ -7205,17 +7257,8 @@ html.game-booting #app{visibility:hidden!important;}
             const allBodies = Composite.allBodies(window.world);
             allBodies.forEach(b => {
                 if (b.level !== undefined) {
-                    window.keepMergeBallVisible(b);
+                    window.guardMergeFlight(b);
                     MR.updateSmile(b, engine.timing.timestamp);
-                    // 구슬은 물리 터널링/쉐이크 때문에 보드 밖으로 빠져도 삭제하지 않고 복귀시킵니다.
-                    if (b.position.y > CANVAS_HEIGHT + 120 || b.position.x < -90 || b.position.x > CANVAS_WIDTH + 90) {
-                        const safeX = Math.max(20, Math.min(CANVAS_WIDTH - 20, b.position.x));
-                        Matter.Body.setPosition(b, { x: safeX, y: Math.max(20, CANVAS_HEIGHT - 70) });
-                        Matter.Body.setVelocity(b, { x: 0, y: -2 });
-                    } else if (b.position.y < -650) {
-                        Matter.Body.setPosition(b, { x: Math.max(20, Math.min(CANVAS_WIDTH - 20, b.position.x)), y: -25 });
-                        Matter.Body.setVelocity(b, { x: 0, y: 4 });
-                    }
                 } else if (b.position.y > CANVAS_HEIGHT + 200) {
                     Composite.remove(window.world, b);
                 }
@@ -7250,8 +7293,8 @@ html.game-booting #app{visibility:hidden!important;}
                 });
                 showFloatingText(`강력 정리! 🧲💨`, 210, 400, '#82ccdd');
             } else if (itemType === 'shake') {
-                // BIG SHAKE: 구슬을 위로 튀기되 표시 영역 상단에서 반사시켜 화면 안에 유지합니다.
-                // 위쪽 경계는 머지 화면 상단과 일치하며 구슬은 삭제하지 않습니다.
+                // BIG SHAKE: 높은 상승과 공중 머지를 유지하고 카메라가 전체 비행을 보여줍니다.
+                // 먼 위쪽 안전 경계와 시간 제한 복귀로 구슬의 영구 이탈을 방지합니다.
                 allBalls.forEach((b) => {
                     const vx = (Math.random() - 0.5) * 16;
                     const vy = -(24 + Math.random() * 9);
@@ -7259,17 +7302,7 @@ html.game-booting #app{visibility:hidden!important;}
                     Matter.Body.setAngularVelocity(b, (Math.random() - 0.5) * 0.38);
                     Matter.Body.applyForce(b, b.position, { x: (Math.random()-0.5) * 0.0035 * b.mass, y: -0.0015 * b.mass });
                 });
-                // 쉐이크 후 화면 밖에 오래 남는 구슬을 반드시 보드로 복귀시킵니다.
-                setTimeout(() => {
-                    if (!window.world) return;
-                    Composite.allBodies(window.world).filter(b => b.level !== undefined).forEach((b) => {
-                        const safeX = Math.max(18, Math.min(CANVAS_WIDTH - 18, b.position.x));
-                        if (b.position.y < -70 || b.position.x < -35 || b.position.x > CANVAS_WIDTH + 35) {
-                            Matter.Body.setPosition(b, { x: safeX, y: (window.mergeVisibleTop||0)+(b.circleRadius||LEVELS[b.level].radius)+4 });
-                            Matter.Body.setVelocity(b, { x: 0, y: 4 + Math.random() * 2 });
-                        }
-                    });
-                }, 1250);
+                // Flight recovery is handled by guardMergeFlight using simulation time.
                 showFloatingText(`SUPER SHAKE! 🌪️⬆️`, 210, 400, '#f6e58d');
                 invincibleEndTime = Date.now() + 7000;
                 isWarning = false;
@@ -7294,9 +7327,10 @@ html.game-booting #app{visibility:hidden!important;}
         window.updatePreview = function() {
             const data = LEVELS[nextDropLevel]; const skinSrc = equippedSkins[nextDropLevel];
             const scale=physicsArea.clientWidth/CANVAS_WIDTH;
-            previewDiv.style.width=(data.radius*2*scale)+'px';previewDiv.style.height=(data.radius*2*scale)+'px';
-            previewDiv.style.top=(physicsArea.offsetTop+20*scale)+'px';
-            previewDiv.style.left=(physicsArea.offsetLeft+lastMouseX*scale)+'px';
+            const zoom=window.mergeFlightZoom||1;const point=window.mergeViewPoint?window.mergeViewPoint(lastMouseX,20):{x:lastMouseX,y:20};
+            previewDiv.style.width=(data.radius*2*scale*zoom)+'px';previewDiv.style.height=(data.radius*2*scale*zoom)+'px';
+            previewDiv.style.top=(physicsArea.offsetTop+point.y*physicsArea.clientHeight/CANVAS_HEIGHT)+'px';
+            previewDiv.style.left=(physicsArea.offsetLeft+point.x*scale)+'px';
             dropLine.style.top=physicsArea.offsetTop+'px';dropLine.style.bottom='auto';dropLine.style.height=physicsArea.clientHeight+'px';
             dropLine.style.left=previewDiv.style.left; 
             if (skinSrc) {
@@ -7317,13 +7351,13 @@ html.game-booting #app{visibility:hidden!important;}
         catcher.addEventListener('pointerdown', (e) => { 
             if (isAutoDrop || currentMenu !== 'battle' || isGameOver || globalPause || !canDrop) return;
             isDragging = true; const rect = catcher.getBoundingClientRect(); const levelData = LEVELS[nextDropLevel];
-            let rawX = (e.clientX - rect.left) * CANVAS_WIDTH / Math.max(1,rect.width); lastMouseX = Math.min(Math.max(rawX, levelData.radius), CANVAS_WIDTH - levelData.radius);
-            const px=physicsArea.offsetLeft+(lastMouseX/CANVAS_WIDTH)*physicsArea.clientWidth; dropLine.style.display = 'block'; previewDiv.style.left = px+'px'; dropLine.style.left = px+'px'; catcher.setPointerCapture(e.pointerId);
+            let rawX = window.mergePointerX((e.clientX - rect.left) * CANVAS_WIDTH / Math.max(1,rect.width)); lastMouseX = Math.min(Math.max(rawX, levelData.radius), CANVAS_WIDTH - levelData.radius);
+            const px=physicsArea.offsetLeft+(window.mergeViewPoint(lastMouseX,20).x/CANVAS_WIDTH)*physicsArea.clientWidth; dropLine.style.display = 'block'; previewDiv.style.left = px+'px'; dropLine.style.left = px+'px'; catcher.setPointerCapture(e.pointerId);
         });
         catcher.addEventListener('pointermove', (e) => {
             if(!isDragging) return; const rect = catcher.getBoundingClientRect(); const levelData = LEVELS[nextDropLevel];
-            let rawX = (e.clientX - rect.left) * CANVAS_WIDTH / Math.max(1,rect.width); lastMouseX = Math.min(Math.max(rawX, levelData.radius), CANVAS_WIDTH - levelData.radius);
-            const px=physicsArea.offsetLeft+(lastMouseX/CANVAS_WIDTH)*physicsArea.clientWidth; dropLine.style.display = 'block'; previewDiv.style.left = px+'px'; dropLine.style.left = px+'px';
+            let rawX = window.mergePointerX((e.clientX - rect.left) * CANVAS_WIDTH / Math.max(1,rect.width)); lastMouseX = Math.min(Math.max(rawX, levelData.radius), CANVAS_WIDTH - levelData.radius);
+            const px=physicsArea.offsetLeft+(window.mergeViewPoint(lastMouseX,20).x/CANVAS_WIDTH)*physicsArea.clientWidth; dropLine.style.display = 'block'; previewDiv.style.left = px+'px'; dropLine.style.left = px+'px';
         });
         catcher.addEventListener('pointerup', (e) => { 
             if (!isDragging) return; isDragging = false; catcher.releasePointerCapture(e.pointerId);
@@ -7439,6 +7473,7 @@ html.game-booting #app{visibility:hidden!important;}
             updateNormalEnemyHud(normalEnemyHp,NORMAL_ENEMY_MAX_HP,true);
             manualPause=false; navigationPause=false; systemPause=false;
             battleActionCount=0; actionsSinceSkill=0; skillVariantIndex=0; normalVictoryCount=0; setBattleHeroState('idle');
+            window.mergeFlightZoom=1;window.syncMergeViewport?.();syncDeadlineVisual();
             resetRunScore(); syncPauseState(); updatePreview();
         }
         MR.ready();
