@@ -3403,13 +3403,39 @@ window.MRBattleFX=(()=>{
 
     // ================= [ BGM · assets/audio/bgm/starlight_atelier.ogg ] =================
     const BGM_FILE='assets/audio/bgm/starlight_atelier.ogg';
-    let bgmAudio=null, audioUnlocked=false;
-    function getBgmAudio(){ if(!bgmAudio){bgmAudio=new Audio(BGM_FILE);bgmAudio.loop=true;bgmAudio.preload='auto';} return bgmAudio; }
-    function syncBgm(){ MR.syncMusic(gameSettings,audioUnlocked); }
-    function unlockGameAudio(){audioUnlocked=true;preloadSfx();syncBgm();}
+    let bgmAudio=null, audioUnlocked=false, bgmPlayPending=false;
+    function getBgmAudio(){
+        if(!bgmAudio){
+            bgmAudio=new Audio(BGM_FILE);
+            bgmAudio.loop=true;
+            bgmAudio.preload='auto';
+            bgmAudio.addEventListener('error',()=>console.warn('BGM load failed:',BGM_FILE,bgmAudio.error?.code));
+        }
+        return bgmAudio;
+    }
+    function syncBgm(){
+        if(!audioUnlocked)return;
+        const a=getBgmAudio();
+        const volume=value=>Number.isFinite(Number(value))?Math.max(0,Math.min(1,Number(value)/100)):0;
+        a.volume=gameSettings.bgm?volume(gameSettings.masterVolume)*volume(gameSettings.bgmVolume):0;
+        if(a.volume===0){a.pause();return;}
+        if(!a.paused||bgmPlayPending)return;
+        bgmPlayPending=true;
+        try{
+            Promise.resolve(a.play()).catch(error=>{
+                if(error?.name!=='NotAllowedError'&&error?.name!=='AbortError')console.warn('BGM playback:',error);
+            }).finally(()=>{bgmPlayPending=false;});
+        }catch(error){bgmPlayPending=false;console.warn('BGM playback:',error);}
+    }
+    function unlockGameAudio(){
+        const firstUnlock=!audioUnlocked;
+        audioUnlocked=true;
+        syncBgm();
+        if(firstUnlock)preloadSfx();
+    }
 
     // ================= [ SFX MANAGER · assets/audio/sfx/ ] =================
-    // BGM은 사용하지 않고, 반복 플레이를 방해하지 않는 짧은 효과음 중심입니다.
+    // 효과음은 BGM과 별도 채널로 재생합니다.
     const SFX_FILES = {
         ballDrop:'sfx_ball_drop.wav', merge:'sfx_merge.wav', mergeHigh:'sfx_merge_high.wav', mergeMax:'sfx_merge_max.wav',
         gold:'sfx_gold.wav', itemUse:'sfx_item_use.wav', cleanup:'sfx_cleanup.wav', danger:'sfx_danger.wav', dangerFinal:'sfx_danger_final.wav',
@@ -3450,7 +3476,8 @@ window.MRBattleFX=(()=>{
     }
     window.playSfx=playSfx;
     function preloadSfx(){ Object.keys(SFX_FILES).forEach(getSfxAudio); }
-    window.addEventListener('pointerdown',unlockGameAudio,{once:true,passive:true});
+    window.addEventListener('pointerdown',unlockGameAudio,{passive:true});
+    window.addEventListener('keydown',unlockGameAudio,{passive:true});
     document.addEventListener('click',(e)=>{
         if(e.target.closest('button,.nav-item,.subnav-btn,.collection-tab,.economy-tab,.char-category-btn,.char-bg-tier-btn,.emoji-category-btn')) playSfx('uiClick',{minGap:55});
     },true);
