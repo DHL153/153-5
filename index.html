@@ -4899,6 +4899,127 @@ window.MRBattleFX=(()=>{
         return preview;
     };
 
+/* Offline data contracts. No transport, identity, remote inventory or analytics SDK. */
+function createSocialDataFoundation(assets, emojis) {
+    'use strict';
+    const byId=new Map(), byLegacy=new Map(), blocked=new Set();
+    const categories=['item','skin','char','battle_char','char_bg','bg_battle','bg_merge'];
+    const key=(category,id)=>JSON.stringify([category,String(id)]);
+    const own=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
+    const object=x=>x!==null && typeof x==='object' && !Array.isArray(x);
+    const clone=x=>JSON.parse(JSON.stringify(x));
+    const fail=reason=>{throw new Error('MRData: '+reason);};
+    function add(category,id,legacyId) {
+        if(typeof id!=='string'||!/^\w+$/.test(id))fail('invalid catalog ID');
+        if(byId.has(id)||byLegacy.has(key(category,legacyId)))fail('duplicate catalog ID: '+id);
+        const record=Object.freeze({category,id,legacyId});byId.set(id,record);byLegacy.set(key(category,legacyId),record);
+    }
+    assets.characters.items.forEach(x=>add('char',x.id,x.index));
+    assets.battleCharacters.items.forEach(x=>add('battle_char',x.id,x.index));
+    assets.beads.items.forEach(x=>add('skin',x.id,x.path));
+    assets.backgrounds.items.forEach(x=>{const cat={lobby:'char_bg',battle:'bg_battle',merge:'bg_merge'}[x.kind];if(cat)add(cat,x.id,x.index);});
+    emojis.forEach(x=>add('item',x.id,x.symbol));
+    function toId(cat,id){return byLegacy.get(key(cat,id))?.id||null;}
+    function fromId(cat,id){const v=byId.get(id);if(!v||v.category!==cat)fail('unknown '+cat+' ID');return v.legacyId;}
+    function requiredId(cat,id){return toId(cat,id)||fail('unmapped '+cat+' item');}
+    function number(v,min,max,fallback){return typeof v==='number'&&Number.isFinite(v)?Math.min(max,Math.max(min,v)):fallback;}
+    function transform(v={},type='character') {
+        if(!object(v))v={};
+        const emoji=type==='emoji', bg=type==='background';
+        return {x:number(v.x,0,100,50),y:number(v.y,0,100,bg||emoji?50:54),scale:number(v.scale,bg?1:emoji?0.5:0.55,bg?1.8:emoji?2.5:1.65,1),rotation:number(v.rotation??v.rotate,bg?0:emoji?-180:-35,bg?0:emoji?180:35,0),flip:v.flip===-1?-1:1};
+    }
+    const legacyTransform=v=>({x:v.x,y:v.y,scale:v.scale,rotate:v.rotation,flip:v.flip});
+    // Public data contains allowlisted asset IDs and transforms only; no URLs/HTML or economy.
+    function exportRoom(scene,config) {
+        const bg=requiredId('char_bg',config.bg);
+        return validateRoom({schema:'merge-run.room',version:1,coordinateSpace:'percent',background:{assetId:bg,...transform(scene.backgroundById?.[config.bg],'background')},characters:(scene.characters||[]).map((c,i)=>({instanceId:'character-'+String(c.uid??i+1),assetId:requiredId('char',c.id),...transform(c)})),emojis:(scene.emojis||[]).map((e,i)=>({instanceId:'emoji-'+String(e.uid??i+1),assetId:requiredId('item',e.symbol),...transform(e,'emoji')}))});
+    }
+    function validateRoom(input) {
+        let room=input;
+        if(typeof input==='string') {if(input.length>65536)fail('room too large');room=JSON.parse(input);}
+        if(!object(room)||room.schema!=='merge-run.room'||room.version!==1||room.coordinateSpace!=='percent')fail('unsupported room schema');
+        if(!object(room.background)||!Array.isArray(room.characters)||!Array.isArray(room.emojis)||room.characters.length>3||room.emojis.length>80)fail('invalid room limits');
+        fromId('char_bg',room.background.assetId);
+        const ids=new Set();
+        function placement(x,cat,type) {
+            if(!object(x)||typeof x.instanceId!=='string'||!/^[a-zA-Z0-9_-]{1,64}$/.test(x.instanceId)||ids.has(x.instanceId))fail('invalid instance ID');
+            ids.add(x.instanceId);fromId(cat,x.assetId);
+            return {instanceId:x.instanceId,assetId:x.assetId,...transform(x,type)};
+        }
+        return {schema:'merge-run.room',version:1,coordinateSpace:'percent',background:{assetId:room.background.assetId,...transform(room.background,'background')},characters:room.characters.map(x=>placement(x,'char','character')),emojis:room.emojis.map(x=>placement(x,'item','emoji'))};
+    }
+    function encodeEconomy(s) {
+        const inventory={};
+        for(const cat of categories)for(const [id,count] of Object.entries(s.inventory?.[cat]||{})){
+            const stable=toId(cat,id);if(stable)inventory[stable]=count;
+        }
+        const stable={inventory,equippedSkins:(s.equippedSkins||[]).map(id=>requiredId('skin',id)),battleCharacter:requiredId('battle_char',s.battleCharacter),battleBackground:requiredId('bg_battle',s.bgConfig.battle),mergeBackground:requiredId('bg_merge',s.bgConfig.merge),lobby:requiredId('char_bg',s.lobby),starterChoices:{}};
+        for(const [cat,id] of Object.entries(s.starterSelection?.choices||{}))if(categories.includes(cat))stable.starterChoices[cat]=requiredId(cat,id);
+        return stable;
+    }
+    function decodeEconomy(s,stable) {
+        if(!object(stable)||!object(stable.inventory)||!Array.isArray(stable.equippedSkins))fail('invalid economy schema');
+        const inv=Object.fromEntries(categories.map(c=>[c,{}]));
+        // Preserve obsolete local-only entries, but remap all recognized entries from stable IDs.
+        for(const cat of categories)for(const [id,n] of Object.entries(s.inventory?.[cat]||{}))if(!toId(cat,id))inv[cat][id]=n;
+        for(const [id,count] of Object.entries(stable.inventory)){
+            const r=byId.get(id);if(!r)fail('unknown saved asset: '+id);
+            if(typeof count!=='number'||!Number.isFinite(count)||count<0)fail('invalid inventory count');
+            inv[r.category][r.legacyId]=count;
+        }
+        s.inventory=inv;s.equippedSkins=stable.equippedSkins.map(id=>fromId('skin',id));
+        s.battleCharacter=fromId('battle_char',stable.battleCharacter);s.bgConfig={...s.bgConfig,battle:fromId('bg_battle',stable.battleBackground),merge:fromId('bg_merge',stable.mergeBackground)};s.lobby=fromId('char_bg',stable.lobby);
+        if(s.starterSelection){s.starterSelection.choices={};for(const [cat,id] of Object.entries(stable.starterChoices||{}))s.starterSelection.choices[cat]=fromId(cat,id);}
+        return s;
+    }
+    function encodeScene(s) {
+        return {characters:(s.characters||[]).map(c=>({...c,id:requiredId('char',c.id)})),emojis:(s.emojis||[]).map(e=>({...e,symbol:requiredId('item',e.symbol)})),backgroundById:Object.fromEntries(Object.entries(s.backgroundById||{}).map(([id,v])=>[requiredId('char_bg',id),v]))};
+    }
+    function decodeScene(s,v) {
+        if(!object(v)||!Array.isArray(v.characters)||!Array.isArray(v.emojis)||!object(v.backgroundById))fail('invalid scene schema');
+        s.characters=v.characters.map(c=>({...c,id:fromId('char',c.id)}));s.emojis=v.emojis.map(e=>({...e,symbol:fromId('item',e.symbol)}));s.backgroundById=Object.fromEntries(Object.entries(v.backgroundById).map(([id,value])=>[fromId('char_bg',id),value]));return s;
+    }
+    function readSave(kind,raw) {
+        try {
+            const s=raw==null?null:JSON.parse(raw);if(s==null)return null;
+            if(!object(s))fail('invalid local save');
+            if(!own(s,'_mrSave'))return s; // Legacy v1/v2 migrate in memory, next successful save is tagged.
+            const h=s._mrSave;
+            if(!object(h)||h.format!=='merge-run.local'||h.kind!==kind||h.version!==1)fail('unsupported local save version');
+            delete s._mrSave;
+            return kind==='economy'?decodeEconomy(s,h.stable):kind==='scene'?decodeScene(s,h.stable):fail('unknown save kind');
+        }catch(e){blocked.add(kind);throw e;} // A newer/corrupt save must never be overwritten with defaults.
+    }
+    function stringifySave(kind,state) {
+        if(blocked.has(kind))fail('save protected until reload/reset: '+kind);
+        const stable=kind==='economy'?encodeEconomy(state):kind==='scene'?encodeScene(state):fail('unknown save kind');
+        return JSON.stringify({...state,_mrSave:{format:'merge-run.local',kind,version:1,stable}});
+    }
+    return Object.freeze({toId,fromId,exportRoom,validateRoom,readSave,stringifySave,clone,
+        versions:Object.freeze({save:1,room:1,battleDisplay:1}),
+        status:()=>({blockedSaveKinds:[...blocked],catalogItems:byId.size})});
+}
+
+
+    const socialData = createSocialDataFoundation(FALLBACK_ASSET_DATA, EMOJI_CATALOG);
+    // Read-only boundary for future native/cloud/social adapters. No connection is created.
+    window.MergeRunFoundation = Object.freeze({
+        versions:socialData.versions,
+        status:()=>({...socialData.status(),ready:!!window.__charSceneLoaded,socialEnabled:false}),
+        stableItemId:(category,legacyId)=>socialData.toId(category,legacyId),
+        validateRoomSnapshot:input=>socialData.validateRoom(input),
+        getRoomSnapshot:()=>{
+            if(!window.__charSceneLoaded)throw new Error('Room is not loaded');
+            return socialData.exportRoom(charScene,charConfig);
+        },
+        getBattleDisplaySnapshot:()=>{
+            if(!window.__charSceneLoaded)throw new Error('Game is not loaded');
+            return {schema:'merge-run.battle-display',version:1,
+                character:socialData.toId('battle_char',battleCharacter),
+                background:socialData.toId('bg_battle',bgConfig.battle)};
+        }
+    });
+
     function inventorySnapshotForSave() {
         const snap={};
         ALL_COLLECTIBLE_CATEGORIES.forEach(cat=>{
@@ -4924,7 +5045,7 @@ window.MRBattleFX=(()=>{
     function saveEconomyState() {
         if(testUnlockAll || resetInProgress) return; // Never persist test unlocks or a reset.
         try {
-            const snapshot=JSON.stringify({
+            const snapshot=socialData.stringifySave('economy',{
                 fragments, gold, mergeCount, equippedSkins, bgConfig, battleCharacter, starterSelection, lobby:charConfig.bg,
                 inventory:inventorySnapshotForSave(),
                 dailyFreeDate:dailyFreeState.date,
@@ -4957,7 +5078,7 @@ window.MRBattleFX=(()=>{
 
     function loadEconomyState() {
         try {
-            const saved=JSON.parse(localStorage.getItem(ECONOMY_STORAGE_KEY)||'null');
+            const saved=socialData.readSave('economy',localStorage.getItem(ECONOMY_STORAGE_KEY));
 
             if(saved){
                 if(saved.starterSelection?.version===1)starterSelection=saved.starterSelection;
@@ -5585,8 +5706,8 @@ window.MRBattleFX=(()=>{
 
     function loadCharScene() {
         try {
-            const savedV2=JSON.parse(localStorage.getItem(CHAR_SCENE_SAVE_KEY)||'null');
-            const savedV1=JSON.parse(localStorage.getItem('mergeRoll.characterScene.v1')||'null');
+            const savedV2=socialData.readSave('scene',localStorage.getItem(CHAR_SCENE_SAVE_KEY));
+            const savedV1=savedV2?null:socialData.readSave('scene',localStorage.getItem('mergeRoll.characterScene.v1'));
             const saved=savedV2 || savedV1;
             if(saved && typeof saved==='object'){
                 if(Array.isArray(saved.characters) && saved.characters.length){
@@ -5621,7 +5742,7 @@ window.MRBattleFX=(()=>{
 
     function saveCharScene() {
         syncLegacyCharacterState();
-        try { if(!resetInProgress) localStorage.setItem(CHAR_SCENE_SAVE_KEY, JSON.stringify(charScene)); } catch(e) {}
+        try { if(!resetInProgress) localStorage.setItem(CHAR_SCENE_SAVE_KEY, socialData.stringifySave('scene',charScene)); } catch(e) {}
     }
     function currentBgAdjust() {
         const meta = BACKGROUND_META?.lobby?.[charConfig.bg] || {};
