@@ -5108,10 +5108,12 @@ window.MRBattleFX=(()=>{
     function replaceOwnedEquipment(category,oldId,newId){
         const id=category==='skin'?newId:Number(newId);
         if(category==='skin'){
-            equippedSkins=equippedSkins.map(x=>sameItem(x,oldId)?newId:x);
-            if(window.world&&window.Matter)for(const b of Matter.Composite.allBodies(window.world)){
-                if(b.level!==undefined&&typeof window.getBodyRenderOptions==='function')b.render=window.getBodyRenderOptions(b.level);
-            }
+            const changedLevels=new Set();
+            equippedSkins=equippedSkins.map((x,level)=>{
+                if(!sameItem(x,oldId))return x;
+                changedLevels.add(level);return newId;
+            });
+            refreshMergeBeadSkins(changedLevels);
             window.updatePreview?.();
         }else if(category==='battle_char'){
             battleCharacter=id;setBattleHeroState('idle');
@@ -7087,18 +7089,9 @@ function createSocialDataFoundation(assets, emojis) {
         showFloatingText(`Lv.${levelIndex+1} 스킨 장착 완료!`, 210, 300, "#1dd1a1");
         
         if(typeof updatePreview === 'function') updatePreview(); 
-        if (window.world && window.Matter) {
-            const bodies = window.Matter.Composite.allBodies(window.world).filter(b => b.level === levelIndex && !b.isStatic);
-            bodies.forEach(b => {
-                const newBody = Matter.Bodies.circle(b.position.x, b.position.y, LEVELS[b.level].radius, {
-                    ...beadMotionOptions(), render: window.getBodyRenderOptions(b.level)
-                });
-                Matter.Body.setVelocity(newBody, b.velocity);
-                newBody.level = b.level; newBody.isMerging = b.isMerging; newBody.spawnTime = b.spawnTime; newBody.rewardMultiplier = b.rewardMultiplier || 1;
-                Matter.Composite.remove(window.world, b); Matter.Composite.add(window.world, newBody);
-            });
-        }
+        refreshMergeBeadSkins(new Set([levelIndex]));
     }
+
 
     function updateBgLivePreview() {
         const battle=document.getElementById('mini-battle-stage'); const merge=document.getElementById('mini-merge-stage'); const hero=document.getElementById('mini-battle-hero');
@@ -7998,6 +7991,28 @@ function createSocialDataFoundation(assets, emojis) {
         }
         return { fillStyle: LEVELS[level].color };
     };
+
+    // Update artwork in place: keep Matter's render defaults and the live body.
+    // Replacing render with creation options loses visible/opacity/sprite offsets.
+    function refreshMergeBeadSkins(levels=null){
+        if(!window.world||!window.Matter||typeof window.getBodyRenderOptions!=='function')return;
+        for(const body of window.Matter.Composite.allBodies(window.world)){
+            if(body.isStatic||!Number.isInteger(body.level)||!LEVELS[body.level])continue;
+            if(levels&&!levels.has(body.level))continue;
+            const options=window.getBodyRenderOptions(body.level);
+            const render=body.render||(body.render={});
+            // Defaults also recover a body that already has incomplete render data.
+            if(typeof render.visible!=='boolean')render.visible=true;
+            if(!Number.isFinite(render.opacity))render.opacity=1;
+            if(!Number.isFinite(render.lineWidth))render.lineWidth=0;
+            if(!render.strokeStyle)render.strokeStyle='#14151f';
+            const sprite=render.sprite||(render.sprite={});
+            if(!Number.isFinite(sprite.xOffset))sprite.xOffset=.5;
+            if(!Number.isFinite(sprite.yOffset))sprite.yOffset=.5;
+            render.fillStyle=options.fillStyle;
+            Object.assign(sprite,options.sprite||{texture:'',xScale:1,yScale:1});
+        }
+    }
 
     let isAutoDrop = false; let canDrop = true; let isGameOver = false; let isWarning = false; 
     // Occupancy, not linear/angular speed, determines danger. A bead fully above
