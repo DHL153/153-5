@@ -2759,8 +2759,8 @@ html.game-booting #app{visibility:hidden!important;}
 </button>
 <button class="btn-gacha" id="btn-buy-fragment" onclick="buyFragmentPack()">
 <div class="title" style="color:#6c5ce7;">🧩 <span>조각팩 구매</span></div>
-<div class="cost-row"><div class="cost"><span id="fragment-pack-price" style="color:#d35400;">🪙 2K</span></div><div class="cost"><span style="color:#6a4c9c;">➜ 🧩 1</span></div></div>
-<div class="cost"><span>다음 구매 가격 ×2 · 매일 초기화 · 무제한</span></div>
+<div class="cost-row"><div class="cost"><span id="fragment-pack-price" style="color:#d35400;">🪙 2K</span></div><div class="cost"><span id="fragment-pack-amount" style="color:#6a4c9c;">➜ 🧩 1</span></div></div>
+<div class="cost"><span>다음 구매 가격 ×2 · 지급 조각 +1 · 매일 초기화</span></div>
 <div class="cost"><span id="fragment-pack-limit" style="color:#6c5ce7;">오늘 0회 · 무제한</span></div>
 </button>
 </div>
@@ -3025,7 +3025,7 @@ html.game-booting #app{visibility:hidden!important;}
 <div class="codex-pager" id="item-collection-pager"></div>
 <div class="inventory-grid compact-collection-grid" id="item-collection-grid"></div>
 <div id="codex-compact-bottom">
-<label class="codex-compact-owned"><input type="checkbox" id="codex-owned-checkbox" onchange="setCodexOwnedFromCheckbox(this.checked)"> 보유한 것만 보기</label>
+<label class="codex-compact-owned"><input type="checkbox" id="codex-owned-checkbox" checked onchange="setCodexOwnedFromCheckbox(this.checked)"> 보유한 것만 보기</label>
 <div class="codex-compact-info" id="codex-compact-info">등급별 도감</div>
 </div>
 </div>
@@ -4486,6 +4486,8 @@ window.MRBattleFX=(()=>{
     }
     function updateFragmentPackUI(){
         const price=getFragmentPackPrice();
+        const amountLabel=document.getElementById('fragment-pack-amount');
+        if(amountLabel)setUiText(amountLabel,'➜ 🧩 '+(fragmentPackDaily.count+1));
         const countLabel=document.getElementById('fragment-pack-limit');
         if(countLabel)setUiText(countLabel,`오늘 ${fragmentPackDaily.count}회 · 무제한`);
         const label=document.getElementById('fragment-pack-price');
@@ -4497,7 +4499,8 @@ window.MRBattleFX=(()=>{
         if(resetInProgress||testUnlockAll)return;
         const price=getFragmentPackPrice();
         if(!Number.isFinite(price)||gold<price)return;
-        gold-=price;fragments+=1;fragmentPackDaily.count++;
+        const amount=fragmentPackDaily.count+1;
+        gold-=price;fragments+=amount;fragmentPackDaily.count++;
         saveEconomyState();updateTopUI();refreshShopWallet();updateFragmentPackUI();
         playSfx('fragment');
     };
@@ -6730,6 +6733,7 @@ function createSocialDataFoundation(assets, emojis) {
 
     function setCharBodyTierFilter(tier) {
         charBodyTierFilter = tier;
+        if(tier==='ALL')charOwnedOnly.body=false;
         charBodyPage = 0;
         renderCharItems();
         resetCharBgScroll();
@@ -6744,7 +6748,7 @@ function createSocialDataFoundation(assets, emojis) {
             .sort((a,b) => EMOJI_META_BY_SYMBOL[a].referenceOrder-EMOJI_META_BY_SYMBOL[b].referenceOrder);
     }
     window.setCharEmojiPage=function(page){const all=getFilteredCharEmojiIds();const max=Math.max(0,Math.ceil(all.length/CHAR_EMOJI_PAGE_SIZE)-1);charEmojiPage=Math.max(0,Math.min(max,page));renderCharItems();resetCharBgScroll();};
-    window.setCharEmojiTierFilter=function(tier){charEmojiTierFilter=tier;charEmojiPage=0;renderCharItems();resetCharBgScroll();};
+    window.setCharEmojiTierFilter=function(tier){charEmojiTierFilter=tier;if(tier==='ALL')charOwnedOnly.emoji=false;charEmojiPage=0;renderCharItems();resetCharBgScroll();};
     window.setCharEmojiCategoryFilter=function(category){charEmojiCategoryFilter=category;charEmojiPage=0;renderCharItems();resetCharBgScroll();};
 
     function getFilteredCharBgIds() {
@@ -6759,9 +6763,9 @@ function createSocialDataFoundation(assets, emojis) {
     window.toggleCharOwnedOnly=function(category){
         if(!Object.prototype.hasOwnProperty.call(charOwnedOnly,category)) return;
         charOwnedOnly[category]=!charOwnedOnly[category];
-        if(category==='bg') charBgPage=0;
-        if(category==='body') charBodyPage=0;
-        if(category==='emoji') charEmojiPage=0;
+        if(category==='bg'){charBgPage=0;charBgTierFilter='ALL';}
+        if(category==='body'){charBodyPage=0;charBodyTierFilter='ALL';}
+        if(category==='emoji'){charEmojiPage=0;charEmojiTierFilter='ALL';}
         renderCharItems();
         resetCharBgScroll();
     };
@@ -6789,6 +6793,7 @@ function createSocialDataFoundation(assets, emojis) {
 
     function setCharBgTierFilter(tier) {
         charBgTierFilter = tier;
+        if(tier==='ALL')charOwnedOnly.bg=false;
         charBgPage = 0;
         renderCharItems();
         resetCharBgScroll();
@@ -6828,7 +6833,7 @@ function createSocialDataFoundation(assets, emojis) {
             tierTabs.className = 'char-bg-tier-tabs';
             ['ALL', ...TIER_ORDER.filter(t=>t!=='N')].forEach(tier => {
                 const btn = document.createElement('button');
-                btn.className = `char-bg-tier-btn ${charBodyTierFilter === tier ? 'active' : ''}`;
+                btn.className = `char-bg-tier-btn ${charBodyTierFilter === tier && (tier!=='ALL'||!charOwnedOnly.body) ? 'active' : ''}`;
                 const count = Object.keys(CHARACTER_META).map(Number)
                     .filter(id => id >= 0 && id < 29)
                     .filter(id => tier === 'ALL' || CHARACTER_META[id]?.tier === tier).length;
@@ -6890,7 +6895,7 @@ function createSocialDataFoundation(assets, emojis) {
             const tierTabs=document.createElement('div');tierTabs.className='char-bg-tier-tabs';
             ['ALL','N'].forEach(tier=>{
                 const btn=document.createElement('button');
-                btn.className=`char-bg-tier-btn ${charEmojiTierFilter===tier?'active':''}`;
+                btn.className=`char-bg-tier-btn ${charEmojiTierFilter===tier&&(tier!=='ALL'||!charOwnedOnly.emoji)?'active':''}`;
                 tierButtonLabel(btn,tier,String(referenceEmojiSymbols().length));
                 btn.onclick=()=>setCharEmojiTierFilter(tier);tierTabs.appendChild(btn);
             });
@@ -6951,7 +6956,7 @@ function createSocialDataFoundation(assets, emojis) {
             tierTabs.className = 'char-bg-tier-tabs';
             ['ALL','R','SR','SSR'].forEach(tier => {
                 const btn = document.createElement('button');
-                btn.className = `char-bg-tier-btn ${charBgTierFilter === tier ? 'active' : ''}`;
+                btn.className = `char-bg-tier-btn ${charBgTierFilter === tier && (tier!=='ALL'||!charOwnedOnly.bg) ? 'active' : ''}`;
                 const count = Object.keys(BACKGROUND_META.lobby).map(Number).filter(id => id >= 1 && id <= 69).filter(id => tier === 'ALL' || BACKGROUND_META.lobby[id]?.tier === tier).length;
                 tierButtonLabel(btn,tier,String(count));
                 btn.onclick = () => setCharBgTierFilter(tier);
@@ -7013,22 +7018,23 @@ function createSocialDataFoundation(assets, emojis) {
     // ================= [ 스킨 & 배경 & 아이템 UI 렌더링 ] =================
 
     const collectionTierSelection={};
-    const collectionOwnedOnly={skin:false,battle_char:false,bg_battle:false,bg_merge:false};
+    const collectionOwnedOnly={skin:true,battle_char:true,bg_battle:true,bg_merge:true};
     function acceptsCollectionOwnership(key,count){return !collectionOwnedOnly[key]||Number(count)>0;}
 
     function collectionTierBar(grid,key,db,refresh){
         const selected=collectionTierSelection[key]||'ALL';
         const bar=document.createElement('div');bar.className='collection-tier-bar';
         ['ALL',...TIER_ORDER.filter(t=>t!=='N'&&(db[t]||[]).length)].forEach(t=>{
-            const b=document.createElement('button');b.className='codex-tier-btn'+(selected===t?' active':'');tierButtonLabel(b,t);
-            b.onclick=()=>{collectionTierSelection[key]=t;refresh();};bar.appendChild(b);
+            const b=document.createElement('button');b.className='codex-tier-btn'+(selected===t&&(t!=='ALL'||!collectionOwnedOnly[key])?' active':'');
+            b.setAttribute('aria-pressed',String(selected===t&&(t!=='ALL'||!collectionOwnedOnly[key])));tierButtonLabel(b,t);
+            b.onclick=()=>{collectionTierSelection[key]=t;if(t==='ALL')collectionOwnedOnly[key]=false;refresh();};bar.appendChild(b);
         });
         const owned=document.createElement('button');
         owned.type='button';owned.className='codex-tier-btn collection-owned-icon'+(collectionOwnedOnly[key]?' active':'');
         owned.title='보유만 보기';owned.setAttribute('aria-label','보유만 보기');
         owned.setAttribute('aria-pressed',String(collectionOwnedOnly[key]));
         owned.innerHTML='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0"/><path d="M12 14v3"/></svg>';
-        owned.onclick=()=>{collectionOwnedOnly[key]=!collectionOwnedOnly[key];refresh();};
+        owned.onclick=()=>{collectionOwnedOnly[key]=!collectionOwnedOnly[key];collectionTierSelection[key]='ALL';refresh();};
         bar.insertBefore(owned,bar.children[1]||null);grid.appendChild(bar);
         return t=>selected==='ALL'||selected===t;
     }
@@ -7142,7 +7148,7 @@ function createSocialDataFoundation(assets, emojis) {
         {id:'battle_char',name:'전투 캐릭터'},{id:'skin',name:'구슬 스킨'},{id:'game_bg',name:'게임 배경'},{id:'item',name:'이모지'}
     ];
     let activeItemCategory = 'all';
-    let codexOwnedOnly = false;
+    let codexOwnedOnly = true;
     let codexEmojiCategoryFilter = 'ALL';
     let codexTierFilter = 'ALL';
     let codexPage = 0;
@@ -7150,6 +7156,7 @@ function createSocialDataFoundation(assets, emojis) {
 
     window.toggleCodexOwnedOnly=function(){
         codexOwnedOnly=!codexOwnedOnly;
+        codexTierFilter='ALL';
         codexPage=0;
         updateItemUI();
     };
@@ -7164,11 +7171,13 @@ function createSocialDataFoundation(assets, emojis) {
     };
     window.setCodexTierFilter=function(tier){
         codexTierFilter=tier==='ALL'||TIER_ORDER.includes(tier)?tier:'ALL';
+        if(codexTierFilter==='ALL')codexOwnedOnly=false;
         codexPage=0;
         updateItemUI();
     };
     window.setCodexOwnedFromCheckbox=function(checked){
         codexOwnedOnly=!!checked;
+        codexTierFilter='ALL';
         codexPage=0;
         updateItemUI();
     };
@@ -7220,7 +7229,7 @@ function createSocialDataFoundation(assets, emojis) {
                 const total=raw.filter(e=>tier==='ALL'||e.tier===tier).length;
                 const owned=raw.filter(e=>(tier==='ALL'||e.tier===tier) && e.count>0).length;
                 const b=document.createElement('button');
-                b.className=`codex-tier-btn ${codexTierFilter===tier?'active':''}`;
+                b.className=`codex-tier-btn ${codexTierFilter===tier&&(tier!=='ALL'||!codexOwnedOnly)?'active':''}`;
                 tierButtonLabel(b,tier,`${owned}/${total}`);
                 b.onclick=()=>setCodexTierFilter(tier);
                 tierTabs.appendChild(b);
