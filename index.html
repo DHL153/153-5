@@ -2465,23 +2465,7 @@ html.game-booting #app{visibility:hidden!important;}
 </style>
 
 <style id="mr-character19-timer-fix">
-/* 0019 only: preserve double size and compensate for transparent sprite padding.
-   Lower the vehicle by 26% of the original box relative to the previous -8%
-   offset (about 28px at 109px), placing its wheels on the road in main/mini.
-   Independent translate preserves the existing run and attack transforms. */
-#app #battle-stage[data-battle-character="0019"] #hero{
- scale:2;
- translate:0 18%;
- transform-origin:50% 100%!important;
-}
-/* Enlarge the skill image box (not its animated translate transform), so the
-   cinematic remains horizontally centered through every animation keyframe. */
-/* Raise 0019's skill portrait by 10% of the battle viewport; keep 2x size. */
-#app #battle-stage[data-battle-character="0019"] #skill-cinematic img{
- width:156%!important;
- height:168%!important;
- top:34%!important;
-}
+/* 0019: 예외 확대·위치 보정 제거 → 기본 셋팅 사용 */
 /* 0015 skill only: 1.5x the standard 78% x 84% image box, raised by 10%
    of the viewport. Keep the cinematic's existing centering and animation. */
 #app #battle-stage[data-battle-character="0015"] #skill-cinematic img{
@@ -2563,7 +2547,6 @@ html.game-booting #app{visibility:hidden!important;}
 .mr-review-scene{position:relative;overflow:hidden;background-size:100% 100%;background-position:center;border-radius:12px;background-color:#20334f;}
 .mr-review-scene img{position:absolute;object-fit:contain;pointer-events:none;}
 .mr-review-battle{aspect-ratio:520/148;}.mr-review-battle img{width:21%;height:74%;left:22%;top:13%;transform-origin:50% 100%;}
-.mr-review-battle img[data-character="0019"]{scale:2;translate:0 18%;}
 .mr-review-battle img[data-character="0015"]{translate:0 15%;}
 .mr-review-battle img[data-character="0016"]{translate:0 -20%;}
 .mr-review-battle img[data-character="0011"]{translate:0 -11%;}
@@ -2639,7 +2622,6 @@ html.game-booting #app{visibility:hidden!important;}
 #app #battle-stage[data-battle-character="0021"] #hero{scale:1.3;transform-origin:50% 100%!important;}
 #app #battle-stage[data-battle-character="0021"] #skill-cinematic img{width:101.4%!important;height:109.2%!important;}
 #view-collection #mini-battle-hero[data-battle-character="0015"],
-#view-collection #mini-battle-hero[data-battle-character="0019"],
 #view-collection #mini-battle-hero[data-battle-character="0021"]{scale:1.3;transform-origin:50% 100%;}
 </style>
 <style id="mr-starter-sound-style">
@@ -3673,8 +3655,8 @@ window.MRBattleFX=(()=>{
   if(!box||!box.width||!bounds.width||!bounds.height)return {x:hero?.3:.76,y:.52};
   const tight=art.tagName==='IMG'?artBox(element,art,box):null;
   const character=element?.dataset.battleCharacter||stage.dataset.battleCharacter;
-  // Without measured bounds keep the old padded-sprite anchors (0019 vehicle, 0025).
-  const bodyY=tight?(hero?.42:.5):(hero?(character==='0019'?.74:character==='0025'?.70:.48):.48);
+  // Without measured bounds keep the old padded-sprite anchor for 0025.
+  const bodyY=tight?(hero?.42:.5):(hero?(character==='0025'?.70:.48):.48);
   const r=tight||box;
   // s = visible character height (px); effects are sized from it so small team members get small effects.
   return {x:clamp((r.left+r.width*(hero?.68:.5)-bounds.left)/bounds.width,hero?.04:.2,hero?.86:.95),y:clamp((r.top+r.height*bodyY-bounds.top)/bounds.height,.12,.88),s:(tight?r.height:r.height*.8)};
@@ -8034,6 +8016,8 @@ function createSocialDataFoundation(assets, emojis) {
         return {heroes:f.heroes.map(toPct),enemy:toPct(f.enemy)};
     }
     window.battleFormation=battleFormation;
+    // Per-character visual adjust (battle + cut-in). y: % of sprite height (negative = up), scale: size.
+    const BATTLE_CHAR_ADJUST={11:{scale:.8},25:{y:-20}};
     function layoutBattleTeam(stage,team,preview=false){
         if(!stage)return;
         if(preview){layoutBattleTeamPreview(stage,team);return;}
@@ -8061,15 +8045,17 @@ function createSocialDataFoundation(assets, emojis) {
                 el.style.setProperty('--team-bottom',(bottom/H*100)+'%');
                 el.style.setProperty('--team-height',(imageHeight/H*100)+'%');
                 el.style.setProperty('--team-width',(imageWidth/W*100)+'%');
-                el.style.setProperty('--team-pose-y','0%');el.style.setProperty('--team-pose-scale','1');
+                const adj=BATTLE_CHAR_ADJUST[number]||{};
+                el.style.setProperty('--team-pose-y',(adj.y||0)+'%');el.style.setProperty('--team-pose-scale',String(adj.scale||1));
             }else{
                 // Uniform box for all slots: same size and same bottom line.
                 el.style.setProperty('--team-x',positions[index]+'%');
                 el.style.setProperty('--team-bottom',(BATTLE_GROUND_LINE*100-4)+'%');
                 el.style.setProperty('--team-height','70%');
                 el.style.setProperty('--team-width',(count===1?36:count===2?30:24)+'%');
-                el.style.setProperty('--team-pose-y',({11:-11,15:15,16:-20,19:18}[number]||0)+'%');
-                el.style.setProperty('--team-pose-scale',number===19?'2':number===21?'1.3':'1');
+                const adj=BATTLE_CHAR_ADJUST[number]||{};
+                el.style.setProperty('--team-pose-y',(({11:-11,15:15,16:-20}[number]||0)+(adj.y||0))+'%');
+                el.style.setProperty('--team-pose-scale',String((number===21?1.3:1)*(adj.scale||1)));
             }
         });
         if(!battleStageResizeObserver&&typeof ResizeObserver==='function'){
@@ -8243,7 +8229,7 @@ function createSocialDataFoundation(assets, emojis) {
         const portraits=new Map();
         members.forEach(({id,slot},index)=>{
             const img=document.createElement('img'),assets=getBattleHeroAssets(id),number=id+1;
-            const scale=number===19?2:number===15?1.5:number===21?1.3:1;
+            const scale=(number===15?1.5:number===21?1.3:1)*(BATTLE_CHAR_ADJUST[number]?.scale||1);
             const tier=BATTLE_CHARACTER_META[id]?.tier||battleCharInventory[id]?.tier;
             const tint=({N:'#b3d8e7',R:'#89ead2',SR:'#b8aeff',SSR:'#ffe4a0',UR:'#ffe4a0'})[tier]||'#8eeaff';
             const delay=count===1?0:index*36;
@@ -8252,7 +8238,7 @@ function createSocialDataFoundation(assets, emojis) {
             img.style.setProperty('--cut-x',(count===1?50:count===2?[33,67][index]:[23,50,77][index])+'%');
             img.style.setProperty('--cut-width',((count===1?78:count===2?57:43)*scale)+'%');
             img.style.setProperty('--cut-height',((count===2?90:84)*scale)+'%');
-            img.style.setProperty('--cut-y',(number===19?34:number===15?42:52)+'%');
+            img.style.setProperty('--cut-y',((number===15?42:52)+(BATTLE_CHAR_ADJUST[number]?.y||0)*.5)+'%');
             img.style.setProperty('--cut-z',String(5-index));img.style.setProperty('--cut-glow',tint);
             img.style.setProperty('--cut-delay',delay+'ms');img.style.setProperty('--cut-time',Math.max(1,duration-delay)+'ms');
             applyBattleHeroImage(assets.skill,assets.idle,img);root.appendChild(img);portraits.set(slot,img);
@@ -11100,5 +11086,17 @@ html body #battle-chain-pop[data-tier="max"].bump{animation:fxMaxPulse .5s ease-
  window.MRFX=MRFX;
 })();
 </script>
+<style id="mr-char-adjust-11-25">
+/* 0011: 전체 20% 축소 (전투·스킬 컷인·컬렉션 미리보기·리뷰) / 0025: 위로 20% */
+#hero[src*="/battle_char_0011_"]:not(.battle-team-hero),
+#mini-battle-hero[src*="/battle_char_0011_"]{scale:.8;transform-origin:50% 100%;}
+#hero[src*="/battle_char_0025_"]:not(.battle-team-hero),
+#mini-battle-hero[src*="/battle_char_0025_"]{translate:0 -20%;}
+#app #battle-stage[data-battle-character="0011"] #skill-cinematic img:not(.team-cut-in){scale:.8;transform-origin:50% 100%;}
+#view-collection #mini-battle-stage [data-battle-character="0011"]{scale:.8;transform-origin:50% 100%;}
+#view-collection #mini-battle-stage [data-battle-character="0025"]{translate:0 -20%;}
+.mr-review-battle img[data-character="0011"]{translate:0 -11%;scale:.8;transform-origin:50% 100%;}
+.mr-review-battle img[data-character="0025"]{translate:0 -20%;}
+</style>
 </body>
 </html>
