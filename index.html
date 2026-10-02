@@ -4048,6 +4048,7 @@ window.MRBattleFX=(()=>{
         {id:'merges',target:1000,reward:5,label:'daily.mission.merges',title:'오늘 1000회 머지',note:'실제 구슬 합체만 집계 · 팩 구매 제외',icon:'merge'},
         {id:'kills',target:300,reward:5,label:'daily.mission.kills',title:'적 300마리 처치',note:'일반 적과 보스 처치 포함',icon:'swords'}
     ]);
+    const DAILY_ALL_CLEAR_REWARD=20; // 3개 미션 모두 달성 시 추가 조각
     function newDailyMissionState(date){return {version:1,date,progress:{runs:0,merges:0,kills:0},paid:{runs:false,merges:false,kills:false,all:false}};}
     function normalizeDailyMissionState(saved,date){
         const state=newDailyMissionState(date);
@@ -4067,7 +4068,7 @@ window.MRBattleFX=(()=>{
         if(mission&&Number.isFinite(amount)&&amount>0)next.progress[kind]=Math.min(mission.target,next.progress[kind]+Math.floor(amount));
         let reward=0;
         for(const m of DAILY_MISSIONS)if(!next.paid[m.id]&&next.progress[m.id]>=m.target){next.paid[m.id]=true;reward+=m.reward;paid.push(m.id);}
-        if(!next.paid.all&&DAILY_MISSIONS.every(m=>next.paid[m.id])){next.paid.all=true;reward+=5;paid.push('all');}
+        if(!next.paid.all&&DAILY_MISSIONS.every(m=>next.paid[m.id])){next.paid.all=true;reward+=DAILY_ALL_CLEAR_REWARD;paid.push('all');}
         return {state:next,reward,paid};
     }
     let dailyMissions=newDailyMissionState(getLocalDayKey());
@@ -4101,32 +4102,66 @@ window.MRBattleFX=(()=>{
         if(dailyMissions.date===today)return false;
         dailyMissions=newDailyMissionState(today);return true;
     }
-    // Reward feedback: shards fly from where they were earned into the shard counter.
-    function flyFragmentReward(amount,source){
+    // Reward feedback: shards / merge / gold fly from where they were earned into their top-bar counter.
+    const CURRENCY_FLY={
+        piece:{selector:'.stat-badge.piece',mini:'.mini-fragment-stat',emoji:'🧩',plus:'#f3e39a',count:a=>Math.min(8,Math.max(3,Math.ceil(a/6)))},
+        merge:{selector:'.stat-badge.merge',mini:'.mini-merge-stat',emoji:'🔄',plus:'#c9b8f2',count:a=>Math.min(6,Math.max(1,Math.ceil(a/2)))},
+        gold:{selector:'.stat-badge.gold',mini:'.mini-gold-stat',emoji:'🪙',plus:'#f3c86b',count:a=>a>=1000?7:a>=300?5:a>=50?3:2}
+    };
+    const currencyPlusState={};let currencyFlyActive=0;
+    // Converts a physics-world point (merge position) into screen coordinates for the fly origin.
+    function worldPointToClient(x,y){
+        const r=window.gameRender,c=r?.canvas;if(!c)return null;
+        const rect=c.getBoundingClientRect();if(!rect.width||!rect.height)return null;
+        const bx=r.bounds?.min?.x??0,by=r.bounds?.min?.y??0;
+        const bw=(r.bounds?.max?.x??c.width)-bx||c.width,bh=(r.bounds?.max?.y??c.height)-by||c.height;
+        return {left:rect.left+(x-bx)/bw*rect.width-10,top:rect.top+(y-by)/bh*rect.height-10,width:20,height:20,bottom:rect.top+(y-by)/bh*rect.height+10};
+    }
+    window.worldPointToClient=worldPointToClient;
+    function flyCurrencyReward(kind,amount,source){
+        try{
+        const cfg=CURRENCY_FLY[kind];if(!cfg)return;
         amount=Math.max(0,Math.trunc(Number(amount)||0));if(!amount)return;
-        const target=document.querySelector('#top-bar .stat-badge.piece')||document.querySelector('.stat-badge.piece');
-        const tr=target?.getBoundingClientRect();if(!tr||!tr.width||!tr.height)return;
-        const pulse=()=>{target.animate([{transform:'scale(1)'},{transform:'scale(1.16)'},{transform:'scale(1)'}],{duration:340,easing:'ease-out'});
-            const plus=document.createElement('span');plus.className='mr-frag-plus';plus.textContent='+'+amount;
-            plus.style.left=(tr.left+tr.width/2)+'px';plus.style.top=(tr.top+tr.height)+'px';document.body.appendChild(plus);
-            plus.animate([{opacity:0,transform:'translate(-50%,0)'},{opacity:1,transform:'translate(-50%,6px)',offset:.25},{opacity:0,transform:'translate(-50%,16px)'}],{duration:1100,easing:'ease-out'}).onfinish=()=>plus.remove();};
-        if(matchMedia('(prefers-reduced-motion: reduce)').matches||document.hidden){pulse();return;}
-        let sr=source?.getBoundingClientRect?.();
+        // Fly into whichever counter is on screen: main top bar, or the mini-mode header.
+        const target=[document.querySelector('#mini-play-header '+cfg.mini),document.querySelector('#top-bar '+cfg.selector),document.querySelector(cfg.selector)]
+            .find(el=>{const r=el?.getBoundingClientRect();return r&&r.width>0&&r.height>0;});
+        const tr=target?.getBoundingClientRect();if(!tr)return;
+        const label=n=>kind==='gold'&&typeof formatCompactNumber==='function'?formatCompactNumber(n):String(n);
+        const pulse=()=>{
+            target.animate([{transform:'scale(1)'},{transform:'scale(1.16)'},{transform:'scale(1)'}],{duration:340,easing:'ease-out'});
+            // Rapid gains (chain merges, kill streaks) stack into one "+N" label instead of spamming.
+            const st=currencyPlusState[kind];
+            if(st&&st.el.isConnected){st.total+=amount;st.el.textContent='+'+label(st.total);st.anim?.cancel();}
+            else{const el=document.createElement('span');el.className='mr-frag-plus';el.style.color=cfg.plus;el.textContent='+'+label(amount);document.body.appendChild(el);currencyPlusState[kind]={el,total:amount};}
+            const cur=currencyPlusState[kind];
+            cur.el.style.left=(tr.left+tr.width/2)+'px';cur.el.style.top=(tr.top+tr.height)+'px';
+            cur.anim=cur.el.animate([{opacity:0,transform:'translate(-50%,0)'},{opacity:1,transform:'translate(-50%,6px)',offset:.25},{opacity:0,transform:'translate(-50%,16px)'}],{duration:1100,easing:'ease-out'});
+            cur.anim.onfinish=()=>{cur.el.remove();if(currencyPlusState[kind]===cur)delete currencyPlusState[kind];};
+        };
+        if(matchMedia('(prefers-reduced-motion: reduce)').matches||document.hidden||currencyFlyActive>40){pulse();return;}
+        let sr=source&&typeof source.getBoundingClientRect==='function'?source.getBoundingClientRect():(source&&Number.isFinite(source.left)?source:null);
+        if((!sr||!sr.width)&&document.getElementById('app')?.classList.contains('mini-battle-mode'))sr=document.getElementById('hero')?.getBoundingClientRect();
         if(!sr||!sr.width||sr.bottom<0||sr.top>innerHeight){const app=(document.getElementById('app')||document.body).getBoundingClientRect();sr={left:app.left+app.width/2-10,top:app.top+app.height*.42,width:20,height:20};}
         const sx=sr.left+sr.width/2,sy=sr.top+sr.height/2,tx=tr.left+Math.min(20,tr.width/2),ty=tr.top+tr.height/2;
-        const count=Math.min(8,Math.max(3,Math.ceil(amount/6)));
+        // Use the badge's own icon (SVG when the icon pack replaced the emoji) so the particle matches the counter.
+        const iconSrc=target.querySelector('svg,img');const iconColor=iconSrc?getComputedStyle(iconSrc).color:'';
+        const count=cfg.count(amount);let pulsed=false;
         for(let i=0;i<count;i++){
-            const el=document.createElement('span');el.className='mr-frag-fly';el.textContent='🧩';el.setAttribute('aria-hidden','true');
-            el.style.left=sx+'px';el.style.top=sy+'px';document.body.appendChild(el);
+            const el=document.createElement('span');el.className='mr-frag-fly mr-cur-fly-'+kind;el.setAttribute('aria-hidden','true');
+            if(iconSrc){const ic=iconSrc.cloneNode(true);ic.removeAttribute('id');ic.style.cssText='width:20px;height:20px;display:block;';el.style.color=iconColor;el.appendChild(ic);}else el.textContent=cfg.emoji;
+            el.style.left=sx+'px';el.style.top=sy+'px';document.body.appendChild(el);currencyFlyActive++;
             const ox=(Math.random()-.5)*96,oy=-24-Math.random()*48,dx=tx-sx,dy=ty-sy;
             el.animate([
                 {transform:'translate(-50%,-50%) scale(.4)',opacity:0},
                 {transform:`translate(calc(-50% + ${ox}px),calc(-50% + ${oy}px)) scale(1.15)`,opacity:1,offset:.28},
                 {transform:`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) scale(.75)`,opacity:1,offset:.94},
                 {transform:`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) scale(.4)`,opacity:0}
-            ],{duration:780+i*55,delay:i*50,easing:'cubic-bezier(.55,0,.3,1)',fill:'both'}).onfinish=()=>{el.remove();if(i===0)pulse();};
+            ],{duration:780+i*55,delay:i*50,easing:'cubic-bezier(.55,0,.3,1)',fill:'both'}).onfinish=()=>{el.remove();currencyFlyActive=Math.max(0,currencyFlyActive-1);if(!pulsed){pulsed=true;pulse();}};
         }
+        }catch(e){console.warn('Currency fly:',e);}
     }
+    window.flyCurrencyReward=flyCurrencyReward;
+    function flyFragmentReward(amount,source){flyCurrencyReward('piece',amount,source);}
     function saveDailyMissionProgress(rewardDelta=0){
         if(resetInProgress)return;
         if(!testUnlockAll){saveEconomyState();return;}
@@ -4175,9 +4210,9 @@ window.MRBattleFX=(()=>{
         const host=document.getElementById('daily-mission-cards');if(!host)return;
         const t=(key,values)=>dailyEscape(dailyText(key,values));
         const fmt=n=>formatCompactNumber(Math.max(0,Math.trunc(Number(n)||0)));
-        const missionMax=DAILY_MISSIONS.reduce((sum,m)=>sum+m.reward,0)+5;
+        const missionMax=DAILY_MISSIONS.reduce((sum,m)=>sum+m.reward,0)+DAILY_ALL_CLEAR_REWARD;
         const recordMax=Object.values(RECORD_FRAGMENT_REWARDS).reduce((sum,n)=>sum+n,0);
-        const earned=DAILY_MISSIONS.reduce((sum,m)=>sum+(dailyMissions.paid[m.id]?m.reward:0),0)+(dailyMissions.paid.all?5:0);
+        const earned=DAILY_MISSIONS.reduce((sum,m)=>sum+(dailyMissions.paid[m.id]?m.reward:0),0)+(dailyMissions.paid.all?DAILY_ALL_CLEAR_REWARD:0);
         const claims=recordFragmentClaims.date===getLocalDayKey()?recordFragmentClaims.periods:{};
         const recordEarned=Object.entries(RECORD_FRAGMENT_REWARDS).reduce((sum,[key,n])=>sum+(claims[key]?n:0),0);
         const total=earned+recordEarned,totalMax=missionMax+recordMax;
@@ -4191,7 +4226,7 @@ window.MRBattleFX=(()=>{
         }).join(''));
         const bonus=document.getElementById('daily-all-clear');
         if(bonus){
-            setUiHTML(bonus,`<div class="dg-pips" aria-label="${completed} / 3">${DAILY_MISSIONS.map(m=>`<span class="dg-pip ${dailyMissions.paid[m.id]?'done':''}">${dailyIcon(dailyMissions.paid[m.id]?'check':m.icon)}</span>`).join('')}</div><span class="dg-bonus-arrow" aria-hidden="true">${dailyIcon('arrow')}</span><span class="dg-bonus-gift" title="${t('올클리어 보너스')}" aria-label="${t('올클리어 보너스')}">${dailyIcon(dailyMissions.paid.all?'check':'gift')}</span>${chip(5)}`);
+            setUiHTML(bonus,`<div class="dg-pips" aria-label="${completed} / 3">${DAILY_MISSIONS.map(m=>`<span class="dg-pip ${dailyMissions.paid[m.id]?'done':''}">${dailyIcon(dailyMissions.paid[m.id]?'check':m.icon)}</span>`).join('')}</div><span class="dg-bonus-arrow" aria-hidden="true">${dailyIcon('arrow')}</span><span class="dg-bonus-gift" title="${t('올클리어 보너스')}" aria-label="${t('올클리어 보너스')}">${dailyIcon(dailyMissions.paid.all?'check':'gift')}</span>${chip(DAILY_ALL_CLEAR_REWARD)}`);
             bonus.classList.toggle('is-done',dailyMissions.paid.all);
         }
         setUiHTML(document.getElementById('daily-record-cards'),Object.entries(RECORD_FRAGMENT_REWARDS).map(([period,reward])=>{
@@ -4997,12 +5032,13 @@ window.MRBattleFX=(()=>{
         if (!bossActive && !bossVisualLock && totalMergeEarned >= nextBossAt) startBossBattle();
     }
 
-    function awardMerge(amount, source='획득') {
+    function awardMerge(amount, source='획득', flyFrom=null) {
         amount = Math.max(0, Math.floor(Number(amount) || 0));
         if (!amount) return;
         mergeCount += amount;
         totalMergeEarned += amount;
         updateTopUI();
+        flyCurrencyReward('merge', amount, flyFrom);
         checkBossTrigger();
     }
 
@@ -5044,6 +5080,7 @@ window.MRBattleFX=(()=>{
             gold += bossReward;
             addLifetimeGoldEarned(bossReward);
             updateTopUI();
+            if(visual) flyCurrencyReward('gold', bossReward, document.getElementById('enemy')||document.getElementById('battle-stage'));
             updateBossHud();
 
             trackDailyMission('kills');
@@ -5053,7 +5090,8 @@ window.MRBattleFX=(()=>{
             if(visual){
                 const enemy = document.getElementById('enemy');
                 if (enemy) { enemy.className = 'character enemy explode'; setTimeout(()=>{ enemy.className='character enemy'; },500); }
-                showFloatingText(`🏆 BOSS DOWN! +${bossReward.toLocaleString(typeof gameLocale==="function"?gameLocale():undefined)} 🪙${mult>1 ? ` x${mult}` : ''}`, 210, 105, '#ffeaa7');
+                if(document.getElementById('app')?.classList.contains('mini-mode')) showFloatingText('🏆 BOSS DOWN!', 210, 105, '#ffeaa7');
+                else showFloatingText(`🏆 BOSS DOWN! +${bossReward.toLocaleString(typeof gameLocale==="function"?gameLocale():undefined)} 🪙${mult>1 ? ` x${mult}` : ''}`, 210, 105, '#ffeaa7');
                 playSfx('bossClear'); playSfx('gold',{gain:1.15});
                 playVictoryPose('boss');
             }
@@ -5138,6 +5176,7 @@ window.MRBattleFX=(()=>{
         saveEconomyState();
         updateTopUI();
         updateMergePackUI();
+        flyCurrencyReward('merge', MERGE_PACK_AMOUNT, document.getElementById('btn-buy-merge'));
         const nextPrice = getMergePackPrice();
         showFloatingText(`🔄 +${MERGE_PACK_AMOUNT} · 🪙 -${formatCompactNumber(price)} · 다음 ${formatCompactNumber(nextPrice)}`, 210, 400, '#6a4c9c');
     };
@@ -5204,6 +5243,7 @@ window.MRBattleFX=(()=>{
         if(mergeCount<price){showFloatingText('머지가 부족합니다!',210,400,'#ff7675');return;}
         mergeCount-=price;gold+=1000;goldPackDaily.count++;
         saveGoldPackDaily();saveEconomyState();updateTopUI();
+        flyCurrencyReward('gold',1000,document.getElementById('btn-buy-gold'));
         showFloatingText(`골드 +1K · 머지 -${price}`,210,400,'#111c32');
     };
 
@@ -7892,14 +7932,33 @@ function createSocialDataFoundation(assets, emojis) {
         img.onerror=()=>battleHeroArtBounds.set(id,null);
         img.src=src;return null;
     }
+    // Battle formation per team size. Offsets are in stage-height units from the stage center,
+    // so 1/2/3-member teams keep the same hero-to-villain spacing on any width (main battle and mini mode).
+    // The whole group (heroes + villain) is centered, then shrunk only if it would not fit.
+    const BATTLE_FORMATIONS={
+        1:{heroes:[-.6],enemy:.7},
+        2:{heroes:[-.42,-.98],enemy:.78},
+        3:{heroes:[-.3,-.8,-1.3],enemy:.9}
+    };
+    const BATTLE_FORMATION_LEGACY={1:{heroes:[40],enemy:76},2:{heroes:[49,24],enemy:81},3:{heroes:[57,36,15],enemy:85}};
+    function battleFormation(count,W,H){
+        const n=Math.min(3,Math.max(1,count||1)),f=BATTLE_FORMATIONS[n];
+        if(!(W>0&&H>0))return BATTLE_FORMATION_LEGACY[n];
+        const HERO_HALF=.22,ENEMY_HALF=.35,USABLE=.9;
+        const left=Math.min(...f.heroes)-HERO_HALF,right=f.enemy+ENEMY_HALF;
+        const center=(left+right)/2,scale=Math.min(1,USABLE*(W/H)/(right-left));
+        const toPct=o=>Math.round((50+(o-center)*scale*H/W*100)*10)/10;
+        return {heroes:f.heroes.map(toPct),enemy:toPct(f.enemy)};
+    }
+    window.battleFormation=battleFormation;
     function layoutBattleTeam(stage,team,preview=false){
         if(!stage)return;
         if(preview){layoutBattleTeamPreview(stage,team);return;}
         const entries=battleTeamEntries(team),count=entries.length;
-        // Visible centers (% of stage width). The team spreads into the open space before the villain.
-        const positions=count===3?[57,36,15]:count===2?[49,24]:[40];
-        stage.dataset.teamSize=String(count);stage.style.setProperty('--team-enemy-x',`${count===3?85:count===2?81:76}%`);
         const W=stage.clientWidth,H=stage.clientHeight;
+        // Visible centers (% of stage width), computed per team size and stage ratio (main + mini).
+        const formation=battleFormation(count,W,H),positions=formation.heroes;
+        stage.dataset.teamSize=String(count);stage.style.setProperty('--team-enemy-x',formation.enemy+'%');
         const relayout=()=>layoutBattleTeam(stage,activeBattleTeam);
         const members=entries.map((entry,index)=>({...entry,index,el:battleTeamElement(entry.slot),bounds:getBattleHeroArtBounds(entry.id,relayout)})).filter(m=>m.el);
         // Every member shares one visible height and one ground line (the road of the battle background).
@@ -8808,7 +8867,9 @@ function createSocialDataFoundation(assets, emojis) {
 
                 if(event.killed){
                     if(enemy) enemy.className='character enemy explode boss-enemy';
-                    showFloatingText(`🏆 BOSS DOWN! +${event.reward.toLocaleString(typeof gameLocale==="function"?gameLocale():undefined)} 🪙${event.multiplier>1?` x${event.multiplier}`:''}`,210,105,'#ffeaa7');
+                    if(event.reward>0) flyCurrencyReward('gold', event.reward, enemy||document.getElementById('battle-stage'));
+                    if(document.getElementById('app')?.classList.contains('mini-mode')) showFloatingText('🏆 BOSS DOWN!',210,105,'#ffeaa7');
+                    else showFloatingText(`🏆 BOSS DOWN! +${event.reward.toLocaleString(typeof gameLocale==="function"?gameLocale():undefined)} 🪙${event.multiplier>1?` x${event.multiplier}`:''}`,210,105,'#ffeaa7');
                     playSfx('bossClear');
                     playSfx('gold',{gain:1.15});
                     playVictoryPose('boss');
@@ -8859,7 +8920,9 @@ function createSocialDataFoundation(assets, emojis) {
                 if(event.killed){
                     enemyEl.className='character enemy explode';
                     const sign=event.delta>=0?'+':'';
-                    showFloatingText(`${sign}${event.delta.toLocaleString(typeof gameLocale==="function"?gameLocale():undefined)} 🪙${event.multiplier>1?` (x${event.multiplier})`:''}`,235,80,event.delta>=0?'#f6e58d':'#ff7675');
+                    const isMiniPlay=document.getElementById('app')?.classList.contains('mini-mode');
+                    if(event.delta>0) flyCurrencyReward('gold', event.delta, enemyEl);
+                    if(!isMiniPlay) showFloatingText(`${sign}${event.delta.toLocaleString(typeof gameLocale==="function"?gameLocale():undefined)} 🪙${event.multiplier>1?` (x${event.multiplier})`:''}`,235,80,event.delta>=0?'#f6e58d':'#ff7675');
                     if(event.delta>0) playSfx('gold');
                     if(event.victory) playVictoryPose('normal');
                 }else{
@@ -9620,7 +9683,7 @@ function createSocialDataFoundation(assets, emojis) {
                     runMaxBallLevel=Math.max(runMaxBallLevel,merge.level+1);
                     addMergeScore(merge.level);
                     grantMergeLevelFragments(merge.level+1);
-                    awardMerge(1, '머지');
+                    awardMerge(1, '머지', worldPointToClient(midX, midY));
                     addLifetimeMerge(1);
                     trackDailyMission('merges');
                     triggerBattle(merge.level, battleMultiplier); 
@@ -10425,5 +10488,60 @@ for(const name of ['getAllCollectibles','calculateCollectionPower','inventorySna
 </script>
 
 
+<style id="mr-polish-shop-mini">
+/* 상점: 활성(구매 가능) 카드 제목은 흰색 계열로 또렷하게, 아이콘은 카드 키컬러 */
+html body #app #main-content #view-shop .gacha-btn-container > .btn-gacha:not(:disabled) .title,
+html body #app #main-content #view-shop .gacha-btn-container > .btn-gacha:not(:disabled) .title *:not(svg):not(svg *){color:#f4f8fb!important;opacity:1!important;text-shadow:0 1px 2px rgba(0,0,0,.35);}
+html body #app #view-shop .gacha-btn-container > .btn-gacha:not(:disabled) svg{opacity:1!important;}
+html body #app #view-shop #btn-daily-free:not(:disabled) svg,
+html body #app #view-shop #btn-buy-fragment:not(:disabled) svg{color:#7ce3d1!important;}
+html body #app #view-shop #btn-premium-gacha:not(:disabled) svg,
+html body #app #view-shop #btn-buy-merge:not(:disabled) svg{color:#c9b8f2!important;}
+html body #app #view-shop #btn-emoji-gacha:not(:disabled) svg,
+html body #app #view-shop #btn-buy-gold:not(:disabled) svg{color:#e8c96b!important;}
+html body #app #view-shop .gacha-btn-container > .btn-gacha:not(:disabled):hover{border-color:#7ce3d1!important;}
+
+/* 설정 > 미니 모드 버튼: 흰 배경 대신 남색 표면 + 민트 포인트 */
+html body #app .mini-mode-choice{background:var(--t-surface-2,#1f3048)!important;border:1px solid var(--t-line-2,#3d5672)!important;color:#7ce3d1!important;transition:background .15s,border-color .15s,color .15s;}
+html body #app .mini-mode-choice:hover{background:var(--t-surface-3,#273b56)!important;border-color:#7ce3d1!important;color:#e6eef5!important;}
+html body #app .mini-mode-choice.active{background:#7ce3d1!important;border-color:#7ce3d1!important;color:#0f2a33!important;}
+html body #app .mini-mode-choice svg{color:currentColor!important;stroke:currentColor;}
+</style>
+<style id="mr-fix-mini-battle-spacing">
+/* 미니 전투: 예전 flex 배치 규칙(position:relative / margin-right:10%)이 팀 배치 변수보다 우선돼
+   빌런이 앞 영웅 바로 옆(약 69%)에 붙던 문제 수정 → 메인 전투와 같은 절대 좌표 배치 사용 */
+html body #app.mini-mode.mini-battle-mode #battle-stage[data-team-size] .hero.battle-team-hero{
+ position:absolute!important;left:var(--team-x)!important;right:auto!important;top:auto!important;bottom:var(--team-bottom)!important;
+ margin:0!important;flex:none!important;width:var(--team-width)!important;height:var(--team-height)!important;
+}
+html body #app.mini-mode.mini-battle-mode #battle-stage[data-team-size] .character.enemy{
+ position:absolute!important;left:var(--team-enemy-x)!important;right:auto!important;top:auto!important;bottom:12%!important;
+ margin:0!important;flex:none!important;width:min(76px,22%)!important;height:74%!important;translate:-50% 0;
+}
+html body #app.mini-mode.mini-battle-mode #battle-stage[data-team-size] .character.enemy img{max-width:100%!important;max-height:100%!important;object-fit:contain!important;}
+</style>
+<style id="mr-mini-battle-simple">
+/* 미니모드(전투·머지 공통): 상단 1줄(스코어·조각·머지·골드·일시정지·복귀) */
+html body #app.mini-mode #mini-play-header{
+ grid-template-columns:repeat(4,minmax(0,1fr)) 30px 30px!important;
+ grid-template-rows:28px!important;
+ grid-template-areas:"score fragments merge gold pause exit"!important;
+ height:38px!important;min-height:38px!important;max-height:38px!important;flex:0 0 38px!important;
+ padding:5px 8px!important;row-gap:0!important;
+}
+html body #app.mini-mode #mini-mode-type,
+html body #app.mini-mode #mini-gacha,
+html body #app.mini-mode #mini-play-footer,
+html body #app.mini-mode #game-brand,
+html body #app.mini-mode.mini-battle-mode #battle-stage #battle-pause-btn{display:none!important;}
+html body #app.mini-mode #mini-play-header .mini-stat{font-size:11px!important;}
+html body #app.mini-mode .mini-score-stat{grid-area:score!important;}
+html body #app.mini-mode .mini-fragment-stat{grid-area:fragments!important;}
+html body #app.mini-mode .mini-merge-stat{grid-area:merge!important;}
+html body #app.mini-mode .mini-gold-stat{grid-area:gold!important;}
+@media (min-width:601px){
+ html body.mini-window #app.mini-battle-mode{height:152px!important;min-height:0!important;}
+}
+</style>
 </body>
 </html>
