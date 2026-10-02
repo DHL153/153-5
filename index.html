@@ -3565,12 +3565,25 @@ html body #app#app#app .inv-item.sk-item.is-flash{animation:btFlash .9s ease-out
 </div>
 <!-- 게임오버 오버레이 -->
 <div class="overlay" id="overlay-gameover">
-<div id="go-icon" style="font-size:50px;margin-bottom:10px;">💥</div>
+<div class="go-panel mrfx-frame">
+<div class="go-burst" aria-hidden="true"></div>
+<div class="go-ribbon"><span id="go-icon">💥</span><span id="go-gameover-title">게임 오버!</span></div>
 <div id="go-record-title">🏆 PERSONAL BEST UPDATED</div>
-<div id="go-gameover-title" style="font-size:28px;font-weight:bold;margin-bottom:8px;color:#ff7675;">게임 오버!</div>
 <div id="go-record-badges"></div>
-<div style="font-size:16px;margin-bottom:30px;text-align:center;line-height:1.4;">현재 점수<br/><div style="margin-top:12px;font-size:31px;font-weight:1000;color:#ffeaa7;">🏆 <span id="go-final-score">0</span></div><div id="go-record-delta" style="display:none;font-size:11px;margin-top:4px;color:#55efc4;font-weight:900;"></div><div style="font-size:12px;margin-top:6px;color:#dfe6e9;">최대 연속 머지 <b id="go-max-chain">1</b> · 총 머지 <b id="go-total-merges">0</b> · 최고 구슬 <b id="go-max-ball-level">LV 1</b></div><br/><b id="go-restart-message" style="color:#f6e58d;">직접 재시작할 수 있습니다.</b></div>
-<button class="action-btn" onclick="instantRestart()" style="padding:12px 24px;font-size:15px;border-radius:12px;border:2px solid #b9a0e6;background:#1dd1a1;color:white;font-weight:bold;cursor:pointer;">🔄 즉시 재시작</button>
+<div class="go-score-box">
+<div class="go-score-label">현재 점수</div>
+<div class="go-score-value">🏆 <span id="go-final-score">0</span></div>
+<div id="go-record-delta" style="display:none;"></div>
+<div id="go-stamp" aria-hidden="true">NEW<br/>RECORD</div>
+</div>
+<div class="go-stats">
+<div class="go-stat"><span class="go-stat-label">최대 연속 머지</span><b id="go-max-chain">1</b></div>
+<div class="go-stat"><span class="go-stat-label">총 머지</span><b id="go-total-merges">0</b></div>
+<div class="go-stat"><span class="go-stat-label">최고 구슬</span><b id="go-max-ball-level">LV 1</b></div>
+</div>
+<b id="go-restart-message">직접 재시작할 수 있습니다.</b>
+<button class="action-btn go-restart-btn" onclick="instantRestart()">🔄 즉시 재시작</button>
+</div>
 </div>
 </div>
 <script src="assets/ui/icon-nodes.js"></script>
@@ -3616,6 +3629,41 @@ window.MRBattleFX=(()=>{
  function visible(){
   return !document.hidden && stage.getClientRects().length>0 && stage.clientWidth>0 && stage.clientHeight>0;
  }
+ // Visible art box: removes transparent padding so effects sit on the character body.
+ // Uses the current frame's bounds (idle/attack/skill images differ), then the idle bounds.
+ function artBox(element,art,box){
+  let b=null;
+  try{b=window.__mrArtBounds?.(art.currentSrc||art.getAttribute('src'));}catch(_){}
+  if(!b&&element?.dataset.artBox){const v=element.dataset.artBox.split(',').map(Number);if(v.length===5&&v.every(Number.isFinite))b={x:v[0],y:v[1],w:v[2],h:v[3],aspect:v[4]};}
+  if(!b||!(b.aspect>0))return null;
+  const W=box.width,H=box.height;let iw=W,ih=H;
+  if(W/H>b.aspect)iw=H*b.aspect;else ih=W/b.aspect;
+  const ix=box.left+(W-iw)/2,iy=box.top+(H-ih); // object-position: center bottom
+  return {left:ix+iw*b.x,top:iy+ih*b.y,width:iw*b.w,height:ih*b.h};
+ }
+ // Cut-in guard: no attack effects while a cut-in plays, nor right as it enters/leaves.
+ let cutGraceUntil=0,cutWasActive=false;
+ const cutRoot=()=>document.getElementById('skill-cinematic');
+ function cutRaw(){return stage.dataset.teamSkill==='on'||stage.classList.contains('skill-cutscene')||!!cutRoot()?.classList.contains('on');}
+ function cutsceneActive(){return cutRaw()||performance.now()<cutGraceUntil;}
+ function watchCut(){
+  const now=cutRaw();
+  if(now!==cutWasActive){
+   cutGraceUntil=performance.now()+(now?0:320);
+   if(now)jobs=jobs.filter(j=>j.type!=='attack');
+   cutWasActive=now;
+  }
+ }
+ if(window.MutationObserver){
+  const mo=new MutationObserver(watchCut);
+  mo.observe(stage,{attributes:true,attributeFilter:['class','data-team-skill']});
+  const r=cutRoot();if(r)mo.observe(r,{attributes:true,attributeFilter:['class']});
+ }
+ function isShown(element){
+  if(!element||element.hidden)return false;
+  const cs=getComputedStyle(element);
+  return cs.visibility!=='hidden'&&cs.display!=='none'&&Number(cs.opacity)>.05;
+ }
  function target(who='enemy'){
   const bounds=stage.getBoundingClientRect();
   const element=document.getElementById(who);
@@ -3623,12 +3671,13 @@ window.MRBattleFX=(()=>{
   const box=art?.getBoundingClientRect();
   const hero=who!=='enemy';
   if(!box||!box.width||!bounds.width||!bounds.height)return {x:hero?.3:.76,y:.52};
-  // 0019's vehicle occupies the lower part of its padded sprite. Use its
-  // body anchor, not the image-box center. getBoundingClientRect already
-  // includes the existing 2x scale/translate, so never apply that scale twice.
+  const tight=art.tagName==='IMG'?artBox(element,art,box):null;
   const character=element?.dataset.battleCharacter||stage.dataset.battleCharacter;
-  const bodyY=hero?(character==='0019'?.74:character==='0025'?.70:.48):.48;
-  return {x:clamp((box.left+box.width*(hero?.62:.5)-bounds.left)/bounds.width,hero?.08:.25,hero?.78:.9),y:clamp((box.top+box.height*bodyY-bounds.top)/bounds.height,.18,.82)};
+  // Without measured bounds keep the old padded-sprite anchors (0019 vehicle, 0025).
+  const bodyY=tight?(hero?.42:.5):(hero?(character==='0019'?.74:character==='0025'?.70:.48):.48);
+  const r=tight||box;
+  // s = visible character height (px); effects are sized from it so small team members get small effects.
+  return {x:clamp((r.left+r.width*(hero?.68:.5)-bounds.left)/bounds.width,hero?.04:.2,hero?.86:.95),y:clamp((r.top+r.height*bodyY-bounds.top)/bounds.height,.12,.88),s:(tight?r.height:r.height*.8)};
  }
  function add(job){
   if(!ctx||!visible())return false;
@@ -3668,16 +3717,22 @@ window.MRBattleFX=(()=>{
    const sheet=sheets[job.name];
    if(sheet.frames.length===1){
     // One transparent image: slow expansion and fade, without a flashing loop.
-    const base=Math.min(height*(job.strong?1.04:.82),width*.27);
+    const a=job.follow?target('enemy'):job.anchor;
+    let base=Math.min(height*(job.strong?1.04:.82),width*.27);
+    if(a.s>0)base=Math.min(base,Math.max(28,a.s*(job.strong?1.4:1.15)));
     const size=base*(job.reduced?.9:(.62+.58*progress));
     const alpha=(job.reduced?.55:.9)*(1-progress)*(job.opacity||1);
-    sprite(job.name,0,width*job.anchor.x,height*job.anchor.y,size,size,job.angle||0,alpha);
+    if(!isShown(document.getElementById('enemy')))return;
+    sprite(job.name,0,width*a.x,height*a.y,size,size,job.angle||0,alpha);
     return;
    }
-   const size=Math.min(height*(outgoing?(job.name==='slash'?1.06:.9):(job.strong?1.12:.86)),width*(outgoing?.34:.28));
+   if(outgoing&&(cutsceneActive()||!isShown(document.getElementById(job.sourceId||'hero'))))return;
+   if(!outgoing&&!isShown(document.getElementById('enemy')))return;
+   const anchor=outgoing?target(job.sourceId||'hero'):(job.follow?target('enemy'):job.anchor);
+   let size=Math.min(height*(outgoing?(job.name==='slash'?1.06:.9):(job.strong?1.12:.86)),width*(outgoing?.34:.28));
+   if(anchor.s>0)size=Math.min(size,Math.max(28,anchor.s*(outgoing?(job.name==='slash'?1.45:1.25):(job.strong?1.5:1.25))));
    const still=outgoing?(job.name==='slash'?9:7):3;
    const index=job.reduced?still:Math.min(sheet.frames.length-1,Math.floor(progress*sheet.frames.length));
-   const anchor=outgoing?target(job.sourceId||'hero'):job.anchor;
    sprite(job.name,index,width*anchor.x,height*anchor.y,size,size,job.name==='slash'?-.25:(job.angle||0),(job.reduced?.58:Math.min(1,(1-progress)*5))*(job.opacity||1));
   }
  }
@@ -3708,6 +3763,8 @@ window.MRBattleFX=(()=>{
    if(played)stage.dataset.mrSkillFx='on';
   },
   attack(sourceId='hero'){
+   watchCut();if(cutsceneActive())return false;
+   if(!isShown(document.getElementById(sourceId)))return false;
    const preferred=attackIndex++%2?'flame':'slash';
    const name=sheets[preferred].ready?preferred:(preferred==='slash'?'flame':'slash');
    if(!sheets[name].ready)return false;
@@ -3721,7 +3778,7 @@ window.MRBattleFX=(()=>{
    const name=available.splice(first,1)[0];
    const play=(name,delay=0,opacity=1)=>add({type:'hit',name,
     duration:delay+(sheets[name].duration||(quiet?160:(name==='hitWhite'?620:(state==='skill'?370:290)))),
-    delay,opacity,anchor,strong:boss||state==='skill',reduced:quiet,
+    delay,opacity,anchor,follow:true,strong:boss||state==='skill',reduced:quiet,
     angle:name==='hitWhite'?Math.random()*Math.PI*2:0});
    const played=play(name);
    // Two distinct effects with a short stagger keep bosses readable.
@@ -4106,6 +4163,7 @@ window.MRBattleFX=(()=>{
     const CURRENCY_FLY={
         piece:{selector:'.stat-badge.piece',mini:'.mini-fragment-stat',emoji:'🧩',plus:'#f3e39a',count:a=>Math.min(8,Math.max(3,Math.ceil(a/6)))},
         merge:{selector:'.stat-badge.merge',mini:'.mini-merge-stat',emoji:'🔄',plus:'#c9b8f2',count:a=>Math.min(6,Math.max(1,Math.ceil(a/2)))},
+        score:{selector:'.stat-badge.score',mini:'.mini-score-stat',emoji:'🏆',plus:'#ffd772',count:()=>0},
         gold:{selector:'.stat-badge.gold',mini:'.mini-gold-stat',emoji:'🪙',plus:'#f3c86b',count:a=>a>=1000?7:a>=300?5:a>=50?3:2}
     };
     const currencyPlusState={};let currencyFlyActive=0;
@@ -4126,7 +4184,7 @@ window.MRBattleFX=(()=>{
         const target=[document.querySelector('#mini-play-header '+cfg.mini),document.querySelector('#top-bar '+cfg.selector),document.querySelector(cfg.selector)]
             .find(el=>{const r=el?.getBoundingClientRect();return r&&r.width>0&&r.height>0;});
         const tr=target?.getBoundingClientRect();if(!tr)return;
-        const label=n=>kind==='gold'&&typeof formatCompactNumber==='function'?formatCompactNumber(n):String(n);
+        const label=n=>(kind==='gold'||kind==='score')&&typeof formatCompactNumber==='function'?formatCompactNumber(n):String(n);
         const pulse=()=>{
             target.animate([{transform:'scale(1)'},{transform:'scale(1.16)'},{transform:'scale(1)'}],{duration:340,easing:'ease-out'});
             // Rapid gains (chain merges, kill streaks) stack into one "+N" label instead of spamming.
@@ -4138,7 +4196,7 @@ window.MRBattleFX=(()=>{
             cur.anim=cur.el.animate([{opacity:0,transform:'translate(-50%,0)'},{opacity:1,transform:'translate(-50%,6px)',offset:.25},{opacity:0,transform:'translate(-50%,16px)'}],{duration:1100,easing:'ease-out'});
             cur.anim.onfinish=()=>{cur.el.remove();if(currencyPlusState[kind]===cur)delete currencyPlusState[kind];};
         };
-        if(matchMedia('(prefers-reduced-motion: reduce)').matches||document.hidden||currencyFlyActive>40){pulse();return;}
+        if(!cfg.count(amount)||matchMedia('(prefers-reduced-motion: reduce)').matches||document.hidden||currencyFlyActive>40){pulse();return;}
         let sr=source&&typeof source.getBoundingClientRect==='function'?source.getBoundingClientRect():(source&&Number.isFinite(source.left)?source:null);
         if((!sr||!sr.width)&&document.getElementById('app')?.classList.contains('mini-battle-mode'))sr=document.getElementById('hero')?.getBoundingClientRect();
         if(!sr||!sr.width||sr.bottom<0||sr.top>innerHeight){const app=(document.getElementById('app')||document.body).getBoundingClientRect();sr={left:app.left+app.width/2-10,top:app.top+app.height*.42,width:20,height:20};}
@@ -4189,7 +4247,10 @@ window.MRBattleFX=(()=>{
             const missionIndex=DAILY_MISSIONS.findIndex(m=>result.paid.includes(m.id));
             const missionCard=currentMenu==='daily'&&missionIndex>=0?document.querySelectorAll('#daily-mission-cards .dg-mission')[missionIndex]:null;
             requestAnimationFrame(()=>flyFragmentReward(result.reward,missionCard||(toast?.classList.contains('show')?toast:null)||toast));
-            if(toast){
+            if(window.MRFX){
+                const key=result.paid.includes('all')?'미션 완료 + 올클리어 · 조각 +{amount} 자동 지급':'미션 완료 · 조각 +{amount} 자동 지급';
+                window.MRFX.notify({type:'mission',icon:dailyIcon('gift'),text:dailyText(key,{amount:result.reward}),ms:2000});
+            }else if(toast){
                 const key=result.paid.includes('all')?'미션 완료 + 올클리어 · 조각 +{amount} 자동 지급':'미션 완료 · 조각 +{amount} 자동 지급';
                 toast.innerHTML=dailyIcon('gift')+`<span>${dailyEscape(dailyText(key,{amount:result.reward}))}</span>`;
                 toast.classList.add('show');clearTimeout(dailyToastTimer);dailyToastTimer=setTimeout(()=>toast.classList.remove('show'),4200);
@@ -4284,14 +4345,19 @@ window.MRBattleFX=(()=>{
         if(result.amount){fragments+=result.amount;saveEconomyState();updateTopUI();refreshShopWallet();renderDailyMissions();flyFragmentReward(result.amount,document.querySelector('#top-bar .stat-badge.score'));}
         return result;
     }
-    function grantMergeLevelFragments(level){
+    function grantMergeLevelFragments(level,point=null){
         if(resetInProgress||testUnlockAll||runFinished)return 0;
         const amount=LEVEL_FRAGMENT_REWARDS[level]||0;
         if(!amount)return 0;
         fragments+=amount;saveEconomyState();updateTopUI();refreshShopWallet();
-        const text=window.MRLocale?.t(`Lv.${level} 달성 · 조각 +${amount}`)||`Lv.${level} 달성 · 조각 +${amount}`;
-        showFloatingText(text,210,280,'#74e8d0');
-        flyFragmentReward(amount,document.getElementById('battle-stage')||document.getElementById('game-section'));
+        if(window.MRFX){
+            window.MRFX.levelTag(point,level);
+            flyFragmentReward(amount,point||document.getElementById('battle-stage')||document.getElementById('game-section'));
+        }else{
+            const text=window.MRLocale?.t(`Lv.${level} 달성 · 조각 +${amount}`)||`Lv.${level} 달성 · 조각 +${amount}`;
+            showFloatingText(text,210,280,'#74e8d0');
+            flyFragmentReward(amount,document.getElementById('battle-stage')||document.getElementById('game-section'));
+        }
         return amount;
     }
     function recordFragmentMessage(periods,reward){
@@ -4314,6 +4380,11 @@ window.MRBattleFX=(()=>{
         const banner=document.getElementById('record-break-banner');
         const title=document.getElementById('record-break-title');
         const score=document.getElementById('record-break-score');
+        if(window.MRFX){
+            window.MRFX.notify({type:'record',text:`🏆 ${periods.map(p=>RECORD_LABELS[p]).join(' · ')} 최고 기록 돌파!`,ms:1600});
+            window.MRFX.recordFlash();playSfx('recordPass');
+            return;
+        }
         if(!banner||!title||!score) return;
         title.innerText=`${periods.map(p=>RECORD_LABELS[p]).join(' · ')} 최고 기록 돌파!`;
         score.innerText=formatCompactNumber(runScore);
@@ -4326,7 +4397,7 @@ window.MRBattleFX=(()=>{
         banner.classList.add('show');
         if(recordBannerTimer) clearTimeout(recordBannerTimer);
         recordBannerTimer=setTimeout(()=>banner.classList.remove('show'),4200);
-        showFloatingText(`🏆 ${periods.map(p=>RECORD_LABELS[p]).join(' · ')} · ${rewardText}`,210,210,'#ffeaa7','merge');
+        window.MRFX?.recordFlash();
         playSfx('recordPass');
     }
 
@@ -4623,12 +4694,20 @@ window.MRBattleFX=(()=>{
         if(chain<=1) return;
         const el=document.getElementById('battle-chain-pop');
         if(!el) return;
-        el.innerText=`CHAIN ${chain}`;
-        el.classList.remove('show');
+        // Combo tiers: 2-4 mint, 5-9 gold, 10+ max (multiplier caps at x1.9).
+        const tier=chain>=10?'max':chain>=5?'hot':'warm';
+        const mult=(1+Math.min(9,chain-1)*0.1).toFixed(1);
+        el.innerHTML=`<span class="cp-num">${chain}</span><span class="cp-label">CHAIN!</span><span class="cp-mult">x${mult}</span>`;
+        el.dataset.tier=tier;
+        window.MRFX?.rush(chain);
+        // Boss WARNING owns the screen: hold the pill and show it once the warning ends.
+        if(window.MRFX?.holdChain(el)){clearTimeout(battleChainPopTimer);return;}
+        window.MRFX?.placeChain(el);
+        el.classList.remove('show','bump');
         void el.offsetWidth;
-        el.classList.add('show');
+        el.classList.add('show','bump');
         clearTimeout(battleChainPopTimer);
-        battleChainPopTimer=setTimeout(()=>el.classList.remove('show'),650);
+        battleChainPopTimer=setTimeout(()=>el.classList.remove('show','bump'),tier==='warm'?750:1000);
     }
 
     function addMergeScore(newLevel) {
@@ -4641,7 +4720,7 @@ window.MRBattleFX=(()=>{
         runScore += gained;
         updateTopUI();
         showBattleChainPop(scoreChain);
-        showFloatingText(`🏆 +${formatCompactNumber(gained)} · CP x${collectionPowerMultiplier.toFixed(2)}${scoreChain>1?` · ${scoreChain} CHAIN`:''}`,210,330,'#ffeaa7','merge');
+        flyCurrencyReward('score',gained,null); // score counter pulses; "+N" stacks under it
         checkLiveRecordBreaks();
     }
 
@@ -4717,6 +4796,7 @@ window.MRBattleFX=(()=>{
         const delta=document.getElementById('go-record-delta');
 
         if(overlay) overlay.classList.toggle('record-celebration',broken.length>0);
+        window.__mrLastRun={score:runScore,record:broken.length>0,format:formatCompactNumber};
         if(badges) badges.innerHTML=broken.map(p=>`<span class="go-record-badge">🏆 ${RECORD_LABELS[p]} NEW RECORD</span>`).join('');
         if(title) title.innerText=broken.length ? '최고 기록 갱신!' : '게임 오버!';
         if(icon) icon.innerText=broken.length ? '🏆' : '💥';
@@ -5023,7 +5103,8 @@ window.MRBattleFX=(()=>{
         if(name) name.innerText=`👑 BOSS LV.${bossLevel}`;
         if (enemy) { MR.setEnemy('boss'); enemy.className = 'character enemy slide-in boss-enemy'; }
         updateBossHud();
-        showFloatingText(`👑 BOSS LV.${bossLevel} 출현!`, 210, 105, '#ffeaa7');
+        if(window.MRFX) window.MRFX.bossWarning(bossLevel, !!gameSettings.screenShake);
+        else showFloatingText(`👑 BOSS LV.${bossLevel} 출현!`, 210, 105, '#ffeaa7');
         playSfx('bossEnter');
         if(typeof notifyUser==='function') notifyUser('boss',`👑 BOSS LV.${bossLevel} 등장!`,'머지로 보스를 공격하세요.');
     }
@@ -5090,6 +5171,7 @@ window.MRBattleFX=(()=>{
             if(visual){
                 const enemy = document.getElementById('enemy');
                 if (enemy) { enemy.className = 'character enemy explode'; setTimeout(()=>{ enemy.className='character enemy'; },500); }
+                window.MRFX?.bossDown(!!gameSettings.screenShake);
                 if(document.getElementById('app')?.classList.contains('mini-mode')) showFloatingText('🏆 BOSS DOWN!', 210, 105, '#ffeaa7');
                 else showFloatingText(`🏆 BOSS DOWN! +${bossReward.toLocaleString(typeof gameLocale==="function"?gameLocale():undefined)} 🪙${mult>1 ? ` x${mult}` : ''}`, 210, 105, '#ffeaa7');
                 playSfx('bossClear'); playSfx('gold',{gain:1.15});
@@ -7920,6 +8002,7 @@ function createSocialDataFoundation(assets, emojis) {
         const b=table[name];
         return b&&b.w>0&&b.h>0&&b.aspect>0?{x:+b.x,y:+b.y,w:+b.w,h:+b.h,aspect:+b.aspect}:null;
     }
+    window.__mrArtBounds=lookupBattleArtBounds;
     function getBattleHeroArtBounds(id,onReady){
         const fromTable=lookupBattleArtBounds(getBattleHeroAssets(id)?.idle);
         if(fromTable)return fromTable;
@@ -7938,7 +8021,7 @@ function createSocialDataFoundation(assets, emojis) {
     const BATTLE_FORMATIONS={
         1:{heroes:[-.6],enemy:.7},
         2:{heroes:[-.42,-.98],enemy:.78},
-        3:{heroes:[-.3,-.8,-1.3],enemy:.9}
+        3:{heroes:[-.3,-.92,-1.54],enemy:.9}
     };
     const BATTLE_FORMATION_LEGACY={1:{heroes:[40],enemy:76},2:{heroes:[49,24],enemy:81},3:{heroes:[57,36,15],enemy:85}};
     function battleFormation(count,W,H){
@@ -7969,6 +8052,7 @@ function createSocialDataFoundation(assets, emojis) {
             const number=Number(id)+1;
             el.style.setProperty('--team-z',String(7-index));
             el.dataset.battleCharacter=String(number).padStart(4,'0');
+            if(b)el.dataset.artBox=[b.x,b.y,b.w,b.h,b.aspect].join(',');else delete el.dataset.artBox;
             if(b&&visibleHeight>0){
                 const imageHeight=visibleHeight/b.h,imageWidth=imageHeight*b.aspect;
                 const centerX=W*positions[index]/100+imageWidth*(.5-(b.x+b.w/2));
@@ -8763,7 +8847,12 @@ function createSocialDataFoundation(assets, emojis) {
                     const fx=document.createElement('div');fx.className='hit-effect-sprite';fx.innerHTML=MR.hitMarkup(state);
                     document.getElementById('battle-stage').appendChild(fx);scheduleBattleVisual(()=>fx.remove(),state==='skill'?520:260);
                 }
-                if(hasActor)playSfx(state==='skill'?'skillHit':'attack',{minGap:80});hit++;
+                if(hasActor){
+                    const hitLevel=window.__mrHitLevel||0;
+                    playSfx(state==='skill'?'skillHit':'attack',{minGap:80,rate:window.MRFX?.hitRate(hitLevel)||1});
+                    window.MRFX?.enemyHit(hitLevel,state,!!gameSettings.screenShake);
+                }
+                hit++;
                 if(typeof onHit==='function')onHit(hit,hitCount,state);
                 if(hit<hitCount)scheduleBattleVisual(doHit,70);
                 else if(typeof onComplete==='function')scheduleBattleVisual(onComplete,0);
@@ -8793,6 +8882,7 @@ function createSocialDataFoundation(assets, emojis) {
         const result={...incoming};
         result.hitCount=(previous.hitCount||1)+(incoming.hitCount||1);
         result.actionState=previous.actionState==='skill'||incoming.actionState==='skill'?'skill':'attack';
+        result.mergeLevel=Math.max(previous.mergeLevel||0,incoming.mergeLevel||0);
         if(incoming.kind==='boss'){
             result.damage=(previous.damage||0)+(incoming.damage||0);
             result.killed=!!(previous.killed||incoming.killed);
@@ -8854,9 +8944,10 @@ function createSocialDataFoundation(assets, emojis) {
         }
 
         const event=battleVisualQueue.shift();
+        window.__mrHitLevel=event.mergeLevel||0; // drives hit strength (A-2)
         battleVisualBusy=true;
         isBattling=true;
-        if((event.hitCount||1)>1) showFloatingText(`×${event.hitCount}`,245,105,'#9eeaff');
+        if((event.hitCount||1)>1){ if(window.MRFX) window.MRFX.hitCount(event.hitCount); else showFloatingText(`×${event.hitCount}`,245,105,'#9eeaff'); }
 
         if(event.kind==='boss'){
             const enemy=document.getElementById('enemy');
@@ -8867,7 +8958,9 @@ function createSocialDataFoundation(assets, emojis) {
 
                 if(event.killed){
                     if(enemy) enemy.className='character enemy explode boss-enemy';
+                    window.MRFX?.killFinish(enemy,11,!!gameSettings.screenShake);
                     if(event.reward>0) flyCurrencyReward('gold', event.reward, enemy||document.getElementById('battle-stage'));
+                    window.MRFX?.bossDown(!!gameSettings.screenShake);
                     if(document.getElementById('app')?.classList.contains('mini-mode')) showFloatingText('🏆 BOSS DOWN!',210,105,'#ffeaa7');
                     else showFloatingText(`🏆 BOSS DOWN! +${event.reward.toLocaleString(typeof gameLocale==="function"?gameLocale():undefined)} 🪙${event.multiplier>1?` x${event.multiplier}`:''}`,210,105,'#ffeaa7');
                     playSfx('bossClear');
@@ -8918,6 +9011,7 @@ function createSocialDataFoundation(assets, emojis) {
                 }
 
                 if(event.killed){
+                    window.MRFX?.killFinish(enemyEl,event.mergeLevel||0,!!gameSettings.screenShake);
                     enemyEl.className='character enemy explode';
                     const sign=event.delta>=0?'+':'';
                     const isMiniPlay=document.getElementById('app')?.classList.contains('mini-mode');
@@ -8963,6 +9057,7 @@ function createSocialDataFoundation(assets, emojis) {
                     killed:bossResult.killed,
                     reward:bossResult.reward,
                     level:bossResult.level,
+                    mergeLevel,
                     multiplier:usedMultiplier
                 });
             }
@@ -8995,6 +9090,7 @@ function createSocialDataFoundation(assets, emojis) {
 
         enqueueBattleVisual({
             kind:'normal',
+            mergeLevel,
             actionState,
             delta,
             multiplier:usedMultiplier,
@@ -9679,10 +9775,12 @@ function createSocialDataFoundation(assets, emojis) {
                     Matter.Body.setVelocity(newBody, { x: 0, y: -2.5 }); Composite.add(window.world, newBody); 
                     MR.beginSmile(newBody, BEAD_META_BY_PATH[equippedSkins[merge.level]], engine.timing.timestamp);
                     createMergeEffect(newBody, merge.level);
+                    window.MRFX?.mergeOrb(worldPointToClient(midX, midY), merge.level);
+                    if(merge.level>=6) window.MRFX?.mergeImpact(worldPointToClient(midX, midY), merge.level>=LEVELS.length-1, !!gameSettings.screenShake);
                     playSfx(merge.level>=LEVELS.length-1?'mergeMax':(merge.level>=5?'mergeHigh':'merge'),{rate:.96+Math.random()*.08});
                     runMaxBallLevel=Math.max(runMaxBallLevel,merge.level+1);
                     addMergeScore(merge.level);
-                    grantMergeLevelFragments(merge.level+1);
+                    grantMergeLevelFragments(merge.level+1, worldPointToClient(midX, midY));
                     awardMerge(1, '머지', worldPointToClient(midX, midY));
                     addLifetimeMerge(1);
                     trackDailyMission('merges');
@@ -9877,6 +9975,7 @@ function createSocialDataFoundation(assets, emojis) {
                     finishRun({silent:silentMiniAuto});
                     if(silentMiniAuto){window.restartGame();return;}
                     document.getElementById('overlay-gameover').style.display = 'flex';
+                    window.MRFX?.playResult(document.getElementById('overlay-gameover'),window.__mrLastRun);
                     const restartMessage=document.getElementById('go-restart-message');
                     if(restartCountdown){clearInterval(restartCountdown);restartCountdown=null;}
                     if(isAutoDrop){
@@ -9895,6 +9994,7 @@ function createSocialDataFoundation(assets, emojis) {
             } else if (!isOverflow && isWarning && deadlineClearTicks>=8) { isWarning = false; warningBanner.style.display = 'none'; warningTimeRemaining=5.0; dangerFinalSfxPlayed=false; deadlineClearTicks=0; }
         }, 100);
 
+        window.__mrIsPaused=()=>!!(globalPause||isGameOver);
         window.instantRestart = function() { if(restartCountdown) clearInterval(restartCountdown); window.restartGame(); }
         window.restartGame = function() {
             if(restartCountdown){clearInterval(restartCountdown);restartCountdown=null;}
@@ -9904,6 +10004,7 @@ function createSocialDataFoundation(assets, emojis) {
             MR.clearCutscene();
             const goOverlay=document.getElementById('overlay-gameover');
             if(goOverlay){ goOverlay.style.display='none'; goOverlay.classList.remove('record-celebration'); }
+            window.MRFX?.resetResult(goOverlay);
             const bodies = Composite.allBodies(window.world).filter(b => b.level !== undefined); Composite.remove(window.world, bodies);
             isGameOver = false; isBattling=false; mergeQueue=[];
             isWarning=false; warningTimeRemaining=5.0; deadlineClearTicks=0; dangerFinalSfxPlayed=false; warningBanner.style.display='none';
@@ -10543,5 +10644,461 @@ html body #app.mini-mode .mini-gold-stat{grid-area:gold!important;}
  html body.mini-window #app.mini-battle-mode{height:152px!important;min-height:0!important;}
 }
 </style>
+<style id="mrfx-styles">
+/* ===== MRFX: 공통 게임 알림 틀 + 결과 연출 + 액션 연출 ===== */
+:root{--fx-mint:#7ce3d1;--fx-gold:#ffd772;--fx-red:#ff5d6c;--fx-navy:#132238;--fx-navy2:#1b2d47;}
+.mrfx-frame{position:relative;background:linear-gradient(180deg,var(--fx-navy2),var(--fx-navy))!important;border:1px solid rgba(124,227,209,.55)!important;border-radius:18px!important;box-shadow:0 0 0 1px rgba(255,255,255,.04) inset,0 18px 50px rgba(0,0,0,.55),0 0 26px rgba(124,227,209,.16)!important;color:#eef6fb;}
+.mrfx-frame::after{content:"";z-index:1;position:absolute;left:18px;right:18px;top:0;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent,var(--fx-mint),transparent);opacity:.9;pointer-events:none;}
+
+/* --- 게임 오버 / 결과 패널 --- */
+html body #overlay-gameover{background:radial-gradient(circle at 50% 40%,rgba(27,45,71,.82),rgba(6,12,22,.94) 70%)!important;backdrop-filter:blur(4px);padding:16px;box-sizing:border-box;}
+html body #overlay-gameover.record-celebration{background:radial-gradient(circle at 50% 38%,rgba(120,92,20,.55),rgba(19,34,56,.9) 45%,rgba(6,12,22,.96) 75%)!important;}
+html body #overlay-gameover.record-celebration::before{content:none!important;}
+#overlay-gameover .go-panel{width:min(340px,100%);padding:30px 18px 18px;box-sizing:border-box;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;overflow:visible;}
+#overlay-gameover.go-play .go-panel{animation:goPanelIn .5s cubic-bezier(.2,1.3,.4,1) both;}
+@keyframes goPanelIn{0%{opacity:0;transform:translateY(40px) scale(.86)}100%{opacity:1;transform:none}}
+#overlay-gameover .go-burst{position:absolute;left:50%;top:-10px;width:260px;height:260px;margin-left:-130px;margin-top:-90px;pointer-events:none;opacity:0;background:repeating-conic-gradient(from 0deg,rgba(255,215,114,.22) 0 10deg,transparent 10deg 30deg);-webkit-mask:radial-gradient(circle,#000 20%,transparent 68%);mask:radial-gradient(circle,#000 20%,transparent 68%);z-index:-1;}
+#overlay-gameover.record-celebration.go-play .go-burst{opacity:1;animation:goRays 9s linear infinite;}
+@keyframes goRays{to{transform:rotate(360deg)}}
+#overlay-gameover .go-ribbon{z-index:3;position:absolute;top:-17px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:7px;padding:7px 18px;border-radius:999px;white-space:nowrap;background:linear-gradient(180deg,#ff7584,#d9435a);border:1px solid rgba(255,255,255,.35);box-shadow:0 6px 16px rgba(217,67,90,.4);}
+#overlay-gameover.record-celebration .go-ribbon{background:linear-gradient(180deg,#ffe08a,#f0b43c);box-shadow:0 6px 18px rgba(240,180,60,.45);}
+#overlay-gameover #go-icon{font-size:18px!important;margin:0!important;line-height:1;animation:none!important;}
+#overlay-gameover #go-gameover-title{font-size:16px!important;font-weight:1000!important;margin:0!important;color:#fff!important;letter-spacing:.5px;text-shadow:0 1px 2px rgba(0,0,0,.35)!important;}
+#overlay-gameover.record-celebration #go-gameover-title{color:#3a2600!important;text-shadow:none!important;}
+#overlay-gameover #go-record-title{margin:4px 0 0;font-size:10px;letter-spacing:1.6px;color:var(--fx-gold);}
+#overlay-gameover #go-record-badges{margin:0;}
+#overlay-gameover .go-score-box{position:relative;width:100%;padding:12px 10px 10px;border-radius:14px;background:rgba(7,15,28,.55);border:1px solid rgba(255,255,255,.07);box-sizing:border-box;}
+#overlay-gameover .go-score-label{font-size:11px;font-weight:900;letter-spacing:1px;color:#9fb1c4;}
+#overlay-gameover .go-score-value{margin-top:4px;font-size:34px;font-weight:1000;color:var(--fx-gold);text-shadow:0 0 18px rgba(255,215,114,.35);line-height:1.1;}
+#overlay-gameover.go-counted .go-score-value{animation:goScorePop .35s ease-out;}
+@keyframes goScorePop{50%{transform:scale(1.12)}}
+#overlay-gameover #go-record-delta{margin-top:5px;font-size:11px;font-weight:900;color:var(--fx-mint);}
+#overlay-gameover #go-stamp{position:absolute;right:-8px;top:-14px;padding:6px 9px;border:3px double var(--fx-gold);border-radius:10px;color:var(--fx-gold);font-size:12px;font-weight:1000;line-height:1.05;letter-spacing:1px;background:rgba(40,28,0,.75);transform:rotate(-14deg) scale(0);opacity:0;pointer-events:none;box-shadow:0 0 18px rgba(255,215,114,.45);}
+#overlay-gameover.go-stamped #go-stamp{animation:goStamp .42s cubic-bezier(.3,1.6,.5,1) forwards;}
+@keyframes goStamp{0%{opacity:0;transform:rotate(-14deg) scale(2.6)}60%{opacity:1;transform:rotate(-14deg) scale(.9)}100%{opacity:1;transform:rotate(-14deg) scale(1)}}
+#overlay-gameover .go-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:100%;}
+#overlay-gameover .go-stat{display:flex;flex-direction:column;gap:3px;padding:8px 4px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid rgba(124,227,209,.18);}
+#overlay-gameover.go-play:not(.go-counted) .go-stat{opacity:0;transform:translateY(8px);}
+#overlay-gameover .go-stat-label{font-size:9.5px;color:#9fb1c4;font-weight:800;}
+#overlay-gameover .go-stat b{font-size:15px;color:#eef6fb;font-variant-numeric:tabular-nums;}
+#overlay-gameover.go-counted .go-stat{animation:goChipIn .3s ease-out both;}
+#overlay-gameover.go-counted .go-stat:nth-child(2){animation-delay:.08s}
+#overlay-gameover.go-counted .go-stat:nth-child(3){animation-delay:.16s}
+@keyframes goChipIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+#overlay-gameover #go-restart-message{font-size:11.5px;color:#cfe0ee!important;font-weight:800;}
+#overlay-gameover .go-restart-btn{margin:2px 0 0!important;width:100%!important;padding:12px 18px!important;border-radius:12px!important;border:0!important;background:linear-gradient(180deg,#8ff0df,#5ccdb9)!important;color:#0f2a33!important;font-size:15px!important;font-weight:1000!important;box-shadow:0 4px 0 #2f9c8a,0 8px 20px rgba(124,227,209,.25)!important;}
+#overlay-gameover.go-play:not(.go-done) .go-restart-btn{opacity:0;transform:translateY(8px);pointer-events:none;}
+#overlay-gameover.go-done .go-restart-btn{opacity:1;transform:none;pointer-events:auto;transition:opacity .25s,transform .25s;}
+#overlay-gameover.go-done .go-restart-btn:active{transform:translateY(3px)!important;box-shadow:0 1px 0 #2f9c8a!important;}
+
+/* --- 신기록 배너: 같은 틀 + 빛 쓸림 --- */
+html body #record-break-banner{background:linear-gradient(180deg,var(--fx-navy2),var(--fx-navy))!important;border-width:1px!important;border-radius:16px!important;box-shadow:0 12px 30px rgba(0,0,0,.45),0 0 22px rgba(255,215,114,.25)!important;overflow:hidden;}
+html body #record-break-banner::after{content:"";position:absolute;top:0;bottom:0;left:-60%;width:40%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.28),transparent);transform:skewX(-18deg);pointer-events:none;}
+html body #record-break-banner.show::after{animation:fxShine 1.1s .25s ease-out;}
+html body #record-break-banner .rb-kicker{display:inline-block;padding:2px 9px;border-radius:999px;background:rgba(255,215,114,.14);letter-spacing:2px!important;}
+html body #record-break-banner .rb-score{color:var(--fx-gold);}
+@keyframes fxShine{to{left:130%}}
+
+/* --- 공용 대화상자 등장 --- */
+.mr-dialog-shade{animation:fxFade .18s ease-out;}
+.mr-dialog-box{position:relative;animation:fxPop .26s cubic-bezier(.2,1.3,.4,1);box-shadow:0 18px 50px rgba(0,0,0,.55),0 0 24px rgba(124,227,209,.14)!important;}
+.mr-dialog-box::before{content:"";position:absolute;left:18px;right:18px;top:0;height:2px;background:linear-gradient(90deg,transparent,var(--fx-mint),transparent);}
+@keyframes fxFade{from{opacity:0}}
+@keyframes fxPop{from{opacity:0;transform:translateY(16px) scale(.94)}}
+
+/* --- 흔들림 / 번쩍임 / 링 --- */
+.mrfx-shake-s{animation:fxShakeS .26s linear;}
+.mrfx-shake-l{animation:fxShakeL .42s linear;}
+@keyframes fxShakeS{0%,100%{translate:0 0}20%{translate:-3px 1px}40%{translate:3px -1px}60%{translate:-2px 1px}80%{translate:2px 0}}
+@keyframes fxShakeL{0%,100%{translate:0 0}10%{translate:-7px 3px}25%{translate:6px -3px}40%{translate:-5px 2px}55%{translate:4px -2px}70%{translate:-3px 1px}85%{translate:2px 0}}
+.mrfx-flash{position:fixed;pointer-events:none;z-index:10040;border-radius:inherit;animation:fxFlash .32s ease-out forwards;}
+@keyframes fxFlash{0%{opacity:.75}100%{opacity:0}}
+.mrfx-ring{position:fixed;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;pointer-events:none;z-index:10045;border:3px solid #fff;box-shadow:0 0 14px var(--fx-gold);animation:fxRing .5s ease-out forwards;}
+.mrfx-ring.max{border-color:var(--fx-gold);animation-duration:.75s;}
+@keyframes fxRing{0%{transform:scale(.4);opacity:1}100%{transform:scale(7);opacity:0}}
+.mrfx-ring.max{animation-name:fxRingMax;}
+@keyframes fxRingMax{0%{transform:scale(.4);opacity:1}100%{transform:scale(12);opacity:0}}
+
+/* --- 보스 경고 --- */
+.mrfx-warning{position:absolute;inset:0;z-index:40;pointer-events:none;overflow:hidden;animation:fxWarnFade 1.7s ease forwards;box-shadow:inset 0 0 60px rgba(255,40,60,.65);}
+.mrfx-warning .w-band{position:absolute;left:0;right:0;height:12%;min-height:9px;background:repeating-linear-gradient(-45deg,#ff3d52 0 12px,#1a0a10 12px 24px);opacity:.9;}
+.mrfx-warning .w-band.top{top:0;animation:fxBandL 1.7s linear;}
+.mrfx-warning .w-band.bottom{bottom:0;animation:fxBandR 1.7s linear;}
+.mrfx-warning .w-text{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 26px;background:linear-gradient(90deg,transparent,rgba(20,4,8,.82) 15%,rgba(20,4,8,.82) 85%,transparent);white-space:nowrap;animation:fxWarnText 1.7s cubic-bezier(.2,1,.3,1) forwards;}
+.mrfx-warning .w-title{font-size:clamp(18px,7vh,30px);font-weight:1000;letter-spacing:6px;color:#ff5d6c;text-shadow:0 0 12px rgba(255,61,82,.9);animation:fxBlink .28s steps(2) 3;}
+.mrfx-warning .w-sub{font-size:clamp(9px,3.4vh,12px);font-weight:1000;letter-spacing:2px;color:#ffe0e4;}
+@keyframes fxBandL{from{background-position:0 0}to{background-position:-160px 0}}
+@keyframes fxBandR{from{background-position:0 0}to{background-position:160px 0}}
+@keyframes fxWarnText{0%{opacity:0;transform:translate(-50%,-50%) scaleX(2.2)}15%{opacity:1;transform:translate(-50%,-50%) scaleX(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1.05)}}
+@keyframes fxWarnFade{0%{opacity:0}10%,80%{opacity:1}100%{opacity:0}}
+@keyframes fxBlink{50%{opacity:.25}}
+
+/* --- 연쇄 콤보 --- */
+html body #battle-chain-pop{display:flex;align-items:baseline;gap:3px;padding:2px 8px!important;border-radius:999px;background:rgba(10,20,34,.72)!important;border:1px solid rgba(124,227,209,.55)!important;color:var(--fx-mint)!important;font-size:9px!important;}
+html body #battle-chain-pop .cp-num{font-size:11px;font-weight:1000;line-height:1;}
+html body #battle-chain-pop .cp-label{font-weight:1000;letter-spacing:.6px;}
+html body #battle-chain-pop .cp-mult{font-size:8px;font-weight:900;opacity:.8;color:#eef6fb;}
+html body #battle-chain-pop[data-tier="hot"]{color:var(--fx-gold)!important;border-color:rgba(255,215,114,.75)!important;box-shadow:0 0 10px rgba(255,215,114,.3);font-size:10px!important;}
+html body #battle-chain-pop[data-tier="hot"] .cp-num{font-size:13px;}
+html body #battle-chain-pop[data-tier="max"]{color:#fff!important;border-color:#ff7584!important;background:linear-gradient(90deg,rgba(217,67,90,.88),rgba(140,70,220,.88))!important;box-shadow:0 0 12px rgba(255,93,108,.45);font-size:10px!important;}
+html body #battle-chain-pop[data-tier="max"] .cp-num{font-size:15px;}
+html body #battle-chain-pop.compact .cp-label{display:none;}
+html body #battle-chain-pop.bump .cp-num{display:inline-block;animation:fxBump .26s cubic-bezier(.3,1.6,.5,1);}
+html body #battle-chain-pop[data-tier="max"].bump{animation:fxMaxPulse .5s ease-out;}
+@keyframes fxBump{0%{transform:scale(1.4)}100%{transform:scale(1)}}
+@keyframes fxMaxPulse{0%{filter:brightness(1.8)}100%{filter:none}}
+
+
+/* --- 전투 액션감 --- */
+.mrfx-hitburst{position:fixed;pointer-events:none;z-index:10035;border-radius:50%;background:radial-gradient(circle,#fff 0 12%,var(--hb) 22%,transparent 62%);animation:fxHitBurst .4s ease-out forwards;mix-blend-mode:screen;}
+.mrfx-hitburst::before,.mrfx-hitburst::after{content:"";position:absolute;left:50%;top:50%;width:140%;height:3px;margin:-1.5px 0 0 -70%;background:linear-gradient(90deg,transparent,#fff,transparent);transform:rotate(-25deg);}
+.mrfx-hitburst::after{transform:rotate(55deg);}
+.mrfx-hitburst.t3{filter:drop-shadow(0 0 10px var(--hb));}
+@keyframes fxHitBurst{0%{transform:scale(.3);opacity:1}60%{opacity:1}100%{transform:scale(1.25);opacity:0}}
+.mrfx-shard{position:fixed;width:7px;height:7px;pointer-events:none;z-index:10036;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);box-shadow:0 0 6px rgba(255,255,255,.7);}
+.mrfx-orb{position:fixed;pointer-events:none;z-index:10037;border-radius:50%;background:radial-gradient(circle,#fff 0 30%,var(--orb) 60%,transparent 72%);box-shadow:0 0 10px var(--orb),0 0 18px var(--orb);}
+#battle-stage .mrfx-speed{position:absolute;inset:0;z-index:6;pointer-events:none;opacity:0;transition:opacity .25s;
+ --d:repeating-linear-gradient(90deg,rgba(255,255,255,.7) 0 22px,transparent 22px 120px);
+ background:var(--d),var(--d),var(--d),var(--d);background-repeat:repeat-x;
+ background-size:120px 1px,150px 1px,130px 1px,170px 1px;
+ background-position:0 24%,40px 43%,15px 62%,70px 80%;
+ -webkit-mask:linear-gradient(90deg,#000,transparent 15%,transparent 85%,#000);mask:linear-gradient(90deg,#000,transparent 15%,transparent 85%,#000);
+ animation:fxSpeed .22s linear infinite;}
+#battle-stage[data-rush="2"] .mrfx-speed{opacity:.32;}
+#battle-stage[data-rush="1"] .mrfx-speed{opacity:0;}
+#battle-stage .mrfx-hits{position:absolute;z-index:29;pointer-events:none;opacity:0;white-space:nowrap;padding:2px 7px;border-radius:999px;background:rgba(10,20,34,.7);border:1px solid rgba(158,234,255,.55);color:#bdeeff;font-size:9px;font-weight:900;letter-spacing:.6px;}
+#battle-stage .mrfx-hits b{font-size:12px;color:#fff;}
+@keyframes fxSpeed{from{background-position:0 24%,40px 43%,15px 62%,70px 80%}to{background-position:-120px 24%,-110px 43%,-115px 62%,-100px 80%}}
+@media (prefers-reduced-motion:reduce){.mrfx-hitburst,.mrfx-shard,.mrfx-orb,#battle-stage .mrfx-speed{display:none!important;}}
+
+/* --- compact notices --- */
+.mrfx-notice{position:absolute;z-index:4300;pointer-events:none;display:flex;align-items:center;gap:6px;max-width:min(80%,320px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:4px 11px 4px 9px;border-radius:999px;background:rgba(10,20,34,.82);border:1px solid rgba(124,227,209,.55);color:#e6f6f2;font-size:11px;font-weight:900;box-shadow:0 4px 14px rgba(0,0,0,.35);opacity:0;}
+.mrfx-notice span{overflow:hidden;text-overflow:ellipsis;}
+.mrfx-notice svg{width:14px;height:14px;flex:0 0 14px;color:#7ce3d1;}
+.mrfx-notice[data-mode="stage"]{left:8px;bottom:5px;z-index:31;}
+.mrfx-notice[data-mode="app"]{right:10px;}
+.mrfx-notice[data-type="record"]{border-color:rgba(255,215,114,.75);color:#ffe7a6;box-shadow:0 4px 14px rgba(0,0,0,.35),0 0 12px rgba(255,215,114,.25);}
+.mrfx-lvtag{position:fixed;z-index:10038;pointer-events:none;padding:2px 7px;border-radius:999px;background:rgba(10,20,34,.75);border:1px solid rgba(124,227,209,.6);color:#9ff0e0;font-size:10px;font-weight:1000;letter-spacing:.4px;white-space:nowrap;}
+@media (prefers-reduced-motion:reduce){
+ #overlay-gameover .go-panel,#overlay-gameover .go-stat,#overlay-gameover .go-restart-btn{opacity:1!important;transform:none!important;animation:none!important;pointer-events:auto!important;}
+ .mrfx-warning,.mrfx-warning *{animation:none!important;}
+ .mrfx-ring,.mrfx-shake-s,.mrfx-shake-l{animation:none!important;}
+}
+</style>
+<script id="mrfx-runtime">
+// MRFX: result sequence, impact (hit-stop/shake/flash), boss warning. All calls are optional (window.MRFX?.x).
+(function(){
+ const reduce=()=>{try{return matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){return false;}};
+ const visible=el=>{const r=el?.getBoundingClientRect();return r&&r.width>0&&r.height>0?r:null;};
+ function shake(el,size,enabled){
+  if(!el||!enabled||reduce())return;
+  el.classList.remove('mrfx-shake-s','mrfx-shake-l');void el.offsetWidth;
+  el.classList.add(size==='l'?'mrfx-shake-l':'mrfx-shake-s');
+  clearTimeout(el._mrfxShake);el._mrfxShake=setTimeout(()=>el.classList.remove('mrfx-shake-s','mrfx-shake-l'),size==='l'?440:280);
+ }
+ function flash(el,color){
+  const r=visible(el);if(!r||reduce())return;
+  const f=document.createElement('div');f.className='mrfx-flash';
+  Object.assign(f.style,{left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px',background:color||'rgba(255,255,255,.7)'});
+  document.body.appendChild(f);setTimeout(()=>f.remove(),360);
+ }
+ // Hit-stop: freeze physics for a few frames, then resume unless the game was paused meanwhile.
+ let stopUntil=0;
+ function hitStop(ms){
+  const r=window.gameRunner;if(!r||!r.enabled||reduce())return;
+  const now=performance.now();if(now<stopUntil+220)return;
+  stopUntil=now+ms;r.enabled=false;
+  setTimeout(()=>{try{if(!window.__mrIsPaused?.())r.enabled=true;}catch(e){r.enabled=true;}},ms);
+ }
+ function ring(point,max){
+  if(!point||reduce())return;
+  const x=point.left+(point.width||0)/2,y=point.top+(point.height||0)/2;
+  const el=document.createElement('div');el.className='mrfx-ring'+(max?' max':'');
+  el.style.left=x+'px';el.style.top=y+'px';document.body.appendChild(el);setTimeout(()=>el.remove(),800);
+ }
+ const MRFX={
+  shake,flash,hitStop,
+  mergeImpact(point,isMax,shakeOn){
+   try{
+    const box=document.getElementById('merge-box');if(!visible(box))return;
+    hitStop(isMax?140:70);ring(point,isMax);
+    shake(box,isMax?'l':'s',shakeOn);
+    if(isMax)flash(box,'rgba(255,236,170,.55)');
+   }catch(e){console.warn('MRFX merge',e);}
+  },
+  bossDown(shakeOn){
+   try{const st=document.getElementById('battle-stage');if(!visible(st))return;shake(st,'l',shakeOn);flash(st,'rgba(255,224,140,.6)');}catch(e){}
+  },
+  bossWarning(level,shakeOn){
+   try{
+    const st=document.getElementById('battle-stage');if(!st)return;
+    st.querySelector('.mrfx-warning')?.remove();
+    if(!visible(st))return;
+    const w=document.createElement('div');w.className='mrfx-warning';w.setAttribute('aria-hidden','true');
+    const label=(window.MRLocale?.t?.('보스 출현')||'보스 출현');
+    w.innerHTML=`<div class="w-band top"></div><div class="w-band bottom"></div><div class="w-text"><span class="w-title">WARNING</span><span class="w-sub">👑 BOSS LV.${Number(level)||1} · ${label}</span></div>`;
+    st.appendChild(w);
+    // Hide the chain pill during the warning; replay the latest chain right after it.
+    warnUntil=performance.now()+1750;heldChain=null;
+    const pill=document.getElementById('battle-chain-pop');pill?.classList.remove('show','bump');
+    clearTimeout(warnTimer);
+    warnTimer=setTimeout(()=>{w.remove();warnUntil=0;releaseChain();},1750);
+    shake(st,'s',shakeOn);
+   }catch(e){console.warn('MRFX warning',e);}
+  },
+  recordFlash(){try{flash(document.getElementById('app'),'rgba(255,215,114,.28)');}catch(e){}},
+  resetResult(overlay){
+   overlay=overlay||document.getElementById('overlay-gameover');if(!overlay)return;
+   cancelAnimationFrame(overlay._mrfxRaf);clearTimeout(overlay._mrfxT1);clearTimeout(overlay._mrfxT2);
+   overlay.classList.remove('go-play','go-counted','go-stamped','go-done');
+  },
+  // Result sequence: panel pops in -> score counts up -> NEW RECORD stamp -> stats -> restart button.
+  playResult(overlay,info){
+   if(!overlay)return;
+   MRFX.resetResult(overlay);void overlay.offsetWidth;
+   const scoreEl=overlay.querySelector('#go-final-score');
+   const fmt=typeof info?.format==='function'?info.format:(n=>Number(n).toLocaleString());
+   const target=Math.max(0,Number(info?.score)||0),record=!!info?.record;
+   overlay.classList.add('go-play');
+   const finish=()=>{
+    overlay.classList.add('go-counted');
+    if(record)overlay._mrfxT1=setTimeout(()=>{overlay.classList.add('go-stamped');shake(overlay.querySelector('.go-panel'),'l',true);},140);
+    overlay._mrfxT2=setTimeout(()=>overlay.classList.add('go-done'),record?560:220);
+   };
+   if(reduce()||!scoreEl){if(scoreEl)scoreEl.textContent=fmt(target);finish();return;}
+   scoreEl.textContent=fmt(0);
+   const start=performance.now()+380,dur=Math.min(1500,520+Math.log10(target+1)*230);
+   const tick=now=>{
+    if(!overlay.classList.contains('go-play'))return;
+    const t=Math.min(1,Math.max(0,(now-start)/dur)),e=1-Math.pow(1-t,3);
+    scoreEl.textContent=fmt(Math.round(target*e));
+    if(t<1)overlay._mrfxRaf=requestAnimationFrame(tick);else{scoreEl.textContent=fmt(target);finish();}
+   };
+   overlay._mrfxRaf=requestAnimationFrame(tick);
+  }
+ };
+
+ // ===== 전투 액션감 (A1~A4, B5) =====
+ const tierOf=level=>level>=8?3:level>=5?2:1;
+ const TIER_COLOR=['','#6fdadc','#b69afa','#f5c972'];
+ function hitBurst(r,t){
+  if(!r)return;
+  const el=document.createElement('div');el.className='mrfx-hitburst t'+t;
+  const size=34+t*22;
+  Object.assign(el.style,{left:(r.left+r.width*.45)+'px',top:(r.top+r.height*.5)+'px',width:size+'px',height:size+'px',marginLeft:(-size/2)+'px',marginTop:(-size/2)+'px'});
+  el.style.setProperty('--hb',TIER_COLOR[t]);
+  document.body.appendChild(el);setTimeout(()=>el.remove(),420);
+ }
+ MRFX.hitRate=level=>level>=8?.86:level>=5?.94:1.04;
+ // A1 + A2: enemy reacts to every hit; higher merge level = heavier hit.
+ MRFX.enemyHit=function(level,state,shakeOn){
+  try{
+   const enemy=document.getElementById('enemy'),r=visible(enemy);if(!r||reduce())return;
+   const t=state==='skill'?Math.max(2,tierOf(level)):tierOf(level);
+   const img=enemy.querySelector('img');
+   const kb=[0,6,10,16][t];
+   img?.animate([{transform:'translateX(0) scale(1,1)'},{transform:`translateX(${kb}px) scale(${1-.04*t},${1+.05*t})`,offset:.25},{transform:'translateX(0) scale(1,1)'}],{duration:180+t*40,easing:'cubic-bezier(.2,.8,.3,1)'});
+   img?.animate([{filter:'brightness(1)'},{filter:`brightness(${1.8+t*.5}) saturate(.55)`,offset:.15},{filter:'brightness(1)'}],{duration:200});
+   const wobble=[{translate:'0 0'},{translate:'-3px 0'},{translate:'3px 0'},{translate:'0 0'}];
+   document.getElementById('normal-enemy-hp')?.animate(wobble,{duration:180});
+   document.getElementById('boss-hp-track')?.animate(wobble,{duration:200});
+   hitBurst(r,t);
+   if(t>=3)shake(document.getElementById('battle-stage'),'s',shakeOn);
+  }catch(e){}
+ };
+ // A3: finishing blow -> freeze beat, shards burst, punch zoom.
+ MRFX.killFinish=function(enemyEl,level,shakeOn){
+  try{
+   const st=document.getElementById('battle-stage'),r=visible(enemyEl||document.getElementById('enemy'));
+   if(!r||!visible(st)||reduce())return;
+   const t=tierOf(level),cx=r.left+r.width/2,cy=r.top+r.height/2;
+   flash(st,'rgba(255,255,255,.35)');
+   st.animate([{scale:'1'},{scale:'1.035'},{scale:'1'}],{duration:260,easing:'ease-out'});
+   shake(st,t>=3?'l':'s',shakeOn);
+   const n=8+t*3;
+   for(let i=0;i<n;i++){
+    const p=document.createElement('i');p.className='mrfx-shard';
+    p.style.left=cx+'px';p.style.top=cy+'px';p.style.background=i%3?TIER_COLOR[t]:'#fff';
+    document.body.appendChild(p);
+    const a=Math.PI*2*i/n+Math.random()*.4,d=30+Math.random()*(26+t*14);
+    const dx=Math.cos(a)*d,dy=Math.sin(a)*d-12;
+    p.animate([{transform:'translate(-50%,-50%) rotate(0) scale(1)',opacity:1},{transform:`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) rotate(${200+Math.random()*200}deg) scale(.9)`,opacity:1,offset:.6},{transform:`translate(calc(-50% + ${dx*1.15}px),calc(-50% + ${dy+26}px)) rotate(420deg) scale(.3)`,opacity:0}],{duration:520+Math.random()*180,easing:'cubic-bezier(.2,.7,.4,1)'}).onfinish=()=>p.remove();
+   }
+  }catch(e){}
+ };
+ // A4: combo rush -> background scrolls faster, speed lines at 5+ chain.
+ let rushTimer=0;
+ function panoramaAnimations(){
+  const st=document.getElementById('battle-stage'),pano=document.getElementById('battle-panorama');if(!st||!st.getAnimations)return [];
+  return st.getAnimations({subtree:true}).filter(a=>{const tg=a.effect?.target;return tg&&((pano&&(tg===pano||pano.contains(tg)))||(tg===st&&a.effect.pseudoElement));});
+ }
+ function setRush(level){
+  const st=document.getElementById('battle-stage');if(!st)return;
+  const rate=level>=2?2.4:level===1?1.6:1;
+  panoramaAnimations().forEach(a=>{try{a.updatePlaybackRate(rate);}catch(e){a.playbackRate=rate;}});
+  if(level){st.dataset.rush=String(level);if(!st.querySelector('.mrfx-speed')){const sp=document.createElement('div');sp.className='mrfx-speed';sp.setAttribute('aria-hidden','true');st.appendChild(sp);}}
+  else delete st.dataset.rush;
+ }
+ MRFX.rush=function(chain){
+  try{
+   if(reduce())return;
+   setRush(chain>=5?2:chain>=2?1:0);
+   clearTimeout(rushTimer);rushTimer=setTimeout(()=>setRush(0),1900);
+  }catch(e){}
+ };
+ // B5: energy orb flies from the merge spot to the front hero (main view, both panels visible).
+ let orbCount=0,lastOrb=0,orbBag={key:'',list:[],last:''};
+ MRFX.mergeOrb=function(point,level){
+  try{
+   if(!point||reduce()||orbCount>=6)return;
+   const now=performance.now();if(now-lastOrb<60)return;
+   if(!visible(document.getElementById('merge-box'))||!visible(document.getElementById('battle-stage')))return;
+   const heroes=[...document.querySelectorAll('#battle-stage .hero')].map(h=>[h,visible(h)]).filter(([h,r])=>r&&!h.hidden);
+   if(!heroes.length)return;
+   // Shuffled bag: every team member receives orbs in a random order, no long streaks on one hero.
+   const ids=heroes.map(([h])=>h.id).sort().join('|');
+   if(orbBag.key!==ids||!orbBag.list.length){
+    const list=heroes.map(([h])=>h.id);
+    for(let i=list.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[list[i],list[j]]=[list[j],list[i]];}
+    if(list.length>1&&list[0]===orbBag.last)list.push(list.shift());
+    orbBag={key:ids,list,last:orbBag.last};
+   }
+   const pickId=orbBag.list.shift();orbBag.last=pickId;
+   const [hero,hr]=heroes.find(([h])=>h.id===pickId)||heroes[0];
+   lastOrb=now;orbCount++;
+   const t=tierOf(level);
+   const sx=point.left+(point.width||0)/2,sy=point.top+(point.height||0)/2,tx=hr.left+hr.width*.5,ty=hr.top+hr.height*.45;
+   const mx=(sx+tx)/2+(Math.random()-.5)*60,my=Math.min(sy,ty)-40-Math.random()*30;
+   const orb=document.createElement('i');orb.className='mrfx-orb';
+   const size=8+t*4;Object.assign(orb.style,{left:'0px',top:'0px',width:size+'px',height:size+'px'});
+   orb.style.setProperty('--orb',TIER_COLOR[t]);
+   document.body.appendChild(orb);
+   const pt=(x,y,sc,o)=>({transform:`translate(${x-size/2}px,${y-size/2}px) scale(${sc})`,opacity:o});
+   // quadratic arc sampled into keyframes
+   const frames=[];for(let i=0;i<=8;i++){const k=i/8,x=(1-k)*(1-k)*sx+2*(1-k)*k*mx+k*k*tx,y=(1-k)*(1-k)*sy+2*(1-k)*k*my+k*k*ty;frames.push(pt(x,y,i===0?.4:i===8?.6:1,i===0?0:1));}
+   orb.animate(frames,{duration:380+t*40,easing:'cubic-bezier(.45,0,.6,1)'}).onfinish=()=>{
+    orb.remove();orbCount=Math.max(0,orbCount-1);
+    hero.animate([{filter:'brightness(1)'},{filter:'brightness(1.7) drop-shadow(0 0 6px '+TIER_COLOR[t]+')',offset:.3},{filter:'brightness(1)'}],{duration:260});
+   };
+  }catch(e){orbCount=Math.max(0,orbCount-1);}
+ };
+
+ // Chain pill sits in the empty space above the team's heads; never on top of the boss HUD.
+ function tightRect(el){
+  const box=el.getBoundingClientRect();if(!box.width||!box.height)return null;
+  let b=null;
+  try{b=window.__mrArtBounds?.(el.currentSrc||el.getAttribute('src'));}catch(_){}
+  if(!b&&el.dataset.artBox){const v=el.dataset.artBox.split(',').map(Number);if(v.length===5&&v.every(Number.isFinite))b={x:v[0],y:v[1],w:v[2],h:v[3],aspect:v[4]};}
+  if(!b||!(b.aspect>0))return box;
+  let iw=box.width,ih=box.height;if(box.width/box.height>b.aspect)iw=box.height*b.aspect;else ih=box.width/b.aspect;
+  const ix=box.left+(box.width-iw)/2,iy=box.top+(box.height-ih);
+  return {left:ix+iw*b.x,top:iy+ih*b.y,right:ix+iw*(b.x+b.w),bottom:iy+ih*(b.y+b.h),width:iw*b.w,height:ih*b.h};
+ }
+ // Chain pill: bottom-right road band, just left of the stage pause button (mini battle: bottom-right corner).
+ MRFX.placeChain=function(el){
+  try{
+   const st=document.getElementById('battle-stage'),sr=visible(st);if(!el||!sr)return;
+   el.classList.remove('compact');
+   const gap=8,edge=8;
+   const pause=document.getElementById('battle-pause-btn');
+   const pr=pause&&getComputedStyle(pause).display!=='none'?visible(pause):null;
+   const place=()=>{
+    const pw=el.offsetWidth||90,ph=el.offsetHeight||18;
+    let right,cy;
+    if(pr){right=pr.left-sr.left-gap;cy=pr.top-sr.top+pr.height/2;}
+    else{right=sr.width-edge;cy=sr.height-edge-ph/2;}
+    cy=Math.min(sr.height-4-ph/2,Math.max(ph/2+4,cy));
+    return {cx:right-pw/2,top:cy-ph/2,pw,ph};
+   };
+   let p=place();
+   // Too long next to the villain's feet: drop the "CHAIN!" word, keep number and multiplier.
+   const en=document.getElementById('enemy'),img=en?.querySelector('img')||en,er=img?tightRect(img):null;
+   if(er&&er.width){
+    const L=p.cx-p.pw/2+sr.left,R=p.cx+p.pw/2+sr.left,T=p.top+sr.top,B=T+p.ph;
+    if(R>er.left&&L<er.right&&B>er.top&&T<er.bottom){el.classList.add('compact');p=place();}
+   }
+   if(p.cx-p.pw/2<edge)p.cx=edge+p.pw/2;
+   el.style.left=Math.round(p.cx)+'px';el.style.top=Math.round(p.top)+'px';
+  }catch(e){}
+ };
+
+ // ---- chain pill hold during boss WARNING ----
+ let warnUntil=0,warnTimer=0,heldChain=null,heldHideTimer=0;
+ MRFX.holdChain=function(el){
+  if(!el||performance.now()>=warnUntil)return false;
+  heldChain={el,at:performance.now()};el.classList.remove('show','bump');return true;
+ };
+ function releaseChain(){
+  const h=heldChain;heldChain=null;
+  if(!h||performance.now()-h.at>1800)return; // chain window already over
+  const el=h.el;
+  MRFX.placeChain(el);
+  el.classList.remove('show','bump');void el.offsetWidth;el.classList.add('show','bump');
+  clearTimeout(heldHideTimer);heldHideTimer=setTimeout(()=>el.classList.remove('show','bump'),1000);
+ }
+
+ // ③ "×N HIT" above the enemy (combined hits)
+ MRFX.hitCount=function(n){
+  try{
+   const st=document.getElementById('battle-stage'),sr=visible(st),en=document.getElementById('enemy');if(!sr||!en)return;
+   const img=en.querySelector('img')||en,r=tightRect(img)||en.getBoundingClientRect();if(!r||!r.width)return;
+   let el=st.querySelector('.mrfx-hits');if(!el){el=document.createElement('div');el.className='mrfx-hits';el.setAttribute('aria-hidden','true');st.appendChild(el);}
+   el.innerHTML=`<b>×${n}</b> HIT`;
+   el.style.left=Math.round(r.left+r.width/2-sr.left)+'px';el.style.top=Math.max(4,Math.round(r.top-sr.top-18))+'px';
+   el.getAnimations().forEach(a=>a.cancel());
+   el.animate([{opacity:0,transform:'translate(-50%,6px) scale(.8)'},{opacity:1,transform:'translate(-50%,0) scale(1.08)',offset:.2},{opacity:1,transform:'translate(-50%,-2px) scale(1)',offset:.7},{opacity:0,transform:'translate(-50%,-8px) scale(1)'}],{duration:reduce()?400:760,easing:'ease-out',fill:'forwards'});
+  }catch(e){}
+ };
+
+ // ---- compact notices: one at a time, held during WARNING / cut-ins, none in mini mode ----
+ const noticeQueue=[];let noticeBusy=false,noticeEl=null;
+ const isMini=()=>!!document.getElementById('app')?.classList.contains('mini-merge-mode'); // mini battle shows notices like the main view
+ function heldByScene(){
+  const st=document.getElementById('battle-stage');
+  return performance.now()<warnUntil||!!(st&&(st.dataset.teamSkill==='on'||document.getElementById('skill-cinematic')?.classList.contains('on')));
+ }
+ function noticeHost(){
+  // Battle stage road band (bottom-left) when playing; otherwise under the top bar.
+  const st=document.getElementById('battle-stage');
+  if(visible(st))return {host:st,mode:'stage'};
+  return {host:document.getElementById('app')||document.body,mode:'app'};
+ }
+ function pumpNotice(){
+  if(noticeBusy||!noticeQueue.length)return;
+  if(heldByScene()){setTimeout(pumpNotice,200);return;}
+  const item=noticeQueue.shift();noticeBusy=true;
+  const {host,mode}=noticeHost();
+  if(!noticeEl){noticeEl=document.createElement('div');noticeEl.className='mrfx-notice';noticeEl.setAttribute('role','status');noticeEl.setAttribute('aria-live','polite');}
+  if(noticeEl.parentElement!==host)host.appendChild(noticeEl);
+  noticeEl.dataset.mode=mode;noticeEl.dataset.type=item.type||'info';
+  if(mode==='app'){const tb=document.getElementById('top-bar');const tr=visible(tb),ar=host.getBoundingClientRect();noticeEl.style.top=(tr?Math.round(tr.bottom-ar.top+6):8)+'px';}else noticeEl.style.top='';
+  noticeEl.innerHTML=(item.icon||'')+'<span></span>';noticeEl.querySelector('span').textContent=item.text||'';
+  noticeEl.getAnimations().forEach(a=>a.cancel());
+  const ms=Math.max(900,item.ms||1600),from=mode==='stage'?'translateX(-24px)':'translateX(24px)';
+  const anim=noticeEl.animate([{opacity:0,transform:from},{opacity:1,transform:'translateX(0)',offset:.12},{opacity:1,transform:'translateX(0)',offset:.85},{opacity:0,transform:'translateX(0)'}],{duration:reduce()?ms*.8:ms,easing:'ease-out',fill:'forwards'});
+  anim.onfinish=()=>{noticeBusy=false;setTimeout(pumpNotice,120);};
+ }
+ MRFX.notify=function(item){
+  try{
+   if(!item||isMini())return; // mini: fly + counter pulse only
+   // Merge same-type notices waiting in the queue (keep the latest text).
+   const i=noticeQueue.findIndex(q=>q.type===item.type);if(i>=0)noticeQueue.splice(i,1);
+   noticeQueue.push(item);if(noticeQueue.length>3)noticeQueue.shift();
+   pumpNotice();
+  }catch(e){noticeBusy=false;}
+ };
+ // ---- "Lv.N ✦" tag at the new bead (main view only) ----
+ MRFX.levelTag=function(point,level){
+  try{
+   if(!point||isMini()||reduce())return;
+   const el=document.createElement('div');el.className='mrfx-lvtag';el.textContent=`Lv.${level} ✦`;
+   el.style.left=(point.left+(point.width||0)/2)+'px';el.style.top=(point.top+(point.height||0)/2)+'px';
+   document.body.appendChild(el);
+   el.animate([{opacity:0,transform:'translate(-50%,-50%) scale(.6)'},{opacity:1,transform:'translate(-50%,-90%) scale(1.1)',offset:.2},{opacity:1,transform:'translate(-50%,-130%) scale(1)',offset:.7},{opacity:0,transform:'translate(-50%,-160%) scale(1)'}],{duration:850,easing:'ease-out'}).onfinish=()=>el.remove();
+  }catch(e){}
+ };
+ window.MRFX=MRFX;
+})();
+</script>
 </body>
 </html>
