@@ -4035,7 +4035,10 @@ window.MRBattleFX=(()=>{
             const a=base.cloneNode();
             const master=Math.max(0,Math.min(1,Number(gameSettings.masterVolume||0)/100));
             const channel=Math.max(0,Math.min(1,Number(gameSettings.sfxVolume??65)/100)); a.volume=Math.max(0,Math.min(1,master*channel*Number(SFX_GAIN[name]??.4)*Number(opts.gain??1)));
-            a.playbackRate=Math.max(.85,Math.min(1.15,Number(opts.rate||1)));
+            const rate=Math.max(.5,Math.min(2,Number(opts.rate||1)));
+            // Change pitch with speed (Chromium time-stretches by default, which sounds warbly/detuned).
+            if('preservesPitch' in a)a.preservesPitch=false;if('webkitPreservesPitch' in a)a.webkitPreservesPitch=false;if('mozPreservesPitch' in a)a.mozPreservesPitch=false;
+            a.playbackRate=rate;
             activeSfx.add(a);
             const release=()=>activeSfx.delete(a);
             a.addEventListener('ended',release,{once:true});a.addEventListener('error',release,{once:true});
@@ -4043,6 +4046,42 @@ window.MRBattleFX=(()=>{
         } catch(e) {}
     }
     window.playSfx=playSfx;
+    // A: drop sound = short, soft, non-tonal "tok" synthesized with Web Audio (pitch varies ≤1%).
+    // Falls back to the wav (fixed pitch) if Web Audio is unavailable.
+    let dropAudioCtx=null,lastDropTokAt=0;
+    const DROP_SOUND_ENABLED=false; // drop sound removed by request (set true to bring the soft "tok" back)
+    function playDropSound(minGap=60){
+        if(!DROP_SOUND_ENABLED)return;
+        if(!gameSettings?.sfx||Number(gameSettings.masterVolume)<=0||Number(gameSettings.sfxVolume)<=0) return;
+        const now=performance.now();if(now-lastDropTokAt<minGap)return;lastDropTokAt=now;
+        try{
+            const AC=window.AudioContext||window.webkitAudioContext;if(!AC)throw new Error('no webaudio');
+            if(!dropAudioCtx)dropAudioCtx=new AC();
+            const ctx=dropAudioCtx;if(ctx.state==='suspended')ctx.resume().catch(()=>{});
+            const master=Math.max(0,Math.min(1,Number(gameSettings.masterVolume||0)/100));
+            const channel=Math.max(0,Math.min(1,Number(gameSettings.sfxVolume??65)/100));
+            const vol=master*channel*.55;if(vol<=0)return;
+            const t=ctx.currentTime,jitter=1+(Math.random()-.5)*.02;
+            // body: quick downward "tok"
+            const osc=ctx.createOscillator(),g=ctx.createGain();
+            osc.type='sine';osc.frequency.setValueAtTime(420*jitter,t);osc.frequency.exponentialRampToValueAtTime(150*jitter,t+.07);
+            g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.004);g.gain.exponentialRampToValueAtTime(.0001,t+.11);
+            osc.connect(g).connect(ctx.destination);osc.start(t);osc.stop(t+.12);
+            // soft click: filtered noise burst for a light "contact" texture
+            const len=Math.floor(ctx.sampleRate*.025),buf=ctx.createBuffer(1,len,ctx.sampleRate),d=buf.getChannelData(0);
+            for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*(1-i/len);
+            const n=ctx.createBufferSource(),f=ctx.createBiquadFilter(),ng=ctx.createGain();
+            n.buffer=buf;f.type='lowpass';f.frequency.value=2200;ng.gain.value=vol*.35;
+            n.connect(f).connect(ng).connect(ctx.destination);n.start(t);
+        }catch(e){playSfx('ballDrop',{rate:1,minGap});}
+    }
+    window.playDropSound=playDropSound;
+    // B: merge sound climbs do-re-mi-fa-sol with the chain, then holds on sol.
+    const MERGE_CHAIN_SEMITONES=[0,2,4,5,7]; // 도·레·미·파·솔, 5연쇄부터 솔 유지
+    function mergeChainRate(chain){
+        const step=MERGE_CHAIN_SEMITONES[Math.max(0,Math.min(MERGE_CHAIN_SEMITONES.length-1,(chain||1)-1))];
+        return .9*Math.pow(2,step/12);
+    }
     function preloadSfx(){ Object.keys(SFX_FILES).forEach(getSfxAudio); }
     window.addEventListener('pointerdown',unlockGameAudio,{passive:true});
     window.addEventListener('keydown',unlockGameAudio,{passive:true});
@@ -4672,6 +4711,8 @@ window.MRBattleFX=(()=>{
     window.showVersionInfo=function(){ gameAlert('Merge & Run · 아트 에디션\n오리지널 캐릭터·배경 아트\nBGM: 별빛 아틀리에 (3분) · 오리지널 SFX 29종\n게임 물리: Matter.js · 아이콘: Lucide\n수집 기록은 현재 브라우저에 저장됩니다.'); };
 
     let battleChainPopTimer=null;
+    let chainLabelShownThisRun=false; // "CHAIN!" word only on the first chain of each run
+    const CHAIN_LINK_ICON='<svg class="cp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
     function showBattleChainPop(chain){
         if(chain<=1) return;
         const el=document.getElementById('battle-chain-pop');
@@ -4679,7 +4720,9 @@ window.MRBattleFX=(()=>{
         // Combo tiers: 2-4 mint, 5-9 gold, 10+ max (multiplier caps at x1.9).
         const tier=chain>=10?'max':chain>=5?'hot':'warm';
         const mult=(1+Math.min(9,chain-1)*0.1).toFixed(1);
-        el.innerHTML=`<span class="cp-num">${chain}</span><span class="cp-label">CHAIN!</span><span class="cp-mult">x${mult}</span>`;
+        const withLabel=!chainLabelShownThisRun;chainLabelShownThisRun=true;
+        el.innerHTML=`${CHAIN_LINK_ICON}<span class="cp-num">${chain}</span>${withLabel?'<span class="cp-label">CHAIN!</span>':''}<span class="cp-mult">x${mult}</span>`;
+        el.setAttribute('aria-label',`${chain} CHAIN x${mult}`);
         el.dataset.tier=tier;
         window.MRFX?.rush(chain);
         // Boss WARNING owns the screen: hold the pill and show it once the warning ends.
@@ -4813,6 +4856,7 @@ window.MRBattleFX=(()=>{
         runRecordNotified={daily:false,weekly:false,monthly:false,all:false};
         const banner=document.getElementById('record-break-banner'); if(banner) banner.classList.remove('show');
         const chainPop=document.getElementById('battle-chain-pop'); if(chainPop) chainPop.classList.remove('show');
+        chainLabelShownThisRun=false;
         clearTimeout(battleChainPopTimer);
         updateTopUI();
     }
@@ -4972,7 +5016,7 @@ window.MRBattleFX=(()=>{
         body.bossPenaltyDrop=true;
         Matter.Body.setVelocity(body,{x:(Math.random()-.5)*1.2,y:speed});
         Matter.Composite.add(window.world,body);
-        playSfx('ballDrop',{rate:.93+Math.random()*.08,minGap:45});
+        playDropSound(45);
         return true;
     }
 
@@ -5264,12 +5308,18 @@ window.MRBattleFX=(()=>{
         if(btn)btn.disabled=!Number.isFinite(price)||gold<price;
     }
     window.buyFragmentPack=function(){
-        if(resetInProgress||testUnlockAll)return;
+        if(resetInProgress)return;
+        if(testUnlockAll){showFloatingText('아트 미리보기 모드에서는 구매할 수 없어요',210,400,'#ff7675');return;}
         const price=getFragmentPackPrice();
-        if(!Number.isFinite(price)||gold<price)return;
+        if(!Number.isFinite(price)||gold<price){
+            showFloatingText(`골드가 부족합니다! 🪙 ${formatCompactNumber(price)}`,210,400,'#ff7675');
+            updateFragmentPackUI();return;
+        }
         const amount=fragmentPackDaily.count+1;
         gold-=price;fragments+=amount;fragmentPackDaily.count++;
         saveEconomyState();updateTopUI();refreshShopWallet();updateFragmentPackUI();
+        flyFragmentReward(amount,document.getElementById('btn-buy-fragment'));
+        showFloatingText(`🧩 +${amount} · 🪙 -${formatCompactNumber(price)} · 다음 ${formatCompactNumber(getFragmentPackPrice())}`,210,400,'#6a4c9c');
         playSfx('fragment');
     };
 
@@ -9438,6 +9488,23 @@ function createSocialDataFoundation(assets, emojis) {
         const next=document.getElementById('game-startup-next');
         const select=screen.querySelector('.mr-startup-language');
         const message=document.getElementById('game-startup-message');
+        // Language is asked only on the very first launch (or after a data reset).
+        // Earlier players who already passed this step have saved settings with a language.
+        const CHOSEN_KEY='mergeRoll.languageChosen.v1';
+        let chosen=false;
+        try{
+            chosen=localStorage.getItem(CHOSEN_KEY)==='1';
+            if(!chosen){const saved=JSON.parse(localStorage.getItem('mergeRoll.settings.v8')||'{}');chosen=typeof saved?.language==='string'&&!!saved.language;}
+            if(chosen)localStorage.setItem(CHOSEN_KEY,'1');
+        }catch(e){chosen=false;}
+        if(chosen){
+            screen.style.display='flex';screen.dataset.phase='loading';
+            next.hidden=true;next.disabled=true;select.disabled=true;select.hidden=true;
+            message.textContent='게임을 준비하고 있어요…';
+            window.MRLocale?.refresh();
+            return Promise.resolve();
+        }
+        select.hidden=false;
         screen.style.display='flex';screen.dataset.phase='language';
         next.hidden=false;next.disabled=false;select.disabled=false;
         select.value=gameSettings.language;
@@ -9447,7 +9514,8 @@ function createSocialDataFoundation(assets, emojis) {
             next.onclick=()=>{
                 if(next.disabled)return;
                 window.setStartupLanguage(select.value);
-                next.disabled=true;next.hidden=true;select.disabled=true;
+                try{localStorage.setItem(CHOSEN_KEY,'1');}catch(e){}
+                next.disabled=true;next.hidden=true;select.disabled=true;select.hidden=true;
                 screen.dataset.phase='loading';message.textContent='게임을 준비하고 있어요…';
                 window.MRLocale?.refresh();resolve();
             };
@@ -9763,7 +9831,13 @@ function createSocialDataFoundation(assets, emojis) {
                     createMergeEffect(newBody, merge.level);
                     window.MRFX?.mergeOrb(worldPointToClient(midX, midY), merge.level);
                     if(merge.level>=6) window.MRFX?.mergeImpact(worldPointToClient(midX, midY), merge.level>=LEVELS.length-1, !!gameSettings.screenShake);
-                    playSfx(merge.level>=LEVELS.length-1?'mergeMax':(merge.level>=5?'mergeHigh':'merge'),{rate:.96+Math.random()*.08});
+                    {
+                        const nextChain=(Date.now()-lastScoreMergeAt<=SCORE_CHAIN_WINDOW_MS)?scoreChain+1:1;
+                        const isMax=merge.level>=LEVELS.length-1;
+                        // Only the normal merge sound climbs the scale; high/max merge sounds keep their natural pitch.
+                        const isHigh=!isMax&&merge.level>=5;
+                        playSfx(isMax?'mergeMax':(isHigh?'mergeHigh':'merge'),{rate:(isMax||isHigh)?1:mergeChainRate(nextChain)});
+                    }
                     runMaxBallLevel=Math.max(runMaxBallLevel,merge.level+1);
                     addMergeScore(merge.level);
                     grantMergeLevelFragments(merge.level+1, worldPointToClient(midX, midY));
@@ -9893,7 +9967,7 @@ function createSocialDataFoundation(assets, emojis) {
             const multUse = consumeDropMultiplier();
             const body = Bodies.circle(startX, 20, levelData.radius, { ...beadMotionOptions(), render: window.getBodyRenderOptions(nextDropLevel) });
             body.level = nextDropLevel; body.isMerging = false; body.spawnTime = Date.now(); body.rewardMultiplier = multUse.usedMultiplier; Composite.add(window.world, body);
-            playSfx('ballDrop',{rate:.97+Math.random()*.06});
+            playDropSound(60);
             runMaxBallLevel=Math.max(runMaxBallLevel,nextDropLevel+1);
             canDrop = false; previewDiv.style.display = 'none'; dropLine.style.display = 'none';
             dropReadyTimer=setTimeout(() => { dropReadyTimer=null; if(isGameOver||runFinished)return; canDrop = true; nextDropLevel = Math.floor(Math.random() * 2); updatePreview(); }, 500);
@@ -9965,14 +10039,22 @@ function createSocialDataFoundation(assets, emojis) {
                     const restartMessage=document.getElementById('go-restart-message');
                     if(restartCountdown){clearInterval(restartCountdown);restartCountdown=null;}
                     if(isAutoDrop){
-                        let timeLeft=3;
-                        if(restartMessage) restartMessage.innerHTML=`🤖 오토 플레이 · <span id="go-timer">${timeLeft}</span>초 후 새 판`;
-                        restartCountdown=setInterval(()=>{
-                            timeLeft--;
-                            const timerEl=document.getElementById('go-timer');
-                            if(timeLeft>0){ if(timerEl) timerEl.innerText=timeLeft; }
-                            else { clearInterval(restartCountdown); restartCountdown=null; window.restartGame(); }
-                        },1000);
+                        // Auto play: let the result finish counting up, then start the next run 3s later (3·2·1 countdown).
+                        if(restartMessage) restartMessage.innerHTML='🤖 오토 플레이 · 점수 집계 중…';
+                        const scheduleAutoRestart=()=>{
+                            if(!isGameOver||restartCountdown)return;
+                            const AUTO_RESTART_SECONDS=3;
+                            let timeLeft=AUTO_RESTART_SECONDS;
+                            if(restartMessage) restartMessage.innerHTML=`🤖 오토 플레이 · <span id="go-timer">${timeLeft}</span>초 후 새 판`;
+                            restartCountdown=setInterval(()=>{
+                                timeLeft--;
+                                if(!isGameOver){clearInterval(restartCountdown);restartCountdown=null;return;}
+                                if(timeLeft>0){const timerEl=document.getElementById('go-timer');if(timerEl)timerEl.innerText=timeLeft;}
+                                else{clearInterval(restartCountdown);restartCountdown=null;window.restartGame();}
+                            },1000);
+                        };
+                        if(window.MRFX?.onResultDone) window.MRFX.onResultDone(scheduleAutoRestart);
+                        else setTimeout(scheduleAutoRestart,2000);
                     } else {
                         if(restartMessage) restartMessage.innerText='최고 기록을 확인한 뒤 직접 재시작하세요.';
                     }
@@ -9981,9 +10063,9 @@ function createSocialDataFoundation(assets, emojis) {
         }, 100);
 
         window.__mrIsPaused=()=>!!(globalPause||isGameOver);
-        window.instantRestart = function() { if(restartCountdown) clearInterval(restartCountdown); window.restartGame(); }
+        window.instantRestart = function() { if(restartCountdown){ clearInterval(restartCountdown); clearTimeout(restartCountdown); restartCountdown=null; } window.restartGame(); }
         window.restartGame = function() {
-            if(restartCountdown){clearInterval(restartCountdown);restartCountdown=null;}
+            if(restartCountdown){clearInterval(restartCountdown);clearTimeout(restartCountdown);restartCountdown=null;}
             window.cancelMergeRunEffects();
             canDrop=true;autoDropTick=0;isDragging=false;dropLine.style.display='none';
             nextDropLevel=Math.floor(Math.random()*2);
@@ -10728,6 +10810,9 @@ html body #battle-chain-pop[data-tier="hot"]{color:var(--fx-gold)!important;bord
 html body #battle-chain-pop[data-tier="hot"] .cp-num{font-size:13px;}
 html body #battle-chain-pop[data-tier="max"]{color:#fff!important;border-color:#ff7584!important;background:linear-gradient(90deg,rgba(217,67,90,.88),rgba(140,70,220,.88))!important;box-shadow:0 0 12px rgba(255,93,108,.45);font-size:10px!important;}
 html body #battle-chain-pop[data-tier="max"] .cp-num{font-size:15px;}
+html body #battle-chain-pop{align-items:center!important;}
+html body #battle-chain-pop .cp-icon{width:10px;height:10px;flex:0 0 10px;opacity:.9;}
+html body #battle-chain-pop[data-tier="hot"] .cp-icon,html body #battle-chain-pop[data-tier="max"] .cp-icon{width:11px;height:11px;flex-basis:11px;}
 html body #battle-chain-pop.compact .cp-label{display:none;}
 html body #battle-chain-pop.bump .cp-num{display:inline-block;animation:fxBump .26s cubic-bezier(.3,1.6,.5,1);}
 html body #battle-chain-pop[data-tier="max"].bump{animation:fxMaxPulse .5s ease-out;}
@@ -10837,6 +10922,13 @@ html body #battle-chain-pop[data-tier="max"].bump{animation:fxMaxPulse .5s ease-
    overlay=overlay||document.getElementById('overlay-gameover');if(!overlay)return;
    cancelAnimationFrame(overlay._mrfxRaf);clearTimeout(overlay._mrfxT1);clearTimeout(overlay._mrfxT2);
    overlay.classList.remove('go-play','go-counted','go-stamped','go-done');
+   overlay._mrfxDoneCbs=[];
+  },
+  // Runs cb once the result sequence (count-up, stamp, button) has finished.
+  onResultDone(cb){
+   const overlay=document.getElementById('overlay-gameover');if(typeof cb!=='function')return;
+   if(!overlay||overlay.classList.contains('go-done')||!overlay.classList.contains('go-play')){cb();return;}
+   (overlay._mrfxDoneCbs||(overlay._mrfxDoneCbs=[])).push(cb);
   },
   // Result sequence: panel pops in -> score counts up -> NEW RECORD stamp -> stats -> restart button.
   playResult(overlay,info){
@@ -10849,7 +10941,10 @@ html body #battle-chain-pop[data-tier="max"].bump{animation:fxMaxPulse .5s ease-
    const finish=()=>{
     overlay.classList.add('go-counted');
     if(record)overlay._mrfxT1=setTimeout(()=>{overlay.classList.add('go-stamped');shake(overlay.querySelector('.go-panel'),'l',true);},140);
-    overlay._mrfxT2=setTimeout(()=>overlay.classList.add('go-done'),record?560:220);
+    overlay._mrfxT2=setTimeout(()=>{
+     overlay.classList.add('go-done');
+     const cbs=overlay._mrfxDoneCbs||[];overlay._mrfxDoneCbs=[];cbs.forEach(fn=>{try{fn();}catch(e){}});
+    },record?560:220);
    };
    if(reduce()||!scoreEl){if(scoreEl)scoreEl.textContent=fmt(target);finish();return;}
    scoreEl.textContent=fmt(0);
@@ -10980,31 +11075,23 @@ html body #battle-chain-pop[data-tier="max"].bump{animation:fxMaxPulse .5s ease-
   const ix=box.left+(box.width-iw)/2,iy=box.top+(box.height-ih);
   return {left:ix+iw*b.x,top:iy+ih*b.y,right:ix+iw*(b.x+b.w),bottom:iy+ih*(b.y+b.h),width:iw*b.w,height:ih*b.h};
  }
- // Chain pill: bottom-right road band, just left of the stage pause button (mini battle: bottom-right corner).
+ // Chain pill: identical in play and mini battle — bottom-right, just left of the pause slot.
+ // Mini battle has no in-stage pause button, so it reuses the same slot geometry (last seen in play).
+ let pauseSlot={right:8,bottom:8,w:32,h:32};
  MRFX.placeChain=function(el){
   try{
    const st=document.getElementById('battle-stage'),sr=visible(st);if(!el||!sr)return;
    el.classList.remove('compact');
-   const gap=8,edge=8;
+   const gap=8;
    const pause=document.getElementById('battle-pause-btn');
    const pr=pause&&getComputedStyle(pause).display!=='none'?visible(pause):null;
-   const place=()=>{
-    const pw=el.offsetWidth||90,ph=el.offsetHeight||18;
-    let right,cy;
-    if(pr){right=pr.left-sr.left-gap;cy=pr.top-sr.top+pr.height/2;}
-    else{right=sr.width-edge;cy=sr.height-edge-ph/2;}
-    cy=Math.min(sr.height-4-ph/2,Math.max(ph/2+4,cy));
-    return {cx:right-pw/2,top:cy-ph/2,pw,ph};
-   };
-   let p=place();
-   // Too long next to the villain's feet: drop the "CHAIN!" word, keep number and multiplier.
-   const en=document.getElementById('enemy'),img=en?.querySelector('img')||en,er=img?tightRect(img):null;
-   if(er&&er.width){
-    const L=p.cx-p.pw/2+sr.left,R=p.cx+p.pw/2+sr.left,T=p.top+sr.top,B=T+p.ph;
-    if(R>er.left&&L<er.right&&B>er.top&&T<er.bottom){el.classList.add('compact');p=place();}
-   }
-   if(p.cx-p.pw/2<edge)p.cx=edge+p.pw/2;
-   el.style.left=Math.round(p.cx)+'px';el.style.top=Math.round(p.top)+'px';
+   if(pr&&pr.bottom-sr.top>sr.height*.5)pauseSlot={right:sr.right-pr.right,bottom:sr.bottom-pr.bottom,w:pr.width,h:pr.height};
+   const pw=el.offsetWidth||90,ph=el.offsetHeight||18;
+   const slotLeft=sr.width-pauseSlot.right-pauseSlot.w,slotCy=sr.height-pauseSlot.bottom-pauseSlot.h/2;
+   let cx=slotLeft-gap-pw/2,top=slotCy-ph/2;
+   top=Math.min(sr.height-4-ph,Math.max(4,top));
+   if(cx-pw/2<8)cx=8+pw/2;
+   el.style.left=Math.round(cx)+'px';el.style.top=Math.round(top)+'px';
   }catch(e){}
  };
 
