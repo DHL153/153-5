@@ -3073,6 +3073,14 @@ html[lang="ru"] body #app #view-battle #ui-section .btn-item .control-name{lette
 
 /* Game window corners are square in every mode (desktop, mini merge, mini battle). */
 html body #app,html body.mini-window #app,html body #app.mini-mode{border-radius:0!important;}
+/* Square game frame, stronger than any external skin (art-edition.css): frame, clipping masks, frame overlays, edge sections. */
+:root body #app#app#app#app,:root body #app#app#app#app.mini-mode{border-radius:0!important;clip-path:none!important;-webkit-mask:none!important;mask:none!important;}
+:root body #app#app#app#app::before,:root body #app#app#app#app::after,
+:root body #app#app#app#app>*,:root body #app#app#app#app>*::before,:root body #app#app#app#app>*::after,
+:root body #app#app#app#app #game-brand,:root body #app#app#app#app #top-bar,:root body #app#app#app#app #bottom-nav,
+:root body #app#app#app#app #main-content,:root body #app#app#app#app #game-section,:root body #app#app#app#app #ui-section,
+:root body #app#app#app#app #mini-play-header,:root body #app#app#app#app #mini-play-footer,:root body #app#app#app#app #merge-mini-item-bar{border-radius:0!important;}
+:root body #app#app#app#app>#daily-reward-toast{border-radius:12px!important;}
 
 /* ===== readability on navy (settings / records / headings) ===== */
 html body #app#app#app .settings-title,html body #app#app#app .view-title,html body #app#app#app .panel-title,html body #app#app#app .panel-title *{color:#bfeee2!important;opacity:1!important;text-shadow:none!important;}
