@@ -12354,6 +12354,10 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
 })();
 </script>
 <style id="mr-social-ui-style">
+/* 소셜 탭은 관전·방문 패널 + ROOM 화면을 한 번에 위아래로 스크롤 (아래 내용이 잘리지 않게) */
+#app #view-social{overflow-y:auto!important;overflow-x:hidden;overscroll-behavior:contain;}
+#app #view-social>#social-visit,#app #view-social>#social-spectate{flex:0 0 auto;}
+#app #view-social>#social-root{flex:0 0 auto!important;overflow:visible!important;min-height:auto!important;padding:12px 12px 24px!important;}
 #social-root{padding:12px;display:flex;flex-direction:column;gap:10px;box-sizing:border-box;}
 #social-root .social-card{background:var(--t-surface,#18263a);border:1px solid var(--t-line,#2f4560);border-radius:14px;padding:14px;}
 #social-root .social-hero{text-align:center;display:flex;flex-direction:column;gap:10px;align-items:stretch;padding:22px 16px;}
