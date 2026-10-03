@@ -8613,7 +8613,7 @@ function createSocialDataFoundation(assets, emojis) {
 
     const ITEM_COLLECTION_CATEGORIES = [
         {id:'all',name:'전체'},{id:'char',name:'캐릭터'},{id:'char_bg',name:'캐릭터 배경'},
-        {id:'battle_char',name:'전투 캐릭터'},{id:'skin',name:'구슬 스킨'},{id:'game_bg',name:'전투 배경'},{id:'item',name:'이모지'}
+        {id:'battle_char',name:'전투 캐릭터'},{id:'skin',name:'구슬 스킨'},{id:'bg_battle',name:'전투 배경'},{id:'bg_merge',name:'머지 배경'},{id:'item',name:'이모지'}
     ];
     let activeItemCategory = 'all';
     let codexOwnedOnly = true;
@@ -8659,10 +8659,8 @@ function createSocialDataFoundation(assets, emojis) {
             if (category==='all' || category==='char') (CHARS_DB[tier]||[]).forEach(id=>add('char',id,tier,charInventory[id]?.count||0,'캐릭터'));
             if (category==='all' || category==='battle_char') (BATTLE_CHARS_DB[tier]||[]).forEach(id=>add('battle_char',id,tier,battleCharInventory[id]?.count||0,'전투 캐릭터'));
             if (category==='all' || category==='char_bg') (CHAR_BG_DB[tier]||[]).forEach(id=>add('char_bg',id,tier,charBgInventory[id]?.count||0,'캐릭터 배경'));
-            if (category==='all' || category==='game_bg') {
-                (BG_TYPE_DB.bg_battle[tier]||[]).forEach(id=>add('bg_battle',id,tier,bgInventory.bg_battle[id]?.count||0,'전투 배경'));
-                (BG_TYPE_DB.bg_merge[tier]||[]).forEach(id=>add('bg_merge',id,tier,bgInventory.bg_merge[id]?.count||0,'머지 배경'));
-            }
+            if (category==='all' || category==='bg_battle') (BG_TYPE_DB.bg_battle[tier]||[]).forEach(id=>add('bg_battle',id,tier,bgInventory.bg_battle[id]?.count||0,'전투 배경'));
+            if (category==='all' || category==='bg_merge') (BG_TYPE_DB.bg_merge[tier]||[]).forEach(id=>add('bg_merge',id,tier,bgInventory.bg_merge[id]?.count||0,'머지 배경'));
         });
         return out;
     }
