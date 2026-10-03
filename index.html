@@ -6352,6 +6352,35 @@ function createSocialDataFoundation(assets, emojis) {
             if(!window.__charSceneLoaded)throw new Error('Room is not loaded');
             return socialData.exportRoom(charScene,charConfig);
         },
+        // 10번 점검: 아이템 ID 카탈로그 무결성 (읽기 전용, 세이브·재화 변경 없음)
+        //  - 게임에 존재하는 모든 수집 아이템이 고정 ID를 갖는지
+        //  - 내 보유 목록에 ID가 없는 아이템이 섞여 있는지
+        //  - 스팀 인벤토리 아이템 정의로 옮길 목록 (고정 ID·종류·등급)
+        auditCatalog:()=>{
+            const DB={item:ITEMS_DB,skin:SKIN_DB,char:CHARS_DB,battle_char:BATTLE_CHARS_DB,char_bg:CHAR_BG_DB,bg_battle:BG_TYPE_DB.bg_battle,bg_merge:BG_TYPE_DB.bg_merge};
+            const report={ok:true,categories:{},unmapped:[],unknownOwned:[],steamItems:[]};
+            const seen=new Set();
+            for(const [cat,db] of Object.entries(DB)){
+                let total=0;
+                for(const tier of TIER_ORDER)for(const legacy of (db?.[tier]||[])){
+                    if(cat==='item'&&EMOJI_META_BY_SYMBOL[legacy]?.legacy)continue;
+                    total++;
+                    const id=socialData.toId(cat,legacy);
+                    if(!id){report.unmapped.push({category:cat,legacy:String(legacy)});continue;}
+                    if(seen.has(id)){report.unmapped.push({category:cat,legacy:String(legacy),duplicate:id});continue;}
+                    seen.add(id);
+                    report.steamItems.push({id,category:cat,tier});
+                }
+                report.categories[cat]={total};
+            }
+            for(const cat of ['item','skin','char','battle_char','char_bg','bg_battle','bg_merge']){
+                for(const [legacy,v] of Object.entries(getInventoryRef(cat)||{})){
+                    if((Number(v?.count)||0)>0 && !socialData.toId(cat,legacy))report.unknownOwned.push({category:cat,legacy});
+                }
+            }
+            report.ok=!report.unmapped.length && !report.unknownOwned.length;
+            return report;
+        },
         getBattleDisplaySnapshot:()=>{
             if(!window.__charSceneLoaded)throw new Error('Game is not loaded');
             return {schema:'merge-run.battle-display',version:1,
@@ -10757,7 +10786,9 @@ function createSocialDataFoundation(assets, emojis) {
  "social.openCodex": {"ko": "내 도감에서 보기", "en": "View in my catalog", "ja": "自分の図鑑で見る", "zh-CN": "在我的图鉴中查看", "zh-TW": "在我的圖鑑中查看", "es": "Ver en mi catálogo", "pt-BR": "Ver no meu catálogo", "fr": "Voir dans mon catalogue", "ru": "Открыть в каталоге", "it": "Vedi nel mio catalogo", "pl": "Zobacz w katalogu", "de": "Im Katalog ansehen"},
  "social.emoteSend": {"ko": "이모지", "en": "Emoji", "ja": "絵文字", "zh-CN": "表情", "zh-TW": "表情", "es": "Emoji", "pt-BR": "Emoji", "fr": "Emoji", "ru": "Эмодзи", "it": "Emoji", "pl": "Emoji", "de": "Emoji"},
  "social.emotePick": {"ko": "보낼 이모지 선택", "en": "Pick an emoji to send", "ja": "送る絵文字を選択", "zh-CN": "选择要发送的表情", "zh-TW": "選擇要傳送的表情", "es": "Elige un emoji", "pt-BR": "Escolha um emoji", "fr": "Choisissez un emoji", "ru": "Выберите эмодзи", "it": "Scegli un emoji", "pl": "Wybierz emoji", "de": "Emoji auswählen"},
- "social.emoteEmpty": {"ko": "보유한 이모지가 없어요. 뽑기에서 모을 수 있어요.", "en": "You don't own any emoji yet. Collect them from the gacha.", "ja": "所持している絵文字がありません。ガチャで集められます。", "zh-CN": "你还没有表情，可以通过抽取获得。", "zh-TW": "你還沒有表情，可以透過抽取獲得。", "es": "Aún no tienes emojis. Consíguelos en el gacha.", "pt-BR": "Você ainda não tem emojis. Colete no gacha.", "fr": "Vous n'avez pas encore d'emoji. Obtenez-en via le gacha.", "ru": "У вас пока нет эмодзи. Соберите их в гаче.", "it": "Non hai ancora emoji. Ottienili dal gacha.", "pl": "Nie masz jeszcze emoji. Zdobądź je w gacha.", "de": "Du hast noch keine Emojis. Sammle sie im Gacha."}
+ "social.emoteEmpty": {"ko": "보유한 이모지가 없어요. 뽑기에서 모을 수 있어요.", "en": "You don't own any emoji yet. Collect them from the gacha.", "ja": "所持している絵文字がありません。ガチャで集められます。", "zh-CN": "你还没有表情，可以通过抽取获得。", "zh-TW": "你還沒有表情，可以透過抽取獲得。", "es": "Aún no tienes emojis. Consíguelos en el gacha.", "pt-BR": "Você ainda não tem emojis. Colete no gacha.", "fr": "Vous n'avez pas encore d'emoji. Obtenez-en via le gacha.", "ru": "У вас пока нет эмодзи. Соберите их в гаче.", "it": "Non hai ancora emoji. Ottienili dal gacha.", "pl": "Nie masz jeszcze emoji. Zdobądź je w gacha.", "de": "Du hast noch keine Emojis. Sammle sie im Gacha."},
+ "social.popout": {"ko": "새 창", "en": "New window", "ja": "別ウィンドウ", "zh-CN": "新窗口", "zh-TW": "新視窗", "es": "Nueva ventana", "pt-BR": "Nova janela", "fr": "Nouvelle fenêtre", "ru": "Новое окно", "it": "Nuova finestra", "pl": "Nowe okno", "de": "Neues Fenster"},
+ "social.spectateEnded": {"ko": "관전이 끝났어요.", "en": "Spectating ended.", "ja": "観戦が終了しました。", "zh-CN": "观战已结束。", "zh-TW": "觀戰已結束。", "es": "La transmisión terminó.", "pt-BR": "A transmissão terminou.", "fr": "Le direct est terminé.", "ru": "Просмотр завершён.", "it": "La visione è terminata.", "pl": "Oglądanie zakończone.", "de": "Zuschauen beendet."}
 }
 </script>
 <script id="mr-localization">
@@ -12446,6 +12477,7 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
   setTimeout(()=>{ window.MRSpectate?.onChange(render); window.MRVisit?.onChange(render); },0);
 })();
 </script>
+<script src="assets/ui/social-spectate-view.js"></script>
 <style id="mr-social-spectate-style">
 #social-spectate{padding:12px 12px 0;box-sizing:border-box;}
 #social-spectate:empty{display:none;}
@@ -12454,63 +12486,39 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
 #social-spectate .spec-live{flex:0 0 auto;font-size:9.5px;font-weight:1000;color:#ff6b7d;letter-spacing:.5px;}
 #social-spectate .spec-label{flex:0 0 auto;font-size:10.5px;color:var(--t-mute,#71859b);font-weight:800;}
 #social-spectate .spec-name{font-size:12.5px;font-weight:900;color:var(--t-text,#e6eef5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
-#social-spectate .spec-close{margin-left:auto;flex:0 0 auto;border:1px solid var(--t-line,#2f4560);background:transparent;color:var(--t-text,#e6eef5);border-radius:8px;padding:5px 9px;font-size:10.5px;font-weight:900;cursor:pointer;font-family:inherit;}
-#social-spectate .spec-stage{position:relative;height:150px;border-radius:10px;overflow:hidden;background:#1d2a3c;isolation:isolate;}
-#social-spectate .spec-bg{position:absolute;inset:0;background-size:auto 100%;background-repeat:repeat-x;background-position:0 50%;animation:spec-scroll 40s linear infinite;z-index:0;}
-#social-spectate .spec-stage.paused .spec-bg{animation-play-state:paused;}
-@keyframes spec-scroll{to{background-position:-1200px 50%;}}
-#social-spectate .spec-hero{position:absolute;bottom:8%;height:72%;width:auto;max-width:34%;object-fit:contain;transform:translateX(-50%);z-index:3;pointer-events:none;user-select:none;}
-#social-spectate .spec-hero[hidden]{display:none;}
-#social-spectate .spec-hero.attack{animation:spec-lunge .4s ease-out;}
-#social-spectate .spec-hero.skill{filter:drop-shadow(0 0 10px rgba(124,227,209,.9));}
-@keyframes spec-lunge{40%{translate:14% 0;}}
-#social-spectate .spec-enemy{position:absolute;bottom:26%;height:52%;transform:translateX(-50%);z-index:2;display:flex;align-items:flex-end;justify-content:center;}
-#social-spectate .spec-enemy.boss{bottom:8%;height:78%;}
-#social-spectate .spec-enemy img{height:100%;width:auto;max-width:none;object-fit:contain;user-select:none;}
-#social-spectate .spec-enemy img[hidden]{display:none;}
-#social-spectate .spec-enemy.hit{animation:spec-hit .32s ease-out;}
-@keyframes spec-hit{25%{translate:7px 0;filter:brightness(2.2);}70%{translate:-4px 0;}}
-#social-spectate .spec-boss{position:absolute;top:7px;left:50%;transform:translateX(-50%);width:62%;z-index:4;text-align:center;}
-#social-spectate .spec-boss[hidden]{display:none;}
-#social-spectate .spec-boss-name{font-size:10px;font-weight:1000;color:#ffe08a;text-shadow:0 1px 2px #000;}
-#social-spectate .spec-boss-track{height:7px;border-radius:99px;background:rgba(0,0,0,.55);overflow:hidden;margin-top:2px;}
-#social-spectate .spec-boss-fill{height:100%;width:100%;background:linear-gradient(90deg,#ff5d6c,#ffb36b);transition:width .25s;}
-#social-spectate .spec-pips{position:absolute;top:8px;right:10px;display:flex;gap:3px;z-index:4;}
-#social-spectate .spec-pips i{width:8px;height:8px;border-radius:50%;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.5);}
-#social-spectate .spec-pips i.on{background:#ff6b7d;}
-#social-spectate .spec-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 16px;background:rgba(15,24,36,.72);color:var(--t-sub,#9fb1c4);font-size:11.5px;font-weight:800;z-index:6;}
-#social-spectate .spec-overlay[hidden]{display:none;}
+#social-spectate .spec-close,#social-spectate .spec-pop{margin-left:auto;flex:0 0 auto;border:1px solid var(--t-line,#2f4560);background:transparent;color:var(--t-text,#e6eef5);border-radius:8px;padding:5px 9px;font-size:10.5px;font-weight:900;cursor:pointer;font-family:inherit;}
+#social-spectate .spec-pop{margin-left:0;}
+#social-spectate .spec-stage{position:relative;height:150px;}
 #social-spectate .spec-note{font-size:10px;color:var(--t-mute,#71859b);}
 #social-spectate .spec-note:empty{display:none;}
-@media (prefers-reduced-motion:reduce){#social-spectate .spec-bg,#social-spectate .spec-hero.attack,#social-spectate .spec-enemy.hit{animation:none;}}
 </style>
 <script id="mr-social-spectate">
 /* =====================================================================
  * 관전 (일반 소셜: 각자 독립 전투, 친구 전투를 보기만 함)
  *  보내는 쪽: 내 #battle-stage 화면을 '읽기만' 해서 가벼운 상태로 전송
  *            (전투 계산·세이브·물리엔진은 건드리지 않음, 보는 사람이 있을 때만 전송)
- *  보는 쪽 : 받은 상태로 작은 전투 화면을 재현 (이미지는 각자 PC의 게임 리소스)
+ *  보는 쪽 : 그리기는 MRSpectateView(assets/ui/social-spectate-view.js)가 담당
+ *            - 소셜 탭 관전 패널 (1명)
+ *            - 단독 관전 창 spectate.html (친구마다 1개, 최대 MAX_PARTY-1개)
+ *  데이터 연결은 이 메인 창 하나만 갖고, 단독 창에는 받은 데이터를 넘겨주기만 한다.
  * ===================================================================== */
 (function(){
   'use strict';
-  const S=window.MRSocial;
+  const S=window.MRSocial, V=window.MRSpectateView;
   const box=document.getElementById('social-spectate');
-  if(!S||!box) return;
+  if(!S||!box||!V) return;
   const MSG=S.MSG;
   const SEND_MS=250, KEEPALIVE_MS=2000, NODATA_MS=6000;
-  const ASSET_RE=/^assets\/art\/[\w\-\/.]+\.(png|jpe?g|webp|gif)$/i;
-  const POSES=['idle','attack','skill','victory'];
+  const MAX_WINDOWS=Math.max(1,S.CONFIG.MAX_PARTY-1);
+  const LABEL_KEYS=['social.spectateWaiting','social.spectateNoData','social.spectatePaused','social.spectateEnded'];
   const tr=key=>{ try{ return window.MRLocale?.k ? window.MRLocale.k(key) : key; }catch(e){ return key; } };
   const T=key=>`<span data-i18n="${key}">${tr(key).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</span>`;
+  const labels=()=>Object.fromEntries(LABEL_KEYS.map(k=>[k,tr(k)]));
 
-  /* ---------------- 보내는 쪽 ---------------- */
+  /* ---------------- 보내는 쪽 (내 전투 → 보는 친구들) ---------------- */
   const watchers=new Set();
   let observer=null, sendTimer=null, keepTimer=null, lastSent='';
 
-  function cleanSrc(src){
-    const s=String(src||'').split('?')[0].replace(/^\.\//,'');
-    return ASSET_RE.test(s)?s:'';
-  }
   function readStage(){
     const stage=document.getElementById('battle-stage');
     if(!stage) return null;
@@ -12518,7 +12526,7 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
     for(let slot=0;slot<3;slot++){
       const el=document.getElementById(slot===0?'hero':'battle-hero-'+slot);
       if(!el||el.hidden) continue;
-      const src=cleanSrc(el.getAttribute('src'));
+      const src=V.cleanSrc(el.getAttribute('src'));
       if(!src) continue;
       const pose=['skill','attack','victory'].find(c=>el.classList.contains(c))||'idle';
       team.push({ slot, id:Number(el.dataset.battleCharacter)||0, src, pose });
@@ -12532,8 +12540,8 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
     const pipsOn=pipsEl?pipsEl.querySelectorAll('.pip.on').length:0;
     return {
       team,
-      bg:cleanSrc(document.querySelector('#battle-panorama img')?.getAttribute('src')),
-      enemy:{ src:cleanSrc(enemyImg?.getAttribute('src')), boss:stage.dataset.enemyKind==='boss' },
+      bg:V.cleanSrc(document.querySelector('#battle-panorama img')?.getAttribute('src')),
+      enemy:{ src:V.cleanSrc(enemyImg?.getAttribute('src')), boss:stage.dataset.enemyKind==='boss' },
       boss:bossOn?{ name:(document.getElementById('boss-name')?.textContent||'').replace(/[^\w .\-]/g,'').trim().slice(0,24), hp:Number(hpNums[0])||0, max:Number(hpNums[1])||1 }:null,
       pips:(pipsEl && pipsEl.style.display!=='none' && pips.length)?{ on:pipsOn, max:pips.length }:null,
       paused:stage.classList.contains('simulation-paused')
@@ -12572,126 +12580,141 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
     if(watchers.size) startSending(); else stopSending();
   }
 
-  /* ---------------- 보는 쪽 ---------------- */
-  const view={ target:null, name:'', mirror:false, lastAt:0, nodataTimer:null, mirrorTimer:null, els:null, prev:null };
+  /* ---------------- 보는 쪽: 구독 관리 ----------------
+   * 한 친구를 패널과 단독 창이 동시에 볼 수 있으므로, 친구별로 '보는 곳' 수를 센다.
+   * 0 → 1 이 되면 관전 시작 요청, 1 → 0 이 되면 종료 요청. 봇은 내 전투로 대신 표시. */
+  const subs=new Map();   // targetId → { sinks:Set<fn>, mirror:bool, timer, latest, name }
+  function subscribe(id,sink){
+    const snap=S.getSnapshot();
+    const m=snap.members.find(x=>x.id===id);
+    if(!m || m.isSelf) return null;
+    let sub=subs.get(id);
+    if(!sub){
+      sub={ sinks:new Set(), mirror:m.isBot && snap.isHost, timer:null, latest:null, name:m.name };
+      subs.set(id,sub);
+      if(sub.mirror) sub.timer=setInterval(()=>deliver(id,readStage()),SEND_MS);
+      else S.sendToRoom(MSG.SPECTATE_WATCH,{ on:true },id);
+    }
+    sub.sinks.add(sink);
+    if(sub.mirror) deliver(id,readStage());
+    else if(sub.latest) sink(sub.latest);
+    return ()=>unsubscribe(id,sink);
+  }
+  function unsubscribe(id,sink){
+    const sub=subs.get(id); if(!sub) return;
+    sub.sinks.delete(sink);
+    if(sub.sinks.size) return;
+    clearInterval(sub.timer);
+    if(!sub.mirror) S.sendToRoom(MSG.SPECTATE_WATCH,{ on:false },id);
+    subs.delete(id);
+  }
+  function deliver(id,data){
+    const sub=subs.get(id); if(!sub||!data) return;
+    sub.latest=data;
+    sub.sinks.forEach(fn=>{ try{ fn(data); }catch(e){ console.warn('[social-spectate]',e); } });
+  }
 
-  function buildPanel(){
+  /* ---------------- 소셜 탭 관전 패널 ---------------- */
+  const panel={ target:null, view:null, off:null, nodata:null };
+  function buildPanel(name,mirror){
     box.innerHTML=`<div class="spec-panel">
       <div class="spec-head">
         <span class="spec-live">● LIVE</span>
         <span class="spec-label">${T('social.spectating')}</span>
         <b class="spec-name"></b>
+        <button class="spec-pop" data-spec="pop" title="${tr('social.popout')}">${T('social.popout')}</button>
         <button class="spec-close" data-spec="close">${T('social.spectateClose')}</button>
       </div>
-      <div class="spec-stage">
-        <div class="spec-bg"></div>
-        <img class="spec-hero" alt="" hidden><img class="spec-hero" alt="" hidden><img class="spec-hero" alt="" hidden>
-        <div class="spec-enemy"><img alt="" hidden></div>
-        <div class="spec-boss" hidden><div class="spec-boss-name"></div><div class="spec-boss-track"><div class="spec-boss-fill"></div></div></div>
-        <div class="spec-pips"></div>
-        <div class="spec-overlay">${T('social.spectateWaiting')}</div>
-      </div>
+      <div class="spec-stage"></div>
       <div class="spec-note"></div>
     </div>`;
-    const q=s=>box.querySelector(s);
-    view.els={ stage:q('.spec-stage'), bg:q('.spec-bg'), heroes:[...box.querySelectorAll('.spec-hero')], enemy:q('.spec-enemy'), enemyImg:q('.spec-enemy img'),
-      boss:q('.spec-boss'), bossName:q('.spec-boss-name'), bossFill:q('.spec-boss-fill'), pips:q('.spec-pips'), overlay:q('.spec-overlay'), note:q('.spec-note'), name:q('.spec-name') };
-    view.els.name.textContent=view.name;
-    if(view.mirror) view.els.note.innerHTML=T('social.botMirror');
-  }
-  function setOverlay(key){
-    const o=view.els?.overlay; if(!o) return;
-    if(!key){ o.hidden=true; return; }
-    o.hidden=false; o.innerHTML=T(key);
-  }
-  function retrigger(el,cls){ el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
-
-  function sanitize(p){
-    if(!p || typeof p!=='object') return null;
-    const team=(Array.isArray(p.team)?p.team:[]).slice(0,3).map(m=>({
-      slot:Math.max(0,Math.min(2,Number(m?.slot)||0)), src:cleanSrc(m?.src), pose:POSES.includes(m?.pose)?m.pose:'idle'
-    })).filter(m=>m.src);
-    const num=(v,max)=>Math.max(0,Math.min(max,Math.floor(Number(v)||0)));
-    return {
-      team, bg:cleanSrc(p.bg),
-      enemy:{ src:cleanSrc(p.enemy?.src), boss:!!p.enemy?.boss },
-      boss:p.boss?{ name:String(p.boss.name||'').replace(/[^\w .\-]/g,'').slice(0,24), hp:num(p.boss.hp,9999), max:Math.max(1,num(p.boss.max,9999)) }:null,
-      pips:p.pips?{ on:num(p.pips.on,10), max:Math.max(1,num(p.pips.max,10)) }:null,
-      paused:!!p.paused
-    };
-  }
-  function apply(d){
-    const e=view.els; if(!e||!d) return;
-    view.lastAt=Date.now();
-    setOverlay(d.paused?'social.spectatePaused':null);
-    e.stage.classList.toggle('paused',d.paused);
-    if(d.bg) e.bg.style.backgroundImage=`url("${d.bg}")`;
-    // 파티 배치: 메인 전투와 같은 진형 계산 사용
-    const W=e.stage.clientWidth||300, H=e.stage.clientHeight||150;
-    const form=typeof window.battleFormation==='function'?window.battleFormation(d.team.length||1,W,H):null;
-    const heroX=form?.heroes||[[30],[22,40],[14,30,46]][Math.max(0,d.team.length-1)];
-    const enemyX=form?.enemy??78;
-    e.heroes.forEach((img,i)=>{
-      const m=d.team[i];
-      if(!m){ img.hidden=true; img.classList.remove('attack','skill'); return; }
-      img.hidden=false;
-      if(img.getAttribute('src')!==m.src) img.setAttribute('src',m.src);
-      img.style.left=heroX[i]+'%';
-      img.style.zIndex=String(5-i);
-      const prevPose=view.prev?.team?.[i]?.pose;
-      if(m.pose==='attack' && prevPose!=='attack') retrigger(img,'attack');
-      img.classList.toggle('skill',m.pose==='skill');
-    });
-    e.enemy.style.left=enemyX+'%';
-    e.enemy.classList.toggle('boss',d.enemy.boss);
-    if(d.enemy.src){ e.enemyImg.hidden=false; if(e.enemyImg.getAttribute('src')!==d.enemy.src) e.enemyImg.setAttribute('src',d.enemy.src); }
-    else e.enemyImg.hidden=true;
-    // 보스 HP / 일반 몬스터 HP
-    e.boss.hidden=!d.boss;
-    if(d.boss){ e.bossName.textContent=d.boss.name; e.bossFill.style.width=(d.boss.hp/d.boss.max*100)+'%'; }
-    e.pips.innerHTML=d.pips?Array.from({length:d.pips.max},(_,i)=>`<i class="${i<d.pips.on?'on':''}"></i>`).join(''):'';
-    // 피격 연출: HP가 줄었을 때
-    const p=view.prev;
-    if(p && ((d.boss&&p.boss&&d.boss.hp<p.boss.hp) || (d.pips&&p.pips&&d.pips.on<p.pips.on))) retrigger(e.enemy,'hit');
-    view.prev=d;
-  }
-  function armNoData(){
-    clearTimeout(view.nodataTimer);
-    view.nodataTimer=setTimeout(function check(){
-      if(!view.target) return;
-      if(Date.now()-view.lastAt>=NODATA_MS){ setOverlay('social.spectateNoData'); }
-      view.nodataTimer=setTimeout(check,1000);
-    },NODATA_MS);
+    box.querySelector('.spec-name').textContent=name;
+    if(mirror) box.querySelector('.spec-note').innerHTML=T('social.botMirror');
+    return V.create(box.querySelector('.spec-stage'),{ t:tr });
   }
   function watch(id){
     const snap=S.getSnapshot();
     const m=snap.members.find(x=>x.id===id);
     if(!m || m.isSelf) return false;
     stop(false);
-    view.target=id; view.name=m.name; view.prev=null; view.lastAt=0;
-    view.mirror=m.isBot && snap.isHost;   // 혼자 테스트: 봇은 내 전투 화면을 대신 보여줌
-    buildPanel();
-    if(view.mirror){
-      view.mirrorTimer=setInterval(()=>apply(sanitize(readStage())),SEND_MS);
-      apply(sanitize(readStage()));
-    }else{
-      S.sendToRoom(MSG.SPECTATE_WATCH,{ on:true },id);
-      armNoData();
-    }
+    panel.target=id;
+    panel.view=buildPanel(m.name, m.isBot && snap.isHost);
+    panel.off=subscribe(id,d=>panel.view?.apply(d));
+    clearInterval(panel.nodata);
+    panel.nodata=setInterval(()=>{
+      const v=panel.view; if(!v) return;
+      const last=v.lastUpdate();
+      if(Date.now()-(last||panel.started)>=NODATA_MS) v.overlay('social.spectateNoData');
+    },1000);
+    panel.started=Date.now();
     emitChange();
     return true;
   }
   function stop(notify=true){
-    if(view.target && !view.mirror && notify) S.sendToRoom(MSG.SPECTATE_WATCH,{ on:false },view.target);
-    clearTimeout(view.nodataTimer); clearInterval(view.mirrorTimer);
-    view.target=null; view.mirror=false; view.prev=null; view.els=null; view.nodataTimer=null; view.mirrorTimer=null;
+    panel.off?.(); panel.off=null;
+    clearInterval(panel.nodata); panel.nodata=null;
+    panel.view?.destroy(); panel.view=null;
+    panel.target=null;
     box.innerHTML='';
+    if(notify!==null) emitChange();
+  }
+
+  /* ---------------- 단독 관전 창 ----------------
+   * exe: window.mrDesktop.openSpectate(target,name) 가 있으면 그것을 사용 (바탕화면 작은 창)
+   * 웹 : spectate.html 팝업. 데이터는 postMessage 로 전달 */
+  const windows=new Map();  // targetId → { win, off, name }
+  function postTo(w,msg){ try{ w.win.postMessage(msg,'*'); }catch(e){} }
+  function openWindow(id){
+    const m=S.getSnapshot().members.find(x=>x.id===id);
+    if(!m || m.isSelf) return false;
+    const existing=windows.get(id);
+    if(existing && !existing.win.closed){ try{ existing.win.focus(); }catch(e){} return true; }
+    if(windows.size>=MAX_WINDOWS) return false;
+    if(window.mrDesktop?.openSpectate){
+      try{ window.mrDesktop.openSpectate(id,m.name); }catch(e){ return false; }
+      const off=subscribe(id,d=>{ try{ window.mrDesktop.sendSpectate?.(id,{ type:'mr-spectate', target:id, name:m.name, data:d, labels:labels() }); }catch(e){} });
+      windows.set(id,{ win:{ closed:false, close(){ try{ window.mrDesktop.closeSpectate?.(id); }catch(e){} }, focus(){} }, off, name:m.name, desktop:true });
+      emitChange(); return true;
+    }
+    const n=windows.size;
+    const win=window.open(`spectate.html?target=${encodeURIComponent(id)}`,`mr-spectate-${id}`,
+      `popup=yes,width=360,height=210,left=${40+n*380},top=60`);
+    if(!win) return false;
+    const w={ win, name:m.name, off:null };
+    w.off=subscribe(id,d=>postTo(w,{ type:'mr-spectate', target:id, name:w.name, data:d }));
+    windows.set(id,w);
+    emitChange();
+    return true;
+  }
+  function closeWindow(id,notifyClosed){
+    const w=windows.get(id); if(!w) return;
+    if(notifyClosed && !w.win.closed) postTo(w,{ type:'mr-spectate', target:id, closed:true });
+    w.off?.();
+    windows.delete(id);
     emitChange();
   }
-  const changeHandlers=new Set();
-  function emitChange(){ changeHandlers.forEach(fn=>{ try{ fn(view.target); }catch(e){} }); }
+  // 팝업이 준비되면 이름·문구·최신 데이터 전달
+  window.addEventListener('message',ev=>{
+    const msg=ev.data;
+    if(!msg || msg.type!=='mr-spectate-ready') return;
+    const w=windows.get(String(msg.target||''));
+    if(!w || ev.source!==w.win) return;
+    postTo(w,{ type:'mr-spectate', target:msg.target, name:w.name, labels:labels(), data:subs.get(msg.target)?.latest||null });
+  });
+  // 사용자가 팝업을 직접 닫은 경우 정리
+  setInterval(()=>{ for(const [id,w] of [...windows]) if(w.win.closed) closeWindow(id,false); },1000);
+  window.addEventListener('pagehide',()=>{ for(const w of windows.values()){ try{ w.win.close(); }catch(e){} } });
 
-  box.addEventListener('click',e=>{ if(e.target.closest('[data-spec="close"]')) stop(true); });
+  const changeHandlers=new Set();
+  function emitChange(){ changeHandlers.forEach(fn=>{ try{ fn(panel.target); }catch(e){} }); }
+
+  box.addEventListener('click',e=>{
+    if(e.target.closest('[data-spec="close"]')){ stop(true); return; }
+    if(e.target.closest('[data-spec="pop"]')){
+      const id=panel.target;
+      if(id && openWindow(id)) stop(true);
+    }
+  });
 
   S.on('message',msg=>{
     if(msg.type===MSG.SPECTATE_WATCH){
@@ -12699,17 +12722,23 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
       syncWatchers();
       if(msg.payload.on) sendNow(true);
     }else if(msg.type===MSG.SPECTATE_STATE){
-      if(view.target && !view.mirror && msg.from===view.target) apply(sanitize(msg.payload));
+      const sub=subs.get(msg.from);
+      if(sub && !sub.mirror){ const d=V.sanitize(msg.payload); if(d) deliver(msg.from,d); }
     }
   });
   S.on('state',snap=>{
     syncWatchers();
-    if(view.target && (snap.state==='idle' || !snap.members.some(m=>m.id===view.target))) stop(false);
+    const ids=new Set(snap.state==='idle'?[]:snap.members.map(m=>m.id));
+    if(panel.target && !ids.has(panel.target)) stop(false);
+    for(const id of [...windows.keys()]) if(!ids.has(id)) closeWindow(id,true);
+    for(const id of [...subs.keys()]) if(!ids.has(id)){ const sub=subs.get(id); clearInterval(sub.timer); subs.delete(id); }
   });
 
   window.MRSpectate=Object.freeze({
     watch, stop:()=>stop(true),
-    watching:()=>view.target,
+    watching:()=>panel.target,
+    openWindow, closeWindow:id=>{ const w=windows.get(id); if(w){ try{ w.win.close(); }catch(e){} closeWindow(id,false); } },
+    windows:()=>[...windows.keys()],
     onChange(fn){ changeHandlers.add(fn); return ()=>changeHandlers.delete(fn); },
     _readStage:readStage
   });
@@ -13100,8 +13129,9 @@ html body #app #item-collection-grid .inv-item.codex-focus{outline:3px solid var
     const btn=document.createElement('button');
     btn.type='button'; btn.className='mr-emote-btn';
     btn.innerHTML=`<span aria-hidden="true">😊</span>${T('social.emoteSend')}`;
-    head.insertBefore(btn,closeBtn||null);
-    if(closeBtn) closeBtn.style.marginLeft='0';
+    const firstBtn=head.querySelector('button');
+    head.insertBefore(btn,firstBtn||closeBtn||null);
+    if(firstBtn) firstBtn.style.marginLeft='0';
     btn.style.marginLeft='auto';
     let picker=null, cdTimer=null;
     function renderPicker(){
