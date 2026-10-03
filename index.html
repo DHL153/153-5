@@ -8851,7 +8851,9 @@ function createSocialDataFoundation(assets, emojis) {
 
         currentMenu=menuId;
         // Sync after selecting the destination so returning to play restores the manual-pause overlay.
-        setNavigationPause(menuId !== 'battle' && !isGameOver);
+        // 소셜 화면에서도 내 전투는 계속 진행한다 (같은 방에서 각자 플레이하는 구조)
+        const keepsBattleRunning = menuId === 'battle' || menuId === 'social';
+        setNavigationPause(!keepsBattleRunning && !isGameOver);
         const appEl=document.getElementById('app');
         if(appEl && menuId!=='collection') appEl.classList.remove('codex-mode');
         document.querySelectorAll('#main-content > .view-container').forEach(el=>el.classList.remove('active'));
@@ -11704,5 +11706,403 @@ html body #app #view-battle #ui-section .btn-item>*,html body #app #merge-mini-i
 html body #app #view-battle #ui-section .btn-item .control-name{margin-top:3px!important;line-height:14px!important;height:14px!important;overflow:visible!important;}
 html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!important;}
 </style>
+<script id="mr-social-core">
+/* =====================================================================
+ * Merge & Run — 소셜 연결 기반 (스팀웍스 연동 전 단계)
+ *
+ * 원칙
+ *  - 싱글 플레이의 상태·세이브·재화를 읽거나 쓰지 않는다. (오류가 나도 게임은 그대로)
+ *  - 연결 방식(Transport)만 갈아끼우면 된다.
+ *      웹 개발: LocalTransport (같은 브라우저의 창/탭 여러 개)
+ *      exe    : 로컬 연결 Transport (추후)
+ *      스팀   : Steam Lobby + P2P Transport (추후)
+ *  - 인원은 CONFIG.MAX_PARTY 하나로만 관리한다.
+ *
+ * 콘솔 테스트 (같은 브라우저에서 창 2~3개)
+ *  창1: MRSocial.createRoom()            → 방 코드 확인: MRSocial.getSnapshot().roomId
+ *  창2: MRSocial.joinRoom('방코드')
+ *  어느 창이든: MRSocial.getSnapshot()   → 참여자 목록
+ *  창1(방장): MRSocial.leaveRoom()       → 모든 창의 방이 닫힘
+ * ===================================================================== */
+(function(){
+  'use strict';
+
+  const CONFIG=Object.freeze({
+    MAX_PARTY:3,              // 최대 인원 (방장 포함)
+    PROTOCOL_VERSION:1,       // 메시지 규격 버전. 다르면 입장 거부
+    CHANNEL:'mr-social-v1',   // 로컬 연결 채널 이름
+    HEARTBEAT_MS:4000,        // 접속 확인 신호 간격
+    TIMEOUT_MS:12000,         // 이 시간 동안 신호가 없으면 나간 것으로 처리
+    JOIN_TIMEOUT_MS:5000,     // 입장 응답 대기 시간
+    MAX_MESSAGE_BYTES:16*1024 // 메시지 1개 최대 크기
+  });
+
+  // 메시지 종류. 앞의 ROOM_*/PING은 지금 사용, 나머지는 다음 단계용으로 이름만 예약
+  const MSG=Object.freeze({
+    ROOM_JOIN:'room.join',          // 손님 → 방장: 입장 요청
+    ROOM_ACCEPT:'room.accept',      // 방장 → 손님: 입장 허락
+    ROOM_REJECT:'room.reject',      // 방장 → 손님: 입장 거부 (full / version)
+    ROOM_STATE:'room.state',        // 방장 → 전원: 현재 방 상태
+    ROOM_LEAVE:'room.leave',        // 손님 → 방장: 퇴장
+    ROOM_CLOSE:'room.close',        // 방장 → 전원: 방 종료
+    PING:'ping',                    // 전원: 접속 확인
+    SPECTATE_STATE:'spectate.state',// (예약) 관전용 전투 상태
+    BATTLE_EVENT:'battle.event',    // (예약) 공격·스킬 이벤트
+    MYROOM_DATA:'myroom.data',      // (예약) 마이룸 배치 데이터
+    EMOTE:'emote'                   // (예약) 이모티콘 보내기
+  });
+  const KNOWN_TYPES=new Set(Object.values(MSG));
+  const ROOM_TYPES=new Set([MSG.ROOM_JOIN,MSG.ROOM_ACCEPT,MSG.ROOM_REJECT,MSG.ROOM_STATE,MSG.ROOM_LEAVE,MSG.ROOM_CLOSE,MSG.PING]);
+
+  const log=(...a)=>{ if(window.MR_SOCIAL_DEBUG) console.log('[social]',...a); };
+  const warn=(...a)=>console.warn('[social]',...a);
+
+  /* ---------------- 플레이어 식별 ----------------
+   * 지금: 창(탭)마다 임시 ID — 같은 PC에서 창 여러 개로 테스트하기 위함
+   * 스팀웍스 단계: 이 함수 안만 SteamID로 교체 */
+  const ID_KEY='mr_social_pid', NAME_KEY='mr_social_name';
+  function randomId(len){
+    const chars='abcdefghijkmnpqrstuvwxyz23456789';
+    let out='';
+    const buf=new Uint32Array(len);
+    try{ crypto.getRandomValues(buf); }catch(e){ for(let i=0;i<len;i++) buf[i]=Math.floor(Math.random()*1e9); }
+    for(let i=0;i<len;i++) out+=chars[buf[i]%chars.length];
+    return out;
+  }
+  function safeSession(op,key,value){
+    try{ return op==='get' ? sessionStorage.getItem(key) : sessionStorage.setItem(key,value); }catch(e){ return null; }
+  }
+  let cachedId=null;
+  function getPlayerId(){
+    if(cachedId) return cachedId;
+    cachedId=safeSession('get',ID_KEY) || ('local-'+randomId(10));
+    safeSession('set',ID_KEY,cachedId);
+    return cachedId;
+  }
+  function getPlayerName(){
+    return safeSession('get',NAME_KEY) || ('Player '+getPlayerId().slice(-4).toUpperCase());
+  }
+  function setPlayerName(name){
+    const clean=String(name||'').replace(/[\u0000-\u001f]/g,'').trim().slice(0,24);
+    if(clean) safeSession('set',NAME_KEY,clean);
+    if(room.state!=='idle') touchSelf();
+    return getPlayerName();
+  }
+
+  /* ---------------- 메시지 규격 ---------------- */
+  let seq=0;
+  function makeMessage(type,payload,opts={}){
+    seq+=1;
+    return {
+      v:CONFIG.PROTOCOL_VERSION,
+      id:getPlayerId()+':'+seq,
+      type,
+      from:getPlayerId(),
+      to:opts.to||null,          // null = 같은 채널 전원
+      roomId:opts.roomId||null,
+      t:Date.now(),
+      payload:payload||{}
+    };
+  }
+  // 받은 메시지 검사: 형식이 틀리면 버린다 (게임에 영향 없음)
+  function parseMessage(raw){
+    if(typeof raw!=='string' || raw.length>CONFIG.MAX_MESSAGE_BYTES) return null;
+    let msg;
+    try{ msg=JSON.parse(raw); }catch(e){ return null; }
+    if(!msg || typeof msg!=='object') return null;
+    if(typeof msg.v!=='number' || typeof msg.type!=='string' || !KNOWN_TYPES.has(msg.type)) return null;
+    if(typeof msg.from!=='string' || !msg.from || msg.from.length>64) return null;
+    if(typeof msg.id!=='string' || msg.id.length>96) return null;
+    if(msg.to!=null && typeof msg.to!=='string') return null;
+    if(msg.roomId!=null && typeof msg.roomId!=='string') return null;
+    if(msg.payload==null || typeof msg.payload!=='object' || Array.isArray(msg.payload)) msg.payload={};
+    return msg;
+  }
+
+  /* ---------------- 연결(Transport) ----------------
+   * 공통 모양: { kind, send(msg), onMessage(fn) → 해제함수, close() }
+   * LocalTransport: BroadcastChannel + localStorage 신호를 함께 사용
+   *   (파일로 직접 연 index.html에서도 창끼리 통하도록). 중복 수신은 id로 걸러냄 */
+  function createLocalTransport(){
+    const listeners=new Set();
+    const seen=new Map();
+    const STORAGE_KEY=CONFIG.CHANNEL+':signal';
+    let bc=null, closed=false;
+
+    function deliver(raw){
+      if(closed) return;
+      const msg=parseMessage(raw);
+      if(!msg || msg.from===getPlayerId()) return;
+      if(seen.has(msg.id)) return;
+      seen.set(msg.id,Date.now());
+      if(seen.size>600){ const cut=Date.now()-60000; for(const [k,t] of seen){ if(t<cut) seen.delete(k); } if(seen.size>600) seen.clear(); }
+      listeners.forEach(fn=>{ try{ fn(msg); }catch(e){ warn('message handler',e); } });
+    }
+    try{
+      if(typeof BroadcastChannel==='function'){
+        bc=new BroadcastChannel(CONFIG.CHANNEL);
+        bc.onmessage=e=>deliver(e.data);
+      }
+    }catch(e){ bc=null; }
+    function onStorage(e){
+      if(e.key!==STORAGE_KEY || !e.newValue) return;
+      deliver(e.newValue);
+    }
+    window.addEventListener('storage',onStorage);
+
+    return {
+      kind:'local',
+      send(msg){
+        if(closed) return false;
+        const raw=JSON.stringify(msg);
+        if(raw.length>CONFIG.MAX_MESSAGE_BYTES){ warn('message too large',msg.type,raw.length); return false; }
+        try{ bc?.postMessage(raw); }catch(e){}
+        try{ localStorage.setItem(STORAGE_KEY,raw); localStorage.removeItem(STORAGE_KEY); }catch(e){}
+        return true;
+      },
+      onMessage(fn){ listeners.add(fn); return ()=>listeners.delete(fn); },
+      close(){
+        closed=true; listeners.clear();
+        try{ bc?.close(); }catch(e){}
+        window.removeEventListener('storage',onStorage);
+      }
+    };
+  }
+  function createNullTransport(){
+    return { kind:'none', send(){ return false; }, onMessage(){ return ()=>{}; }, close(){} };
+  }
+
+  /* ---------------- 이벤트 ---------------- */
+  const handlers={};
+  function on(evt,fn){ (handlers[evt]||(handlers[evt]=new Set())).add(fn); return ()=>handlers[evt]?.delete(fn); }
+  function emit(evt,data){ handlers[evt]?.forEach(fn=>{ try{ fn(data); }catch(e){ warn('event handler',evt,e); } }); }
+
+  /* ---------------- ROOM ----------------
+   * state: idle(방 없음) / joining(입장 대기) / host(방장) / guest(참여자)
+   * 방장이 참여자 목록의 기준이며, 방장이 나가면 방은 종료된다. (Host Migration 없음) */
+  const room={ state:'idle', roomId:null, hostId:null, members:[], pending:null, lastSeen:new Map(), heartbeat:null };
+  let transport=null, unsubscribe=null;
+
+  function ensureTransport(){
+    if(transport) return transport;
+    try{ transport=createLocalTransport(); }catch(e){ warn('transport unavailable',e); transport=createNullTransport(); }
+    unsubscribe=transport.onMessage(handleMessage);
+    return transport;
+  }
+  function send(type,payload,opts){ return ensureTransport().send(makeMessage(type,payload,opts)); }
+  function roomCode(){
+    const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let out=''; const buf=new Uint32Array(6);
+    try{ crypto.getRandomValues(buf); }catch(e){ for(let i=0;i<6;i++) buf[i]=Math.floor(Math.random()*1e9); }
+    for(let i=0;i<6;i++) out+=chars[buf[i]%chars.length];
+    return out;
+  }
+  function selfMember(isHost){
+    return { id:getPlayerId(), name:getPlayerName(), isHost:!!isHost, slot:isHost?1:0, joinedAt:Date.now(), version:CONFIG.PROTOCOL_VERSION };
+  }
+  function freeSlot(){
+    for(let s=1;s<=CONFIG.MAX_PARTY;s++) if(!room.members.some(m=>m.slot===s)) return s;
+    return 0;
+  }
+  function cleanMember(m){
+    return { id:String(m.id).slice(0,64), name:String(m.name||'Player').slice(0,24), isHost:!!m.isHost,
+      slot:Math.max(0,Math.min(CONFIG.MAX_PARTY,Number(m.slot)||0)), joinedAt:Number(m.joinedAt)||0, version:Number(m.version)||0 };
+  }
+  function getSnapshot(){
+    return {
+      state:room.state, roomId:room.roomId, isHost:room.state==='host', selfId:getPlayerId(),
+      hostId:room.hostId, max:CONFIG.MAX_PARTY, count:room.members.length,
+      members:room.members.map(m=>({...m, isSelf:m.id===getPlayerId()})).sort((a,b)=>a.slot-b.slot)
+    };
+  }
+  function changed(){ emit('state',getSnapshot()); }
+  function broadcastState(){
+    if(room.state!=='host') return;
+    send(MSG.ROOM_STATE,{ hostId:room.hostId, max:CONFIG.MAX_PARTY, members:room.members },{ roomId:room.roomId });
+  }
+  function touchSelf(){
+    const me=room.members.find(m=>m.id===getPlayerId());
+    if(me) me.name=getPlayerName();
+    if(room.state==='host'){ broadcastState(); changed(); }
+  }
+  function resetRoom(reason){
+    const wasInRoom=room.state==='host'||room.state==='guest';
+    clearInterval(room.heartbeat);
+    if(room.pending) clearTimeout(room.pending.timer);
+    room.state='idle'; room.roomId=null; room.hostId=null; room.members=[]; room.pending=null; room.heartbeat=null; room.lastSeen.clear();
+    if(wasInRoom && reason) emit('closed',{reason});
+    changed();
+  }
+  function startHeartbeat(){
+    clearInterval(room.heartbeat);
+    room.heartbeat=setInterval(()=>{
+      if(room.state!=='host' && room.state!=='guest') return;
+      send(MSG.PING,{},{ roomId:room.roomId });
+      const now=Date.now();
+      if(room.state==='host'){
+        const gone=room.members.filter(m=>m.id!==room.hostId && now-(room.lastSeen.get(m.id)||0)>CONFIG.TIMEOUT_MS);
+        if(gone.length){
+          room.members=room.members.filter(m=>!gone.includes(m));
+          gone.forEach(m=>room.lastSeen.delete(m.id));
+          log('timeout',gone.map(m=>m.id));
+          broadcastState(); changed();
+        }
+      }else if(now-(room.lastSeen.get(room.hostId)||0)>CONFIG.TIMEOUT_MS){
+        resetRoom('host_timeout');
+      }
+    },CONFIG.HEARTBEAT_MS);
+  }
+
+  // 방 만들기
+  function createRoom(){
+    if(room.state!=='idle') leaveRoom();
+    ensureTransport();
+    room.state='host';
+    room.roomId=roomCode();
+    room.hostId=getPlayerId();
+    room.members=[selfMember(true)];
+    startHeartbeat();
+    broadcastState(); changed();
+    log('room created',room.roomId);
+    return room.roomId;
+  }
+  // 방 코드로 입장 (결과는 'state' / 'error' 이벤트로 알림, Promise도 반환)
+  function joinRoom(code){
+    const roomId=String(code||'').trim().toUpperCase();
+    if(!/^[A-Z0-9]{4,12}$/.test(roomId)) return Promise.resolve({ok:false,code:'invalid_code'});
+    if(room.state!=='idle') leaveRoom();
+    ensureTransport();
+    return new Promise(resolve=>{
+      room.state='joining'; room.roomId=roomId;
+      const timer=setTimeout(()=>{
+        if(room.state==='joining' && room.roomId===roomId){
+          resetRoom(null);
+          emit('error',{code:'not_found',roomId});
+          resolve({ok:false,code:'not_found'});
+        }
+      },CONFIG.JOIN_TIMEOUT_MS);
+      room.pending={roomId,timer,resolve};
+      changed();
+      send(MSG.ROOM_JOIN,{ member:selfMember(false) },{ roomId });
+    });
+  }
+  // 나가기 (방장이면 방 종료)
+  function leaveRoom(){
+    if(room.state==='host'){
+      send(MSG.ROOM_CLOSE,{ reason:'host_left' },{ roomId:room.roomId });
+      resetRoom('left');
+    }else if(room.state==='guest'){
+      send(MSG.ROOM_LEAVE,{},{ roomId:room.roomId, to:room.hostId });
+      resetRoom('left');
+    }else if(room.state==='joining'){
+      const p=room.pending;
+      resetRoom(null);
+      p?.resolve({ok:false,code:'cancelled'});
+    }
+  }
+  // 다음 단계 모듈(관전·마이룸·이모티콘)이 방 안의 다른 사람에게 보낼 때 사용
+  function sendToRoom(type,payload,to){
+    if(room.state!=='host' && room.state!=='guest') return false;
+    if(ROOM_TYPES.has(type) || !KNOWN_TYPES.has(type)) return false;
+    return send(type,payload,{ roomId:room.roomId, to:to||null });
+  }
+
+  function handleMessage(msg){
+    if(msg.to && msg.to!==getPlayerId()) return;
+
+    // 버전이 다른 손님의 입장 요청: 방장만 거부 응답
+    if(msg.v!==CONFIG.PROTOCOL_VERSION){
+      if(msg.type===MSG.ROOM_JOIN && room.state==='host' && msg.roomId===room.roomId){
+        send(MSG.ROOM_REJECT,{ reason:'version', hostVersion:CONFIG.PROTOCOL_VERSION },{ roomId:room.roomId, to:msg.from });
+      }
+      return;
+    }
+    if(msg.roomId!==room.roomId) return;
+
+    switch(msg.type){
+      case MSG.ROOM_JOIN:{
+        if(room.state!=='host') return;
+        const exists=room.members.find(m=>m.id===msg.from);
+        if(!exists){
+          if(room.members.length>=CONFIG.MAX_PARTY){
+            send(MSG.ROOM_REJECT,{ reason:'full' },{ roomId:room.roomId, to:msg.from });
+            return;
+          }
+          const m=cleanMember({ ...(msg.payload.member||{}), id:msg.from, isHost:false });
+          m.slot=freeSlot(); m.joinedAt=Date.now();
+          room.members.push(m);
+        }
+        room.lastSeen.set(msg.from,Date.now());
+        send(MSG.ROOM_ACCEPT,{ hostId:room.hostId, max:CONFIG.MAX_PARTY, members:room.members },{ roomId:room.roomId, to:msg.from });
+        broadcastState(); changed();
+        return;
+      }
+      case MSG.ROOM_ACCEPT:{
+        if(room.state!=='joining' || !room.pending) return;
+        const p=room.pending;
+        clearTimeout(p.timer);
+        room.pending=null;
+        room.state='guest';
+        room.hostId=msg.from;
+        room.members=(Array.isArray(msg.payload.members)?msg.payload.members:[]).slice(0,CONFIG.MAX_PARTY).map(cleanMember);
+        room.lastSeen.set(room.hostId,Date.now());
+        startHeartbeat(); changed();
+        p.resolve({ok:true,roomId:room.roomId});
+        return;
+      }
+      case MSG.ROOM_REJECT:{
+        if(room.state!=='joining' || !room.pending) return;
+        const p=room.pending, reason=String(msg.payload.reason||'rejected');
+        resetRoom(null);
+        emit('error',{code:reason,roomId:p.roomId});
+        p.resolve({ok:false,code:reason});
+        return;
+      }
+      case MSG.ROOM_STATE:{
+        if(room.state!=='guest' || msg.from!==room.hostId) return;
+        room.members=(Array.isArray(msg.payload.members)?msg.payload.members:[]).slice(0,CONFIG.MAX_PARTY).map(cleanMember);
+        room.lastSeen.set(room.hostId,Date.now());
+        if(!room.members.some(m=>m.id===getPlayerId())){ resetRoom('removed'); return; }
+        changed();
+        return;
+      }
+      case MSG.ROOM_LEAVE:{
+        if(room.state!=='host') return;
+        const before=room.members.length;
+        room.members=room.members.filter(m=>m.id!==msg.from || m.id===room.hostId);
+        room.lastSeen.delete(msg.from);
+        if(room.members.length!==before){ broadcastState(); changed(); }
+        return;
+      }
+      case MSG.ROOM_CLOSE:{
+        if(room.state==='guest' && msg.from===room.hostId) resetRoom(String(msg.payload.reason||'closed'));
+        return;
+      }
+      case MSG.PING:{
+        if(room.state!=='host' && room.state!=='guest') return;
+        if(room.members.some(m=>m.id===msg.from)) room.lastSeen.set(msg.from,Date.now());
+        return;
+      }
+      default:{
+        // 관전·마이룸·이모티콘 등: 같은 방 참여자가 보낸 것만 전달
+        if((room.state==='host'||room.state==='guest') && room.members.some(m=>m.id===msg.from)){
+          emit('message',{ type:msg.type, from:msg.from, payload:msg.payload, t:msg.t });
+        }
+      }
+    }
+  }
+
+  // 창을 닫거나 새로고침하면 방에서 나간다
+  window.addEventListener('pagehide',()=>{ try{ leaveRoom(); }catch(e){} });
+
+  window.MRSocial=Object.freeze({
+    CONFIG, MSG,
+    getPlayerId, getPlayerName, setPlayerName,
+    createRoom, joinRoom, leaveRoom, sendToRoom,
+    getSnapshot, on,
+    transportKind:()=>transport?transport.kind:'none'
+  });
+})();
+</script>
 </body>
 </html>
