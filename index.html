@@ -11619,5 +11619,10 @@ html body #battle-chain-pop[data-tier="max"].bump{animation:fxMaxPulse .5s ease-
 @keyframes dgDot{50%{transform:scale(1.25);}}
 @media (prefers-reduced-motion:reduce){.dg-mission.is-ready,.dg-bonus.is-ready,#nav-daily.has-reward::after{animation:none;}}
 </style>
+<style id="mr-count-badge">
+/* Owned-count badge sits inside the card so overflow:hidden cards never clip it; pill grows for 2-3 digits. */
+html body #app .inv-item .count,html body #app .char-item-btn .count,html body #app.codex-mode #item-collection-grid .inv-item .count{position:absolute!important;top:5px!important;right:5px!important;left:auto!important;bottom:auto!important;box-sizing:border-box!important;min-width:20px!important;width:auto!important;height:20px!important;padding:0 6px!important;border-radius:999px!important;border:1.5px solid rgba(255,255,255,.92)!important;background:#ff4f87!important;color:#fff!important;font-size:11px!important;font-weight:900!important;line-height:1!important;display:flex!important;align-items:center!important;justify-content:center!important;white-space:nowrap!important;z-index:4!important;box-shadow:0 1px 4px rgba(0,0,0,.35)!important;pointer-events:none;}
+html body #app #char-item-list.emoji-library .char-item-btn .count,html body #app #gacha-grid .inv-item .count{top:1px!important;right:1px!important;min-width:16px!important;height:16px!important;padding:0 4px!important;font-size:9px!important;}
+</style>
 </body>
 </html>
