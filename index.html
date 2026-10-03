@@ -3925,7 +3925,8 @@ window.MRBattleFX=(()=>{
     let lastScoreMergeAt = 0;
     let runFinished = false;
     let runMaxBallLevel = 1;
-    const SCORE_CHAIN_WINDOW_MS = 1800;
+    const SCORE_CHAIN_WINDOW_MS = 3000; // a merge within 3s of the previous one continues the chain
+    window.MR_CHAIN_WINDOW_MS = SCORE_CHAIN_WINDOW_MS;
     const MERGE_SCORE_BY_LEVEL = [0, 10, 20, 35, 55, 80, 120, 175, 250, 350, 500, 700];
 
     // Collection Power: 현재 실제 보유한 '서로 다른 아이템'만 계산.
@@ -4901,7 +4902,9 @@ window.MRBattleFX=(()=>{
         const tier=chain>=10?'max':chain>=5?'hot':'warm';
         const mult=(1+Math.min(9,chain-1)*0.1).toFixed(1);
         const withLabel=!chainLabelShownThisRun;chainLabelShownThisRun=true;
-        el.innerHTML=`${CHAIN_LINK_ICON}<span class="cp-num">${chain}</span>${withLabel?'<span class="cp-label">CHAIN!</span>':''}<span class="cp-mult">x${mult}</span>`;
+        el.innerHTML=`${CHAIN_LINK_ICON}<span class="cp-num">${chain}</span>${withLabel?'<span class="cp-label">CHAIN!</span>':''}<span class="cp-mult">x${mult}</span><span class="cp-gauge" aria-hidden="true"><i></i></span>`;
+        // B: gauge drains over the chain window; the pill stays up until the chain can no longer continue.
+        el.style.setProperty('--cp-ms',SCORE_CHAIN_WINDOW_MS+'ms');el.style.setProperty('--cp-from','1');
         el.setAttribute('aria-label',`${chain} CHAIN x${mult}`);
         el.dataset.tier=tier;
         window.MRFX?.rush(chain,!!gameSettings.screenShake);
@@ -4912,7 +4915,7 @@ window.MRBattleFX=(()=>{
         void el.offsetWidth;
         el.classList.add('show','bump');
         clearTimeout(battleChainPopTimer);
-        battleChainPopTimer=setTimeout(()=>el.classList.remove('show','bump'),tier==='warm'?750:1000);
+        battleChainPopTimer=setTimeout(()=>el.classList.remove('show','bump'),SCORE_CHAIN_WINDOW_MS);
     }
 
     function addMergeScore(newLevel) {
@@ -11453,7 +11456,7 @@ html body #battle-chain-pop[data-tier="max"].bump{animation:fxMaxPulse .5s ease-
    setRush(chain>=5?2:chain>=2?1:0);
    const st=document.getElementById('battle-stage');
    if(st){const o=rushLineOpacity(chain,shakeOn);st.style.setProperty('--rush-o',String(o));}
-   clearTimeout(rushTimer);rushTimer=setTimeout(()=>setRush(0,true),1900);
+   clearTimeout(rushTimer);rushTimer=setTimeout(()=>setRush(0,true),window.MR_CHAIN_WINDOW_MS||3000);
   }catch(e){}
  };
  // B5: energy orb flies from the merge spot to the front hero (main view, both panels visible).
@@ -11540,11 +11543,14 @@ html body #battle-chain-pop[data-tier="max"].bump{animation:fxMaxPulse .5s ease-
  };
  function releaseChain(){
   const h=heldChain;heldChain=null;
-  if(!h||performance.now()-h.at>1800)return; // chain window already over
+  const win=window.MR_CHAIN_WINDOW_MS||3000,left=win-(performance.now()-(h?h.at:0));
+  if(!h||left<=150)return; // chain window already over
   const el=h.el;
   MRFX.placeChain(el);
+  el.style.setProperty('--cp-ms',Math.round(left)+'ms');el.style.setProperty('--cp-from',String(Math.max(0,Math.min(1,left/win))));
+  const g=el.querySelector('.cp-gauge i');if(g){g.style.animation='none';void g.offsetWidth;g.style.animation='';}
   el.classList.remove('show','bump');void el.offsetWidth;el.classList.add('show','bump');
-  clearTimeout(heldHideTimer);heldHideTimer=setTimeout(()=>el.classList.remove('show','bump'),1000);
+  clearTimeout(heldHideTimer);heldHideTimer=setTimeout(()=>el.classList.remove('show','bump'),left);
  }
 
  // ③ "×N HIT" above the enemy (combined hits)
@@ -13229,5 +13235,14 @@ html body #app #item-collection-grid .inv-item.codex-focus{outline:3px solid var
 
 
 
+<style id="mr-chain-gauge">
+/* Chain window gauge under the chain pill (drains over 3s, restarts on every merge). */
+html body #battle-chain-pop{padding-bottom:5px!important;overflow:hidden;}
+html body #battle-chain-pop .cp-gauge{position:absolute;left:9px;right:9px;bottom:2px;height:2px;border-radius:2px;background:rgba(255,255,255,.16);overflow:hidden;pointer-events:none;}
+html body #battle-chain-pop .cp-gauge i{display:block;height:100%;border-radius:2px;background:currentColor;transform-origin:left center;transform:scaleX(var(--cp-from,1));animation:cpDrain var(--cp-ms,3000ms) linear forwards;}
+html body #battle-chain-pop[data-tier="max"] .cp-gauge i{background:#fff;}
+@keyframes cpDrain{from{transform:scaleX(var(--cp-from,1))}to{transform:scaleX(0)}}
+@media (prefers-reduced-motion:reduce){html body #battle-chain-pop .cp-gauge i{animation-duration:var(--cp-ms,3000ms)!important;animation-iteration-count:1!important;}}
+</style>
 </body>
 </html>
