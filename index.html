@@ -3592,7 +3592,7 @@ html body #game-startup-screen.is-leaving{opacity:0!important;transition:opacity
 </div>
 </div>
 </div>
-</div></div><div class="view-container" id="view-social"><div id="social-spectate"></div><div class="view-content" id="social-root"></div></div><div class="view-container" id="view-menu">
+</div></div><div class="view-container" id="view-social"><div id="social-visit"></div><div id="social-spectate"></div><div class="view-content" id="social-root"></div></div><div class="view-container" id="view-menu">
 <div class="subnav-row" id="menu-subnav">
 <button class="subnav-btn active" data-page="stats" onclick="switchMenuPage('stats')">📊 기록</button>
 <button class="subnav-btn" data-page="settings" onclick="switchMenuPage('settings')">⚙️ 설정</button>
@@ -6340,6 +6340,14 @@ function createSocialDataFoundation(assets, emojis) {
         status:()=>({...socialData.status(),ready:!!window.__charSceneLoaded,socialEnabled:false}),
         stableItemId:(category,legacyId)=>socialData.toId(category,legacyId),
         validateRoomSnapshot:input=>socialData.validateRoom(input),
+        // 검증된 방 데이터의 ID를 이 PC의 게임 리소스 경로로 바꿔준다 (소셜 마이룸 방문용, 읽기 전용)
+        resolveRoomAssets:input=>{
+            const room=socialData.validateRoom(input);
+            const emoji=id=>{const sym=socialData.fromId('item',id);const src=REFERENCE_EMOJI_IMAGES?.[sym];return src?{src}:{text:String(sym)};};
+            return {background:backgroundPath('lobby',socialData.fromId('char_bg',room.background.assetId)),
+                characters:room.characters.map(c=>characterPath(socialData.fromId('char',c.assetId))),
+                emojis:room.emojis.map(e=>emoji(e.assetId))};
+        },
         getRoomSnapshot:()=>{
             if(!window.__charSceneLoaded)throw new Error('Room is not loaded');
             return socialData.exportRoom(charScene,charConfig);
@@ -10660,7 +10668,13 @@ function createSocialDataFoundation(assets, emojis) {
  "social.spectateNoData": {"ko": "전투 정보를 받을 수 없어요.", "en": "Can't receive battle info.", "ja": "バトル情報を受信できません。", "zh-CN": "无法接收战斗信息。", "zh-TW": "無法接收戰鬥資訊。", "es": "No se recibe la batalla.", "pt-BR": "Não foi possível receber a batalha.", "fr": "Impossible de recevoir le combat.", "ru": "Не удаётся получить бой.", "it": "Impossibile ricevere la battaglia.", "pl": "Nie można odebrać walki.", "de": "Kampfdaten nicht verfügbar."},
  "social.spectatePaused": {"ko": "일시정지 중", "en": "Paused", "ja": "一時停止中", "zh-CN": "已暂停", "zh-TW": "已暫停", "es": "En pausa", "pt-BR": "Pausado", "fr": "En pause", "ru": "Пауза", "it": "In pausa", "pl": "Wstrzymano", "de": "Pausiert"},
  "social.botMirror": {"ko": "테스트 봇은 내 전투 화면을 대신 보여줘요.", "en": "Test bots show your own battle instead.", "ja": "テスト用ボットは自分のバトルを代わりに表示します。", "zh-CN": "测试机器人会显示你自己的战斗。", "zh-TW": "測試機器人會顯示你自己的戰鬥。", "es": "Los bots de prueba muestran tu propia batalla.", "pt-BR": "Bots de teste mostram sua própria batalha.", "fr": "Les bots de test affichent votre propre combat.", "ru": "Тестовые боты показывают ваш бой.", "it": "I bot di prova mostrano la tua battaglia.", "pl": "Boty testowe pokazują twoją walkę.", "de": "Testbots zeigen deinen eigenen Kampf."},
- "social.watchingNow": {"ko": "관전 중", "en": "Watching", "ja": "観戦中", "zh-CN": "观战中", "zh-TW": "觀戰中", "es": "Viendo", "pt-BR": "Assistindo", "fr": "En direct", "ru": "Смотрю", "it": "Guardando", "pl": "Oglądasz", "de": "Zuschauen"}
+ "social.watchingNow": {"ko": "관전 중", "en": "Watching", "ja": "観戦中", "zh-CN": "观战中", "zh-TW": "觀戰中", "es": "Viendo", "pt-BR": "Assistindo", "fr": "En direct", "ru": "Смотрю", "it": "Guardando", "pl": "Oglądasz", "de": "Zuschauen"},
+ "social.visiting": {"ko": "방문 중", "en": "Visiting", "ja": "訪問中", "zh-CN": "拜访中", "zh-TW": "拜訪中", "es": "Visitando", "pt-BR": "Visitando", "fr": "En visite", "ru": "В гостях", "it": "In visita", "pl": "Odwiedzasz", "de": "Zu Besuch"},
+ "social.visitingNow": {"ko": "방문 중", "en": "Visiting", "ja": "訪問中", "zh-CN": "拜访中", "zh-TW": "拜訪中", "es": "Visitando", "pt-BR": "Visitando", "fr": "En visite", "ru": "В гостях", "it": "In visita", "pl": "Odwiedzasz", "de": "Zu Besuch"},
+ "social.viewOnly": {"ko": "보기 전용", "en": "View only", "ja": "閲覧のみ", "zh-CN": "仅查看", "zh-TW": "僅檢視", "es": "Solo ver", "pt-BR": "Só visualizar", "fr": "Lecture seule", "ru": "Только просмотр", "it": "Solo visione", "pl": "Tylko podgląd", "de": "Nur ansehen"},
+ "social.visitLoading": {"ko": "마이룸을 불러오는 중…", "en": "Loading room…", "ja": "マイルームを読み込み中…", "zh-CN": "正在加载我的房间…", "zh-TW": "正在載入我的房間…", "es": "Cargando habitación…", "pt-BR": "Carregando quarto…", "fr": "Chargement de la chambre…", "ru": "Загрузка комнаты…", "it": "Caricamento stanza…", "pl": "Wczytywanie pokoju…", "de": "Zimmer wird geladen…"},
+ "social.visitNoData": {"ko": "마이룸 정보를 받을 수 없어요.", "en": "Can't load this room.", "ja": "マイルームを受信できません。", "zh-CN": "无法接收我的房间信息。", "zh-TW": "無法接收我的房間資訊。", "es": "No se puede cargar la habitación.", "pt-BR": "Não foi possível carregar o quarto.", "fr": "Impossible de charger la chambre.", "ru": "Не удаётся загрузить комнату.", "it": "Impossibile caricare la stanza.", "pl": "Nie można wczytać pokoju.", "de": "Zimmer kann nicht geladen werden."},
+ "social.botMirrorRoom": {"ko": "테스트 봇은 내 마이룸을 대신 보여줘요.", "en": "Test bots show your own room instead.", "ja": "テスト用ボットは自分のマイルームを代わりに表示します。", "zh-CN": "测试机器人会显示你自己的房间。", "zh-TW": "測試機器人會顯示你自己的房間。", "es": "Los bots de prueba muestran tu propia habitación.", "pt-BR": "Bots de teste mostram seu próprio quarto.", "fr": "Les bots de test affichent votre propre chambre.", "ru": "Тестовые боты показывают вашу комнату.", "it": "I bot di prova mostrano la tua stanza.", "pl": "Boty testowe pokazują twój pokój.", "de": "Testbots zeigen dein eigenes Zimmer."}
 }
 </script>
 <script id="mr-localization">
@@ -11783,7 +11797,8 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
     SPECTATE_WATCH:'spectate.watch',// 보는 사람 → 대상: 관전 시작/종료
     SPECTATE_STATE:'spectate.state',// 대상 → 방: 관전용 전투 화면 상태
     BATTLE_EVENT:'battle.event',    // (예약) 공격·스킬 이벤트
-    MYROOM_DATA:'myroom.data',      // (예약) 마이룸 배치 데이터
+    MYROOM_REQUEST:'myroom.request',// 방문자 → 방 주인: 마이룸 데이터 요청
+    MYROOM_DATA:'myroom.data',      // 방 주인 → 방문자: 마이룸 배치 데이터
     EMOTE:'emote'                   // (예약) 이모티콘 보내기
   });
   const KNOWN_TYPES=new Set(Object.values(MSG));
@@ -12252,6 +12267,7 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
   function slotView(s,slot){
     const m=s.members.find(x=>x.slot===slot);
     const watching=window.MRSpectate?.watching?.()||null;
+    const visiting=window.MRVisit?.visiting?.()||null;
     if(!m){
       const canBot=s.isHost && S.CONFIG.DEV_TOOLS;
       return `<div class="social-slot empty">
@@ -12262,8 +12278,7 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
     }
     const actions = m.isSelf ? '' :
       `<button class="social-btn small${watching===m.id?' on':''}" data-act="watch" data-id="${esc(m.id)}">${T(watching===m.id?'social.watchingNow':'social.watch')}</button>
-       <button class="social-btn small" data-act="visit" data-id="${esc(m.id)}" disabled>${T('social.visit')}</button>
-       <span class="social-soon">${T('social.soon')}</span>
+       <button class="social-btn small${visiting===m.id?' on':''}" data-act="visit" data-id="${esc(m.id)}">${T(visiting===m.id?'social.visitingNow':'social.visit')}</button>
        ${m.isBot && s.isHost ? `<button class="social-btn small ghost" data-act="remove-bot" data-id="${esc(m.id)}">${T('social.removeBot')}</button>`:''}`;
     return `<div class="social-slot${m.isSelf?' is-self':''}${m.isHost?' is-host':''}">
       <div class="social-avatar">${m.isHost?'👑':slot}</div>
@@ -12322,7 +12337,12 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
       }
       else if(act==='watch'){
         const id=btn.dataset.id;
-        if(window.MRSpectate?.watching?.()===id) window.MRSpectate.stop(); else window.MRSpectate?.watch(id);
+        if(window.MRSpectate?.watching?.()===id) window.MRSpectate.stop(); else { window.MRVisit?.close?.(); window.MRSpectate?.watch(id); }
+        document.getElementById('view-social')?.scrollTo?.({top:0,behavior:'smooth'});
+      }
+      else if(act==='visit'){
+        const id=btn.dataset.id;
+        if(window.MRVisit?.visiting?.()===id) window.MRVisit.close(); else window.MRVisit?.visit(id);
         document.getElementById('view-social')?.scrollTo?.({top:0,behavior:'smooth'});
       }
       else if(act==='add-bot'){ S.addFakePlayer(); }
@@ -12340,7 +12360,7 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
   S.on('closed',e=>{ ui.message=CLOSED[e.reason]||''; render(); });
   render();
   // 관전 모듈은 이 스크립트 뒤에 로드되므로 준비되면 연결
-  setTimeout(()=>{ window.MRSpectate?.onChange(render); },0);
+  setTimeout(()=>{ window.MRSpectate?.onChange(render); window.MRVisit?.onChange(render); },0);
 })();
 </script>
 <style id="mr-social-spectate-style">
@@ -12612,6 +12632,185 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
   });
 })();
 </script>
+<style id="mr-social-visit-style">
+#social-visit{padding:12px 12px 0;box-sizing:border-box;}
+#social-visit:empty{display:none;}
+#social-visit .visit-panel{background:var(--t-surface,#18263a);border:1px solid var(--t-gold,#e8c96b);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px;}
+#social-visit .visit-head{display:flex;align-items:center;gap:7px;min-width:0;}
+#social-visit .visit-tag{flex:0 0 auto;font-size:9.5px;font-weight:1000;color:var(--t-gold,#e8c96b);border:1px solid rgba(232,201,107,.5);border-radius:999px;padding:2px 7px;}
+#social-visit .visit-label{flex:0 0 auto;font-size:10.5px;color:var(--t-mute,#71859b);font-weight:800;}
+#social-visit .visit-name{font-size:12.5px;font-weight:900;color:var(--t-text,#e6eef5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+#social-visit .visit-close{margin-left:auto;flex:0 0 auto;border:1px solid var(--t-line,#2f4560);background:transparent;color:var(--t-text,#e6eef5);border-radius:8px;padding:5px 9px;font-size:10.5px;font-weight:900;cursor:pointer;font-family:inherit;}
+#social-visit .visit-room{position:relative;width:100%;aspect-ratio:2/3;max-height:62vh;border-radius:10px;overflow:hidden;background:#1d2a3c;container-type:inline-size;isolation:isolate;}
+#social-visit .visit-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;user-select:none;pointer-events:none;transform-origin:center center;}
+#social-visit .visit-char{position:absolute;width:44%;height:58%;object-fit:contain;z-index:2;cursor:pointer;user-select:none;-webkit-user-drag:none;transition:filter .15s;}
+#social-visit .visit-char.love{animation:visit-love .6s cubic-bezier(.22,.85,.32,1);}
+@keyframes visit-love{40%{translate:0 -3%;filter:drop-shadow(0 0 10px rgba(255,120,170,.8));}}
+#social-visit .visit-emoji{position:absolute;z-index:4;line-height:1;font-size:clamp(14px,7cqw,42px);user-select:none;pointer-events:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.18));transform-origin:center center;}
+#social-visit .visit-emoji img{width:1em;height:1em;display:block;}
+#social-visit .visit-heart{position:absolute;z-index:8;pointer-events:none;font-size:16px;transform:translate(-50%,-50%) scale(.7);animation:visit-heart .95s ease-out forwards;}
+@keyframes visit-heart{0%{opacity:0;transform:translate(-50%,-35%) scale(.55);}18%{opacity:1;}100%{opacity:0;transform:translate(calc(-50% + var(--hx)),calc(-50% - 62px)) scale(1.2) rotate(var(--hr));}}
+#social-visit .visit-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 16px;background:rgba(15,24,36,.72);color:var(--t-sub,#9fb1c4);font-size:11.5px;font-weight:800;z-index:9;}
+#social-visit .visit-overlay[hidden]{display:none;}
+#social-visit .visit-note{font-size:10px;color:var(--t-mute,#71859b);}
+#social-visit .visit-note:empty{display:none;}
+@media (prefers-reduced-motion:reduce){#social-visit .visit-char.love,#social-visit .visit-heart{animation:none;opacity:0;}}
+</style>
+<script id="mr-social-visit">
+/* =====================================================================
+ * 친구 마이룸 방문 (보기 전용)
+ *  - 주고받는 것은 배치 데이터뿐: 배경·캐릭터·이모지의 ID와 위치·크기·회전·반전
+ *    (기존 MergeRunFoundation.getRoomSnapshot / validateRoomSnapshot 재사용)
+ *  - 이미지는 각자 PC의 게임 리소스로 표시, 방문자는 편집할 수 없음
+ *  - 캐릭터를 누르면 하트 반응 (내 화면에서만)
+ * ===================================================================== */
+(function(){
+  'use strict';
+  const S=window.MRSocial, F=window.MergeRunFoundation;
+  const box=document.getElementById('social-visit');
+  if(!S||!F||!box) return;
+  const MSG=S.MSG;
+  const NODATA_MS=6000;
+  const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const tr=key=>{ try{ return window.MRLocale?.k ? window.MRLocale.k(key) : key; }catch(e){ return key; } };
+  const T=key=>`<span data-i18n="${key}">${esc(tr(key))}</span>`;
+
+  function mySnapshot(){
+    try{ return F.getRoomSnapshot(); }catch(e){ return null; }
+  }
+
+  /* ---------- 방 주인 쪽: 요청이 오면 내 배치 데이터만 보냄 ---------- */
+  S.on('message',msg=>{
+    if(msg.type===MSG.MYROOM_REQUEST){
+      const room=mySnapshot();
+      S.sendToRoom(MSG.MYROOM_DATA, room?{ room }:{ error:'unavailable' }, msg.from);
+    }else if(msg.type===MSG.MYROOM_DATA){
+      if(view.target && !view.mirror && msg.from===view.target){
+        clearTimeout(view.timer);
+        if(msg.payload.room) show(msg.payload.room); else setOverlay('social.visitNoData');
+      }
+    }
+  });
+
+  /* ---------- 방문자 쪽 ---------- */
+  const view={ target:null, name:'', mirror:false, timer:null, els:null, hearts:0 };
+  const changeHandlers=new Set();
+  function emitChange(){ changeHandlers.forEach(fn=>{ try{ fn(view.target); }catch(e){} }); }
+
+  function buildPanel(){
+    box.innerHTML=`<div class="visit-panel">
+      <div class="visit-head">
+        <span class="visit-tag">${T('social.viewOnly')}</span>
+        <span class="visit-label">${T('social.visiting')}</span>
+        <b class="visit-name"></b>
+        <button class="visit-close" data-visit="close">${T('social.spectateClose')}</button>
+      </div>
+      <div class="visit-room">
+        <img class="visit-bg" alt="" hidden>
+        <div class="visit-layer"></div>
+        <div class="visit-overlay">${T('social.visitLoading')}</div>
+      </div>
+      <div class="visit-note"></div>
+    </div>`;
+    view.els={ room:box.querySelector('.visit-room'), bg:box.querySelector('.visit-bg'), layer:box.querySelector('.visit-layer'),
+      overlay:box.querySelector('.visit-overlay'), note:box.querySelector('.visit-note') };
+    box.querySelector('.visit-name').textContent=view.name;
+    if(view.mirror) view.els.note.innerHTML=T('social.botMirrorRoom');
+  }
+  function setOverlay(key){
+    const o=view.els?.overlay; if(!o) return;
+    if(!key){ o.hidden=true; return; }
+    o.hidden=false; o.innerHTML=T(key);
+  }
+  function show(rawRoom){
+    if(!view.els) return;
+    let room, assets;
+    try{
+      room=F.validateRoomSnapshot(rawRoom);     // 형식·개수·ID 검사 (모르는 아이템이면 거부)
+      assets=F.resolveRoomAssets(room);         // ID → 내 PC의 게임 리소스 경로
+    }catch(e){
+      console.warn('[social-visit] invalid room',e);
+      setOverlay('social.visitNoData'); return;
+    }
+    const e=view.els;
+    const bgT=room.background;
+    e.bg.hidden=false;
+    e.bg.src=assets.background;
+    e.bg.style.objectPosition=`${bgT.x}% ${bgT.y}%`;
+    e.bg.style.transform=`scale(${bgT.scale})`;
+    const parts=[];
+    room.characters.forEach((c,i)=>{
+      parts.push(`<img class="visit-char" data-i="${i}" alt="" draggable="false" src="${esc(assets.characters[i])}"
+        style="left:${c.x}%;top:${c.y}%;transform:translate(-50%,-50%) scale(${c.scale}) rotate(${c.rotation}deg) scaleX(${c.flip});z-index:${2+i}">`);
+    });
+    room.emojis.forEach((m,i)=>{
+      const a=assets.emojis[i]||{};
+      const inner=a.src?`<img src="${esc(a.src)}" alt="" draggable="false">`:esc(a.text||'');
+      parts.push(`<span class="visit-emoji" style="left:${m.x}%;top:${m.y}%;transform:translate(-50%,-50%) scale(${m.scale}) rotate(${m.rotation}deg) scaleX(${m.flip})">${inner}</span>`);
+    });
+    e.layer.innerHTML=parts.join('');
+    setOverlay(null);
+  }
+  function hearts(char,ev){
+    const room=view.els?.room; if(!room) return;
+    const r=room.getBoundingClientRect(), cr=char.getBoundingClientRect();
+    const x=(ev?.clientX ?? cr.left+cr.width/2)-r.left, y=(ev?.clientY ?? cr.top+cr.height*.36)-r.top;
+    char.classList.remove('love'); void char.offsetWidth; char.classList.add('love');
+    const icons=['💗','💕','💖','💓','💞'], offsets=[-34,-18,0,19,35];
+    for(let i=0;i<5;i++){
+      const h=document.createElement('span');
+      h.className='visit-heart'; h.textContent=icons[(view.hearts+i)%icons.length];
+      h.style.left=x+'px'; h.style.top=y+'px';
+      h.style.setProperty('--hx',offsets[i]+'px'); h.style.setProperty('--hr',(offsets[i]/3)+'deg');
+      room.appendChild(h); setTimeout(()=>h.remove(),1000);
+    }
+    view.hearts++;
+    try{ window.playSfx?.('characterLove',{minGap:140}); }catch(e){}
+  }
+
+  function visit(id){
+    const snap=S.getSnapshot();
+    const m=snap.members.find(x=>x.id===id);
+    if(!m || m.isSelf) return false;
+    close(false);
+    window.MRSpectate?.stop?.();
+    view.target=id; view.name=m.name;
+    view.mirror=m.isBot && snap.isHost;   // 혼자 테스트: 봇은 내 마이룸을 대신 보여줌
+    buildPanel();
+    if(view.mirror){
+      const room=mySnapshot();
+      if(room) show(room); else setOverlay('social.visitNoData');
+    }else{
+      S.sendToRoom(MSG.MYROOM_REQUEST,{},id);
+      view.timer=setTimeout(()=>{ if(view.target===id) setOverlay('social.visitNoData'); },NODATA_MS);
+    }
+    emitChange();
+    return true;
+  }
+  function close(notify=true){
+    clearTimeout(view.timer);
+    view.target=null; view.mirror=false; view.els=null; view.timer=null;
+    box.innerHTML='';
+    if(notify!==null) emitChange();
+  }
+
+  box.addEventListener('click',e=>{
+    if(e.target.closest('[data-visit="close"]')){ close(); return; }
+    const ch=e.target.closest('.visit-char');
+    if(ch) hearts(ch,e);
+  });
+  S.on('state',snap=>{
+    if(view.target && (snap.state==='idle' || !snap.members.some(m=>m.id===view.target))) close();
+  });
+
+  window.MRVisit=Object.freeze({
+    visit, close:()=>close(),
+    visiting:()=>view.target,
+    onChange(fn){ changeHandlers.add(fn); return ()=>changeHandlers.delete(fn); }
+  });
+})();
+</script>
+
 
 
 </body>
