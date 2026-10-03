@@ -6653,23 +6653,39 @@ function createSocialDataFoundation(assets, emojis) {
     };
 
     // ================= [ 상점: 통합 뽑기 + 테스트 지급 ] =================
+    // 등급 안 균등 뽑기: 등급이 정해지면 그 등급의 모든 아이템을 한 목록에 모아 하나를 고른다.
+    // 같은 등급의 아이템은 분류(캐릭터·배경 등)와 상관없이 모두 같은 확률로 나온다.
+    // 분류에 아이템이 추가돼도 그 분류만 희귀해지지 않고 등급 전체 확률이 골고루 나뉜다.
+    function pickUniformInTier(categories, tier) {
+        const entries = [];
+        for (const cat of categories) {
+            const inv = getInventoryRef(cat);
+            if (!inv) continue;
+            for (const id of getPool(cat, tier)) if (inv[id]) entries.push({ category:cat, id });
+        }
+        if (!entries.length) return null;
+        return entries[Math.floor(Math.random() * entries.length)];
+    }
+
+    function grantDrop(pick, tier) {
+        const inv = getInventoryRef(pick.category);
+        if (!inv || !inv[pick.id]) return null;
+        inv[pick.id].count++;
+        return { category:pick.category, id:pick.id, tier };
+    }
+
     function generateDrops(times) {
-        // 무료/테스트용: 기존 전체 카테고리 + 기존 N~UR 확률
+        // 무료/테스트용: 전체 카테고리 + N~UR 확률, 등급 안에서는 아이템 균등
         const results = [];
         const categories = ['item', 'skin', 'char', 'battle_char', 'char_bg', 'bg_battle', 'bg_merge'];
         for (let i=0; i<times; i++) {
             let tier = firstRewardForcesUR ? 'UR' : rollTier();
             if (firstRewardForcesUR) firstRewardForcesUR = false;
-            let validCats = categories.filter(cat => getPool(cat, tier).length > 0);
-            if (validCats.length === 0) { tier = 'N'; validCats = categories.filter(cat => getPool(cat, tier).length > 0); }
-            if (validCats.length === 0) continue;
-            const pickedCat = validCats[Math.floor(Math.random() * validCats.length)];
-            const pool = getPool(pickedCat, tier);
-            const pickedId = pool[Math.floor(Math.random() * pool.length)];
-            const inv = getInventoryRef(pickedCat);
-            if (!inv || !inv[pickedId]) continue;
-            inv[pickedId].count++;
-            results.push({ category:pickedCat, id:pickedId, tier });
+            let pick = pickUniformInTier(categories, tier);
+            if (!pick) { tier = 'N'; pick = pickUniformInTier(categories, tier); }
+            if (!pick) continue;
+            const result = grantDrop(pick, tier);
+            if (result) results.push(result);
         }
         return results;
     }
@@ -6678,35 +6694,18 @@ function createSocialDataFoundation(assets, emojis) {
         // 현재 이모지 카탈로그는 N 등급만 존재합니다.
         // N(95%)은 이모지에서 직접 지급하고, R(5%)은 R 등급 전체 수집품 중 하나를 보너스로 지급합니다.
         let tier = rollEmojiTier();
-        let pickedCat = 'item';
-        let pool = [];
-        if(tier === 'N') {
-            pool = getPool('item','N');
-        } else {
-            const rCats=['skin','char','battle_char','char_bg','bg_battle','bg_merge'];
-            const valid=rCats.filter(cat=>getPool(cat,'R').length>0);
-            if(valid.length){ pickedCat=valid[Math.floor(Math.random()*valid.length)]; pool=getPool(pickedCat,'R'); }
-        }
-        if(!pool.length) return [];
-        const pickedId=pool[Math.floor(Math.random()*pool.length)];
-        const inv=getInventoryRef(pickedCat);
-        if(!inv || !inv[pickedId]) return [];
-        inv[pickedId].count++;
-        return [{category:pickedCat,id:pickedId,tier}];
+        const cats = tier === 'N' ? ['item'] : ['skin','char','battle_char','char_bg','bg_battle','bg_merge'];
+        const pick = pickUniformInTier(cats, tier);
+        const result = pick && grantDrop(pick, tier);
+        return result ? [result] : [];
     }
 
     function generatePremiumDrop() {
         const tier=rollPremiumTier();
         const categories=['skin','char','battle_char','char_bg','bg_battle','bg_merge'];
-        const validCats=categories.filter(cat=>getPool(cat,tier).length>0);
-        if(!validCats.length) return [];
-        const pickedCat=validCats[Math.floor(Math.random()*validCats.length)];
-        const pool=getPool(pickedCat,tier);
-        const pickedId=pool[Math.floor(Math.random()*pool.length)];
-        const inv=getInventoryRef(pickedCat);
-        if(!inv || !inv[pickedId]) return [];
-        inv[pickedId].count++;
-        return [{category:pickedCat,id:pickedId,tier}];
+        const pick=pickUniformInTier(categories,tier);
+        const result=pick && grantDrop(pick,tier);
+        return result ? [result] : [];
     }
 
     function showGachaResults(results, title='🎉 획득 성공! 🎉') {
