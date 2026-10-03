@@ -8884,7 +8884,8 @@ function createSocialDataFoundation(assets, emojis) {
                 }
                 if(hasActor){
                     const hitLevel=window.__mrHitLevel||0;
-                    playSfx(state==='skill'?'skillHit':'attack',{minGap:80});
+                    // Normal attack swish only ('삭삭'); the heavier skill-hit sound stays off.
+                    if(state!=='skill') playSfx('attack',{minGap:80});
                     window.MRFX?.enemyHit(hitLevel,state,!!gameSettings.screenShake);
                 }
                 hit++;
