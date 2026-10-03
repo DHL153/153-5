@@ -4904,7 +4904,7 @@ window.MRBattleFX=(()=>{
         el.innerHTML=`${CHAIN_LINK_ICON}<span class="cp-num">${chain}</span>${withLabel?'<span class="cp-label">CHAIN!</span>':''}<span class="cp-mult">x${mult}</span>`;
         el.setAttribute('aria-label',`${chain} CHAIN x${mult}`);
         el.dataset.tier=tier;
-        window.MRFX?.rush(chain);
+        window.MRFX?.rush(chain,!!gameSettings.screenShake);
         // Boss WARNING owns the screen: hold the pill and show it once the warning ends.
         if(window.MRFX?.holdChain(el)){clearTimeout(battleChainPopTimer);return;}
         window.MRFX?.placeChain(el);
@@ -11246,8 +11246,8 @@ html body #battle-chain-pop[data-tier="max"].bump{animation:fxMaxPulse .5s ease-
  background-position:0 24%,40px 43%,15px 62%,70px 80%;
  -webkit-mask:linear-gradient(90deg,#000,transparent 15%,transparent 85%,#000);mask:linear-gradient(90deg,#000,transparent 15%,transparent 85%,#000);
  animation:fxSpeed .22s linear infinite;}
-#battle-stage[data-rush="2"] .mrfx-speed{opacity:.32;}
-#battle-stage[data-rush="1"] .mrfx-speed{opacity:0;}
+/* Speed lines: visible from chain 3, stronger with longer chains (--rush-o set by MRFX.rush); fade out over .5s. */
+#battle-stage .mrfx-speed{opacity:var(--rush-o,0);transition:opacity .5s ease-out;}
 #battle-stage .mrfx-hits{position:absolute;z-index:29;pointer-events:none;opacity:0;white-space:nowrap;padding:2px 7px;border-radius:999px;background:rgba(10,20,34,.7);border:1px solid rgba(158,234,255,.55);color:#bdeeff;font-size:9px;font-weight:900;letter-spacing:.6px;}
 #battle-stage .mrfx-hits b{font-size:12px;color:#fff;}
 @keyframes fxSpeed{from{background-position:0 24%,40px 43%,15px 62%,70px 80%}to{background-position:-120px 24%,-110px 43%,-115px 62%,-100px 80%}}
@@ -11425,18 +11425,36 @@ html body #battle-chain-pop[data-tier="max"].bump{animation:fxMaxPulse .5s ease-
   const st=document.getElementById('battle-stage'),pano=document.getElementById('battle-panorama');if(!st||!st.getAnimations)return [];
   return st.getAnimations({subtree:true}).filter(a=>{const tg=a.effect?.target;return tg&&((pano&&(tg===pano||pano.contains(tg)))||(tg===st&&a.effect.pseudoElement));});
  }
- function setRush(level){
+ let rushRate=1,rushRaf=0;
+ function applyRushRate(rate){rushRate=rate;panoramaAnimations().forEach(a=>{try{a.updatePlaybackRate(rate);}catch(e){a.playbackRate=rate;}});}
+ // 5: ease the background back to normal speed over 0.5s instead of snapping.
+ function easeRushRate(to,ms){
+  cancelAnimationFrame(rushRaf);
+  const from=rushRate,t0=performance.now();
+  if(Math.abs(from-to)<.01){applyRushRate(to);return;}
+  const step=now=>{const k=Math.min(1,(now-t0)/ms),e=1-Math.pow(1-k,2);applyRushRate(from+(to-from)*e);if(k<1)rushRaf=requestAnimationFrame(step);};
+  rushRaf=requestAnimationFrame(step);
+ }
+ function setRush(level,ease){
   const st=document.getElementById('battle-stage');if(!st)return;
   const rate=level>=2?2.4:level===1?1.6:1;
-  panoramaAnimations().forEach(a=>{try{a.updatePlaybackRate(rate);}catch(e){a.playbackRate=rate;}});
+  if(ease)easeRushRate(rate,500);else{cancelAnimationFrame(rushRaf);applyRushRate(rate);}
   if(level){st.dataset.rush=String(level);if(!st.querySelector('.mrfx-speed')){const sp=document.createElement('div');sp.className='mrfx-speed';sp.setAttribute('aria-hidden','true');st.appendChild(sp);}}
-  else delete st.dataset.rush;
+  else{delete st.dataset.rush;st.style.setProperty('--rush-o','0');}
  }
- MRFX.rush=function(chain){
+ // 4: speed lines from chain 3; opacity grows with the chain (3 -> .14 ... 10+ -> .42). Half strength when screen shake is off.
+ function rushLineOpacity(chain,shakeOn){
+  if(chain<3)return 0;
+  const o=Math.min(.42,.14+(chain-3)*.04);
+  return shakeOn===false?o*.5:o;
+ }
+ MRFX.rush=function(chain,shakeOn){
   try{
    if(reduce())return;
    setRush(chain>=5?2:chain>=2?1:0);
-   clearTimeout(rushTimer);rushTimer=setTimeout(()=>setRush(0),1900);
+   const st=document.getElementById('battle-stage');
+   if(st){const o=rushLineOpacity(chain,shakeOn);st.style.setProperty('--rush-o',String(o));}
+   clearTimeout(rushTimer);rushTimer=setTimeout(()=>setRush(0,true),1900);
   }catch(e){}
  };
  // B5: energy orb flies from the merge spot to the front hero (main view, both panels visible).
