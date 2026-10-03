@@ -3592,7 +3592,7 @@ html body #game-startup-screen.is-leaving{opacity:0!important;transition:opacity
 </div>
 </div>
 </div>
-</div></div><div class="view-container" id="view-social"><div class="view-content" id="social-root"></div></div><div class="view-container" id="view-menu">
+</div></div><div class="view-container" id="view-social"><div id="social-spectate"></div><div class="view-content" id="social-root"></div></div><div class="view-container" id="view-menu">
 <div class="subnav-row" id="menu-subnav">
 <button class="subnav-btn active" data-page="stats" onclick="switchMenuPage('stats')">📊 기록</button>
 <button class="subnav-btn" data-page="settings" onclick="switchMenuPage('settings')">⚙️ 설정</button>
@@ -10653,7 +10653,14 @@ function createSocialDataFoundation(assets, emojis) {
  "social.err.invalid": {"ko": "방 코드가 올바르지 않아요.", "en": "Invalid room code.", "ja": "コードが正しくありません。", "zh-CN": "房间代码无效。", "zh-TW": "房間代碼無效。", "es": "Código no válido.", "pt-BR": "Código inválido.", "fr": "Code invalide.", "ru": "Неверный код.", "it": "Codice non valido.", "pl": "Nieprawidłowy kod.", "de": "Ungültiger Code."},
  "social.msg.hostLeft": {"ko": "방장이 방을 닫았어요.", "en": "The host closed the room.", "ja": "ホストがROOMを閉じました。", "zh-CN": "房主关闭了房间。", "zh-TW": "房主關閉了房間。", "es": "El anfitrión cerró la sala.", "pt-BR": "O anfitrião fechou a sala.", "fr": "L'hôte a fermé le salon.", "ru": "Хост закрыл комнату.", "it": "L'host ha chiuso la stanza.", "pl": "Gospodarz zamknął pokój.", "de": "Der Host hat den Raum geschlossen."},
  "social.msg.hostTimeout": {"ko": "방장과 연결이 끊겼어요.", "en": "Lost connection to the host.", "ja": "ホストとの接続が切れました。", "zh-CN": "与房主的连接已断开。", "zh-TW": "與房主的連線已中斷。", "es": "Se perdió la conexión con el anfitrión.", "pt-BR": "Conexão com o anfitrião perdida.", "fr": "Connexion à l'hôte perdue.", "ru": "Связь с хостом потеряна.", "it": "Connessione con l'host persa.", "pl": "Utracono połączenie z gospodarzem.", "de": "Verbindung zum Host verloren."},
- "social.msg.removed": {"ko": "방에서 나왔어요.", "en": "You left the room.", "ja": "ROOMから退出しました。", "zh-CN": "你已离开房间。", "zh-TW": "你已離開房間。", "es": "Saliste de la sala.", "pt-BR": "Você saiu da sala.", "fr": "Vous avez quitté le salon.", "ru": "Вы вышли из комнаты.", "it": "Sei uscito dalla stanza.", "pl": "Opuszczono pokój.", "de": "Du hast den Raum verlassen."}
+ "social.msg.removed": {"ko": "방에서 나왔어요.", "en": "You left the room.", "ja": "ROOMから退出しました。", "zh-CN": "你已离开房间。", "zh-TW": "你已離開房間。", "es": "Saliste de la sala.", "pt-BR": "Você saiu da sala.", "fr": "Vous avez quitté le salon.", "ru": "Вы вышли из комнаты.", "it": "Sei uscito dalla stanza.", "pl": "Opuszczono pokój.", "de": "Du hast den Raum verlassen."},
+ "social.spectating": {"ko": "관전 중", "en": "Watching", "ja": "観戦中", "zh-CN": "观战中", "zh-TW": "觀戰中", "es": "Viendo", "pt-BR": "Assistindo", "fr": "En direct", "ru": "Просмотр", "it": "Guardando", "pl": "Oglądasz", "de": "Zuschauen"},
+ "social.spectateClose": {"ko": "닫기", "en": "Close", "ja": "閉じる", "zh-CN": "关闭", "zh-TW": "關閉", "es": "Cerrar", "pt-BR": "Fechar", "fr": "Fermer", "ru": "Закрыть", "it": "Chiudi", "pl": "Zamknij", "de": "Schließen"},
+ "social.spectateWaiting": {"ko": "전투 정보를 받는 중…", "en": "Loading battle…", "ja": "バトル情報を受信中…", "zh-CN": "正在接收战斗信息…", "zh-TW": "正在接收戰鬥資訊…", "es": "Cargando batalla…", "pt-BR": "Carregando batalha…", "fr": "Chargement du combat…", "ru": "Загрузка боя…", "it": "Caricamento battaglia…", "pl": "Wczytywanie walki…", "de": "Kampf wird geladen…"},
+ "social.spectateNoData": {"ko": "전투 정보를 받을 수 없어요.", "en": "Can't receive battle info.", "ja": "バトル情報を受信できません。", "zh-CN": "无法接收战斗信息。", "zh-TW": "無法接收戰鬥資訊。", "es": "No se recibe la batalla.", "pt-BR": "Não foi possível receber a batalha.", "fr": "Impossible de recevoir le combat.", "ru": "Не удаётся получить бой.", "it": "Impossibile ricevere la battaglia.", "pl": "Nie można odebrać walki.", "de": "Kampfdaten nicht verfügbar."},
+ "social.spectatePaused": {"ko": "일시정지 중", "en": "Paused", "ja": "一時停止中", "zh-CN": "已暂停", "zh-TW": "已暫停", "es": "En pausa", "pt-BR": "Pausado", "fr": "En pause", "ru": "Пауза", "it": "In pausa", "pl": "Wstrzymano", "de": "Pausiert"},
+ "social.botMirror": {"ko": "테스트 봇은 내 전투 화면을 대신 보여줘요.", "en": "Test bots show your own battle instead.", "ja": "テスト用ボットは自分のバトルを代わりに表示します。", "zh-CN": "测试机器人会显示你自己的战斗。", "zh-TW": "測試機器人會顯示你自己的戰鬥。", "es": "Los bots de prueba muestran tu propia batalla.", "pt-BR": "Bots de teste mostram sua própria batalha.", "fr": "Les bots de test affichent votre propre combat.", "ru": "Тестовые боты показывают ваш бой.", "it": "I bot di prova mostrano la tua battaglia.", "pl": "Boty testowe pokazują twoją walkę.", "de": "Testbots zeigen deinen eigenen Kampf."},
+ "social.watchingNow": {"ko": "관전 중", "en": "Watching", "ja": "観戦中", "zh-CN": "观战中", "zh-TW": "觀戰中", "es": "Viendo", "pt-BR": "Assistindo", "fr": "En direct", "ru": "Смотрю", "it": "Guardando", "pl": "Oglądasz", "de": "Zuschauen"}
 }
 </script>
 <script id="mr-localization">
@@ -11773,7 +11780,8 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
     ROOM_LEAVE:'room.leave',        // 손님 → 방장: 퇴장
     ROOM_CLOSE:'room.close',        // 방장 → 전원: 방 종료
     PING:'ping',                    // 전원: 접속 확인
-    SPECTATE_STATE:'spectate.state',// (예약) 관전용 전투 상태
+    SPECTATE_WATCH:'spectate.watch',// 보는 사람 → 대상: 관전 시작/종료
+    SPECTATE_STATE:'spectate.state',// 대상 → 방: 관전용 전투 화면 상태
     BATTLE_EVENT:'battle.event',    // (예약) 공격·스킬 이벤트
     MYROOM_DATA:'myroom.data',      // (예약) 마이룸 배치 데이터
     EMOTE:'emote'                   // (예약) 이모티콘 보내기
@@ -12162,6 +12170,7 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
 #social-root .social-btn{border:1px solid var(--t-line,#2f4560);background:transparent;color:var(--t-text,#e6eef5);border-radius:10px;padding:10px 12px;font-size:12px;font-weight:900;cursor:pointer;font-family:inherit;}
 #social-root .social-btn.primary{background:var(--t-accent,#7ce3d1);border-color:var(--t-accent,#7ce3d1);color:var(--t-accent-ink,#0f2a33);padding:12px;font-size:13px;}
 #social-root .social-btn.danger{color:var(--t-danger,#ef7d8c);border-color:rgba(239,125,140,.5);}
+#social-root .social-btn.on{border-color:var(--t-accent,#7ce3d1);color:var(--t-accent,#7ce3d1);}
 #social-root .social-btn.small{padding:6px 9px;font-size:10.5px;border-radius:8px;}
 #social-root .social-btn.ghost{border-style:dashed;color:var(--t-sub,#9fb1c4);}
 #social-root .social-btn.wide{width:100%;}
@@ -12242,6 +12251,7 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
 
   function slotView(s,slot){
     const m=s.members.find(x=>x.slot===slot);
+    const watching=window.MRSpectate?.watching?.()||null;
     if(!m){
       const canBot=s.isHost && S.CONFIG.DEV_TOOLS;
       return `<div class="social-slot empty">
@@ -12251,7 +12261,7 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
       </div>`;
     }
     const actions = m.isSelf ? '' :
-      `<button class="social-btn small" data-act="watch" data-id="${esc(m.id)}" disabled>${T('social.watch')}</button>
+      `<button class="social-btn small${watching===m.id?' on':''}" data-act="watch" data-id="${esc(m.id)}">${T(watching===m.id?'social.watchingNow':'social.watch')}</button>
        <button class="social-btn small" data-act="visit" data-id="${esc(m.id)}" disabled>${T('social.visit')}</button>
        <span class="social-soon">${T('social.soon')}</span>
        ${m.isBot && s.isHost ? `<button class="social-btn small ghost" data-act="remove-bot" data-id="${esc(m.id)}">${T('social.removeBot')}</button>`:''}`;
@@ -12310,6 +12320,11 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
         ui.copied=true; render();
         setTimeout(()=>{ ui.copied=false; if(S.getSnapshot().state!=='idle') render(); },1500);
       }
+      else if(act==='watch'){
+        const id=btn.dataset.id;
+        if(window.MRSpectate?.watching?.()===id) window.MRSpectate.stop(); else window.MRSpectate?.watch(id);
+        document.getElementById('view-social')?.scrollTo?.({top:0,behavior:'smooth'});
+      }
       else if(act==='add-bot'){ S.addFakePlayer(); }
       else if(act==='remove-bot'){ S.removeFakePlayer(btn.dataset.id); }
     }catch(err){ console.warn('[social-ui]',err); }
@@ -12324,8 +12339,280 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
   S.on('state',render);
   S.on('closed',e=>{ ui.message=CLOSED[e.reason]||''; render(); });
   render();
+  // 관전 모듈은 이 스크립트 뒤에 로드되므로 준비되면 연결
+  setTimeout(()=>{ window.MRSpectate?.onChange(render); },0);
 })();
 </script>
+<style id="mr-social-spectate-style">
+#social-spectate{padding:12px 12px 0;box-sizing:border-box;}
+#social-spectate:empty{display:none;}
+#social-spectate .spec-panel{background:var(--t-surface,#18263a);border:1px solid var(--t-accent,#7ce3d1);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px;}
+#social-spectate .spec-head{display:flex;align-items:center;gap:7px;min-width:0;}
+#social-spectate .spec-live{flex:0 0 auto;font-size:9.5px;font-weight:1000;color:#ff6b7d;letter-spacing:.5px;}
+#social-spectate .spec-label{flex:0 0 auto;font-size:10.5px;color:var(--t-mute,#71859b);font-weight:800;}
+#social-spectate .spec-name{font-size:12.5px;font-weight:900;color:var(--t-text,#e6eef5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+#social-spectate .spec-close{margin-left:auto;flex:0 0 auto;border:1px solid var(--t-line,#2f4560);background:transparent;color:var(--t-text,#e6eef5);border-radius:8px;padding:5px 9px;font-size:10.5px;font-weight:900;cursor:pointer;font-family:inherit;}
+#social-spectate .spec-stage{position:relative;height:150px;border-radius:10px;overflow:hidden;background:#1d2a3c;isolation:isolate;}
+#social-spectate .spec-bg{position:absolute;inset:0;background-size:auto 100%;background-repeat:repeat-x;background-position:0 50%;animation:spec-scroll 40s linear infinite;z-index:0;}
+#social-spectate .spec-stage.paused .spec-bg{animation-play-state:paused;}
+@keyframes spec-scroll{to{background-position:-1200px 50%;}}
+#social-spectate .spec-hero{position:absolute;bottom:8%;height:72%;width:auto;max-width:34%;object-fit:contain;transform:translateX(-50%);z-index:3;pointer-events:none;user-select:none;}
+#social-spectate .spec-hero[hidden]{display:none;}
+#social-spectate .spec-hero.attack{animation:spec-lunge .4s ease-out;}
+#social-spectate .spec-hero.skill{filter:drop-shadow(0 0 10px rgba(124,227,209,.9));}
+@keyframes spec-lunge{40%{translate:14% 0;}}
+#social-spectate .spec-enemy{position:absolute;bottom:26%;height:52%;transform:translateX(-50%);z-index:2;display:flex;align-items:flex-end;justify-content:center;}
+#social-spectate .spec-enemy.boss{bottom:8%;height:78%;}
+#social-spectate .spec-enemy img{height:100%;width:auto;max-width:none;object-fit:contain;user-select:none;}
+#social-spectate .spec-enemy img[hidden]{display:none;}
+#social-spectate .spec-enemy.hit{animation:spec-hit .32s ease-out;}
+@keyframes spec-hit{25%{translate:7px 0;filter:brightness(2.2);}70%{translate:-4px 0;}}
+#social-spectate .spec-boss{position:absolute;top:7px;left:50%;transform:translateX(-50%);width:62%;z-index:4;text-align:center;}
+#social-spectate .spec-boss[hidden]{display:none;}
+#social-spectate .spec-boss-name{font-size:10px;font-weight:1000;color:#ffe08a;text-shadow:0 1px 2px #000;}
+#social-spectate .spec-boss-track{height:7px;border-radius:99px;background:rgba(0,0,0,.55);overflow:hidden;margin-top:2px;}
+#social-spectate .spec-boss-fill{height:100%;width:100%;background:linear-gradient(90deg,#ff5d6c,#ffb36b);transition:width .25s;}
+#social-spectate .spec-pips{position:absolute;top:8px;right:10px;display:flex;gap:3px;z-index:4;}
+#social-spectate .spec-pips i{width:8px;height:8px;border-radius:50%;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.5);}
+#social-spectate .spec-pips i.on{background:#ff6b7d;}
+#social-spectate .spec-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 16px;background:rgba(15,24,36,.72);color:var(--t-sub,#9fb1c4);font-size:11.5px;font-weight:800;z-index:6;}
+#social-spectate .spec-overlay[hidden]{display:none;}
+#social-spectate .spec-note{font-size:10px;color:var(--t-mute,#71859b);}
+#social-spectate .spec-note:empty{display:none;}
+@media (prefers-reduced-motion:reduce){#social-spectate .spec-bg,#social-spectate .spec-hero.attack,#social-spectate .spec-enemy.hit{animation:none;}}
+</style>
+<script id="mr-social-spectate">
+/* =====================================================================
+ * 관전 (일반 소셜: 각자 독립 전투, 친구 전투를 보기만 함)
+ *  보내는 쪽: 내 #battle-stage 화면을 '읽기만' 해서 가벼운 상태로 전송
+ *            (전투 계산·세이브·물리엔진은 건드리지 않음, 보는 사람이 있을 때만 전송)
+ *  보는 쪽 : 받은 상태로 작은 전투 화면을 재현 (이미지는 각자 PC의 게임 리소스)
+ * ===================================================================== */
+(function(){
+  'use strict';
+  const S=window.MRSocial;
+  const box=document.getElementById('social-spectate');
+  if(!S||!box) return;
+  const MSG=S.MSG;
+  const SEND_MS=250, KEEPALIVE_MS=2000, NODATA_MS=6000;
+  const ASSET_RE=/^assets\/art\/[\w\-\/.]+\.(png|jpe?g|webp|gif)$/i;
+  const POSES=['idle','attack','skill','victory'];
+  const tr=key=>{ try{ return window.MRLocale?.k ? window.MRLocale.k(key) : key; }catch(e){ return key; } };
+  const T=key=>`<span data-i18n="${key}">${tr(key).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</span>`;
+
+  /* ---------------- 보내는 쪽 ---------------- */
+  const watchers=new Set();
+  let observer=null, sendTimer=null, keepTimer=null, lastSent='';
+
+  function cleanSrc(src){
+    const s=String(src||'').split('?')[0].replace(/^\.\//,'');
+    return ASSET_RE.test(s)?s:'';
+  }
+  function readStage(){
+    const stage=document.getElementById('battle-stage');
+    if(!stage) return null;
+    const team=[];
+    for(let slot=0;slot<3;slot++){
+      const el=document.getElementById(slot===0?'hero':'battle-hero-'+slot);
+      if(!el||el.hidden) continue;
+      const src=cleanSrc(el.getAttribute('src'));
+      if(!src) continue;
+      const pose=['skill','attack','victory'].find(c=>el.classList.contains(c))||'idle';
+      team.push({ slot, id:Number(el.dataset.battleCharacter)||0, src, pose });
+    }
+    const enemyImg=document.querySelector('#enemy img');
+    const hud=document.getElementById('boss-hud');
+    const bossOn=!!hud && hud.style.display==='block';
+    const hpNums=(document.getElementById('boss-hp-text')?.textContent||'').match(/\d+/g)||[];
+    const pipsEl=document.getElementById('normal-enemy-hp');
+    const pips=pipsEl?pipsEl.querySelectorAll('.pip'):[];
+    const pipsOn=pipsEl?pipsEl.querySelectorAll('.pip.on').length:0;
+    return {
+      team,
+      bg:cleanSrc(document.querySelector('#battle-panorama img')?.getAttribute('src')),
+      enemy:{ src:cleanSrc(enemyImg?.getAttribute('src')), boss:stage.dataset.enemyKind==='boss' },
+      boss:bossOn?{ name:(document.getElementById('boss-name')?.textContent||'').replace(/[^\w .\-]/g,'').trim().slice(0,24), hp:Number(hpNums[0])||0, max:Number(hpNums[1])||1 }:null,
+      pips:(pipsEl && pipsEl.style.display!=='none' && pips.length)?{ on:pipsOn, max:pips.length }:null,
+      paused:stage.classList.contains('simulation-paused')
+    };
+  }
+  function sendNow(force){
+    sendTimer=null;
+    if(!watchers.size) return;
+    const snap=readStage();
+    if(!snap) return;
+    const raw=JSON.stringify(snap);
+    if(!force && raw===lastSent) return;
+    lastSent=raw;
+    S.sendToRoom(MSG.SPECTATE_STATE,snap);
+  }
+  function scheduleSend(){ if(!sendTimer) sendTimer=setTimeout(()=>sendNow(false),SEND_MS); }
+  function startSending(){
+    if(observer) return;
+    const stage=document.getElementById('battle-stage');
+    if(!stage) return;
+    observer=new MutationObserver(scheduleSend);
+    observer.observe(stage,{subtree:true,childList:true,attributes:true,characterData:true,attributeFilter:['class','src','style','hidden','data-enemy-kind']});
+    keepTimer=setInterval(()=>sendNow(true),KEEPALIVE_MS);
+    lastSent=''; sendNow(true);
+  }
+  function stopSending(){
+    observer?.disconnect(); observer=null;
+    clearInterval(keepTimer); keepTimer=null;
+    clearTimeout(sendTimer); sendTimer=null;
+    lastSent='';
+  }
+  function syncWatchers(){
+    const snap=S.getSnapshot();
+    const ids=new Set(snap.members.map(m=>m.id));
+    for(const id of [...watchers]) if(snap.state==='idle' || !ids.has(id)) watchers.delete(id);
+    if(watchers.size) startSending(); else stopSending();
+  }
+
+  /* ---------------- 보는 쪽 ---------------- */
+  const view={ target:null, name:'', mirror:false, lastAt:0, nodataTimer:null, mirrorTimer:null, els:null, prev:null };
+
+  function buildPanel(){
+    box.innerHTML=`<div class="spec-panel">
+      <div class="spec-head">
+        <span class="spec-live">● LIVE</span>
+        <span class="spec-label">${T('social.spectating')}</span>
+        <b class="spec-name"></b>
+        <button class="spec-close" data-spec="close">${T('social.spectateClose')}</button>
+      </div>
+      <div class="spec-stage">
+        <div class="spec-bg"></div>
+        <img class="spec-hero" alt="" hidden><img class="spec-hero" alt="" hidden><img class="spec-hero" alt="" hidden>
+        <div class="spec-enemy"><img alt="" hidden></div>
+        <div class="spec-boss" hidden><div class="spec-boss-name"></div><div class="spec-boss-track"><div class="spec-boss-fill"></div></div></div>
+        <div class="spec-pips"></div>
+        <div class="spec-overlay">${T('social.spectateWaiting')}</div>
+      </div>
+      <div class="spec-note"></div>
+    </div>`;
+    const q=s=>box.querySelector(s);
+    view.els={ stage:q('.spec-stage'), bg:q('.spec-bg'), heroes:[...box.querySelectorAll('.spec-hero')], enemy:q('.spec-enemy'), enemyImg:q('.spec-enemy img'),
+      boss:q('.spec-boss'), bossName:q('.spec-boss-name'), bossFill:q('.spec-boss-fill'), pips:q('.spec-pips'), overlay:q('.spec-overlay'), note:q('.spec-note'), name:q('.spec-name') };
+    view.els.name.textContent=view.name;
+    if(view.mirror) view.els.note.innerHTML=T('social.botMirror');
+  }
+  function setOverlay(key){
+    const o=view.els?.overlay; if(!o) return;
+    if(!key){ o.hidden=true; return; }
+    o.hidden=false; o.innerHTML=T(key);
+  }
+  function retrigger(el,cls){ el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+
+  function sanitize(p){
+    if(!p || typeof p!=='object') return null;
+    const team=(Array.isArray(p.team)?p.team:[]).slice(0,3).map(m=>({
+      slot:Math.max(0,Math.min(2,Number(m?.slot)||0)), src:cleanSrc(m?.src), pose:POSES.includes(m?.pose)?m.pose:'idle'
+    })).filter(m=>m.src);
+    const num=(v,max)=>Math.max(0,Math.min(max,Math.floor(Number(v)||0)));
+    return {
+      team, bg:cleanSrc(p.bg),
+      enemy:{ src:cleanSrc(p.enemy?.src), boss:!!p.enemy?.boss },
+      boss:p.boss?{ name:String(p.boss.name||'').replace(/[^\w .\-]/g,'').slice(0,24), hp:num(p.boss.hp,9999), max:Math.max(1,num(p.boss.max,9999)) }:null,
+      pips:p.pips?{ on:num(p.pips.on,10), max:Math.max(1,num(p.pips.max,10)) }:null,
+      paused:!!p.paused
+    };
+  }
+  function apply(d){
+    const e=view.els; if(!e||!d) return;
+    view.lastAt=Date.now();
+    setOverlay(d.paused?'social.spectatePaused':null);
+    e.stage.classList.toggle('paused',d.paused);
+    if(d.bg) e.bg.style.backgroundImage=`url("${d.bg}")`;
+    // 파티 배치: 메인 전투와 같은 진형 계산 사용
+    const W=e.stage.clientWidth||300, H=e.stage.clientHeight||150;
+    const form=typeof window.battleFormation==='function'?window.battleFormation(d.team.length||1,W,H):null;
+    const heroX=form?.heroes||[[30],[22,40],[14,30,46]][Math.max(0,d.team.length-1)];
+    const enemyX=form?.enemy??78;
+    e.heroes.forEach((img,i)=>{
+      const m=d.team[i];
+      if(!m){ img.hidden=true; img.classList.remove('attack','skill'); return; }
+      img.hidden=false;
+      if(img.getAttribute('src')!==m.src) img.setAttribute('src',m.src);
+      img.style.left=heroX[i]+'%';
+      img.style.zIndex=String(5-i);
+      const prevPose=view.prev?.team?.[i]?.pose;
+      if(m.pose==='attack' && prevPose!=='attack') retrigger(img,'attack');
+      img.classList.toggle('skill',m.pose==='skill');
+    });
+    e.enemy.style.left=enemyX+'%';
+    e.enemy.classList.toggle('boss',d.enemy.boss);
+    if(d.enemy.src){ e.enemyImg.hidden=false; if(e.enemyImg.getAttribute('src')!==d.enemy.src) e.enemyImg.setAttribute('src',d.enemy.src); }
+    else e.enemyImg.hidden=true;
+    // 보스 HP / 일반 몬스터 HP
+    e.boss.hidden=!d.boss;
+    if(d.boss){ e.bossName.textContent=d.boss.name; e.bossFill.style.width=(d.boss.hp/d.boss.max*100)+'%'; }
+    e.pips.innerHTML=d.pips?Array.from({length:d.pips.max},(_,i)=>`<i class="${i<d.pips.on?'on':''}"></i>`).join(''):'';
+    // 피격 연출: HP가 줄었을 때
+    const p=view.prev;
+    if(p && ((d.boss&&p.boss&&d.boss.hp<p.boss.hp) || (d.pips&&p.pips&&d.pips.on<p.pips.on))) retrigger(e.enemy,'hit');
+    view.prev=d;
+  }
+  function armNoData(){
+    clearTimeout(view.nodataTimer);
+    view.nodataTimer=setTimeout(function check(){
+      if(!view.target) return;
+      if(Date.now()-view.lastAt>=NODATA_MS){ setOverlay('social.spectateNoData'); }
+      view.nodataTimer=setTimeout(check,1000);
+    },NODATA_MS);
+  }
+  function watch(id){
+    const snap=S.getSnapshot();
+    const m=snap.members.find(x=>x.id===id);
+    if(!m || m.isSelf) return false;
+    stop(false);
+    view.target=id; view.name=m.name; view.prev=null; view.lastAt=0;
+    view.mirror=m.isBot && snap.isHost;   // 혼자 테스트: 봇은 내 전투 화면을 대신 보여줌
+    buildPanel();
+    if(view.mirror){
+      view.mirrorTimer=setInterval(()=>apply(sanitize(readStage())),SEND_MS);
+      apply(sanitize(readStage()));
+    }else{
+      S.sendToRoom(MSG.SPECTATE_WATCH,{ on:true },id);
+      armNoData();
+    }
+    emitChange();
+    return true;
+  }
+  function stop(notify=true){
+    if(view.target && !view.mirror && notify) S.sendToRoom(MSG.SPECTATE_WATCH,{ on:false },view.target);
+    clearTimeout(view.nodataTimer); clearInterval(view.mirrorTimer);
+    view.target=null; view.mirror=false; view.prev=null; view.els=null; view.nodataTimer=null; view.mirrorTimer=null;
+    box.innerHTML='';
+    emitChange();
+  }
+  const changeHandlers=new Set();
+  function emitChange(){ changeHandlers.forEach(fn=>{ try{ fn(view.target); }catch(e){} }); }
+
+  box.addEventListener('click',e=>{ if(e.target.closest('[data-spec="close"]')) stop(true); });
+
+  S.on('message',msg=>{
+    if(msg.type===MSG.SPECTATE_WATCH){
+      if(msg.payload.on) watchers.add(msg.from); else watchers.delete(msg.from);
+      syncWatchers();
+      if(msg.payload.on) sendNow(true);
+    }else if(msg.type===MSG.SPECTATE_STATE){
+      if(view.target && !view.mirror && msg.from===view.target) apply(sanitize(msg.payload));
+    }
+  });
+  S.on('state',snap=>{
+    syncWatchers();
+    if(view.target && (snap.state==='idle' || !snap.members.some(m=>m.id===view.target))) stop(false);
+  });
+
+  window.MRSpectate=Object.freeze({
+    watch, stop:()=>stop(true),
+    watching:()=>view.target,
+    onChange(fn){ changeHandlers.add(fn); return ()=>changeHandlers.delete(fn); },
+    _readStage:readStage
+  });
+})();
+</script>
+
 
 </body>
 </html>
