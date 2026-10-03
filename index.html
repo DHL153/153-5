@@ -2351,10 +2351,6 @@ html.game-booting #app{visibility:hidden!important;}
 #app .emoji-picker-grid .lock-mark,#app .emoji-library .lock-mark{inset:auto 2px 0 auto;font-size:9px;}
 #bottom-nav .nav-play .icon{font-size:1.25em;}
 #bottom-nav .nav-play.active{font-weight:900;}
-#view-social .social-placeholder{text-align:center;padding:28px 16px;}
-#view-social .social-ph-icon{font-size:34px;margin-bottom:8px;}
-#view-social .social-ph-title{font-size:15px;font-weight:900;margin-bottom:6px;}
-#view-social .social-ph-desc{font-size:11px;opacity:.75;}
 </style><style id="vehicle-collection-layout">
 #app #collection-subnav{grid-template-columns:repeat(4,minmax(0,1fr))!important;}
 #app #collection-subnav .subnav-btn{padding:8px 3px;font-size:11px;line-height:1.25;min-width:0;overflow-wrap:anywhere;}
@@ -3596,7 +3592,7 @@ html body #game-startup-screen.is-leaving{opacity:0!important;transition:opacity
 </div>
 </div>
 </div>
-</div></div><div class="view-container" id="view-social"><div class="view-content"><div class="panel social-placeholder"><div class="social-ph-icon">👥</div><div class="social-ph-title">소셜</div><div class="social-ph-desc">친구와 함께하는 ROOM이 곧 열립니다.</div></div></div></div><div class="view-container" id="view-menu">
+</div></div><div class="view-container" id="view-social"><div class="view-content" id="social-root"></div></div><div class="view-container" id="view-menu">
 <div class="subnav-row" id="menu-subnav">
 <button class="subnav-btn active" data-page="stats" onclick="switchMenuPage('stats')">📊 기록</button>
 <button class="subnav-btn" data-page="settings" onclick="switchMenuPage('settings')">⚙️ 설정</button>
@@ -10627,7 +10623,37 @@ function createSocialDataFoundation(assets, emojis) {
   "it": "Livello successivo",
   "pl": "Następny poziom",
   "de": "Nächste Stufe"
- }
+ },
+ "social.title": {"ko": "소셜 ROOM", "en": "Social Room", "ja": "ソーシャルROOM", "zh-CN": "社交房间", "zh-TW": "社交房間", "es": "Sala social", "pt-BR": "Sala social", "fr": "Salon social", "ru": "Комната друзей", "it": "Stanza social", "pl": "Pokój społeczności", "de": "Sozialraum"},
+ "social.desc": {"ko": "같은 방에서 각자 플레이하며 서로의 전투와 마이룸을 볼 수 있어요.", "en": "Play side by side and watch each other's battles and rooms.", "ja": "同じROOMでそれぞれプレイしながら、お互いのバトルとマイルームを見られます。", "zh-CN": "在同一房间各自游戏，还能观看彼此的战斗和我的房间。", "zh-TW": "在同一房間各自遊玩，還能觀看彼此的戰鬥和我的房間。", "es": "Jueguen juntos y miren las batallas y habitaciones de los demás.", "pt-BR": "Joguem lado a lado e vejam as batalhas e quartos uns dos outros.", "fr": "Jouez côte à côte et regardez les combats et chambres des autres.", "ru": "Играйте рядом и смотрите бои и комнаты друг друга.", "it": "Giocate fianco a fianco e guardate battaglie e stanze degli altri.", "pl": "Grajcie obok siebie i oglądajcie swoje walki i pokoje.", "de": "Spielt nebeneinander und seht euch gegenseitig Kämpfe und Zimmer an."},
+ "social.create": {"ko": "방 만들기", "en": "Create room", "ja": "ROOMを作る", "zh-CN": "创建房间", "zh-TW": "建立房間", "es": "Crear sala", "pt-BR": "Criar sala", "fr": "Créer un salon", "ru": "Создать комнату", "it": "Crea stanza", "pl": "Utwórz pokój", "de": "Raum erstellen"},
+ "social.code": {"ko": "방 코드", "en": "Room code", "ja": "ROOMコード", "zh-CN": "房间代码", "zh-TW": "房間代碼", "es": "Código de sala", "pt-BR": "Código da sala", "fr": "Code du salon", "ru": "Код комнаты", "it": "Codice stanza", "pl": "Kod pokoju", "de": "Raumcode"},
+ "social.codePlaceholder": {"ko": "방 코드 입력", "en": "Enter room code", "ja": "コードを入力", "zh-CN": "输入房间代码", "zh-TW": "輸入房間代碼", "es": "Introduce el código", "pt-BR": "Digite o código", "fr": "Saisir le code", "ru": "Введите код", "it": "Inserisci il codice", "pl": "Wpisz kod", "de": "Code eingeben"},
+ "social.join": {"ko": "입장", "en": "Join", "ja": "参加", "zh-CN": "加入", "zh-TW": "加入", "es": "Entrar", "pt-BR": "Entrar", "fr": "Rejoindre", "ru": "Войти", "it": "Entra", "pl": "Dołącz", "de": "Beitreten"},
+ "social.joining": {"ko": "입장 중…", "en": "Joining…", "ja": "参加中…", "zh-CN": "正在加入…", "zh-TW": "正在加入…", "es": "Entrando…", "pt-BR": "Entrando…", "fr": "Connexion…", "ru": "Подключение…", "it": "Ingresso…", "pl": "Dołączanie…", "de": "Beitritt…"},
+ "social.cancel": {"ko": "취소", "en": "Cancel", "ja": "キャンセル", "zh-CN": "取消", "zh-TW": "取消", "es": "Cancelar", "pt-BR": "Cancelar", "fr": "Annuler", "ru": "Отмена", "it": "Annulla", "pl": "Anuluj", "de": "Abbrechen"},
+ "social.leave": {"ko": "나가기", "en": "Leave", "ja": "退出", "zh-CN": "退出", "zh-TW": "退出", "es": "Salir", "pt-BR": "Sair", "fr": "Quitter", "ru": "Выйти", "it": "Esci", "pl": "Wyjdź", "de": "Verlassen"},
+ "social.close": {"ko": "방 닫기", "en": "Close room", "ja": "ROOMを閉じる", "zh-CN": "关闭房间", "zh-TW": "關閉房間", "es": "Cerrar sala", "pt-BR": "Fechar sala", "fr": "Fermer le salon", "ru": "Закрыть комнату", "it": "Chiudi stanza", "pl": "Zamknij pokój", "de": "Raum schließen"},
+ "social.copy": {"ko": "복사", "en": "Copy", "ja": "コピー", "zh-CN": "复制", "zh-TW": "複製", "es": "Copiar", "pt-BR": "Copiar", "fr": "Copier", "ru": "Копировать", "it": "Copia", "pl": "Kopiuj", "de": "Kopieren"},
+ "social.copied": {"ko": "복사됨", "en": "Copied", "ja": "コピー済み", "zh-CN": "已复制", "zh-TW": "已複製", "es": "Copiado", "pt-BR": "Copiado", "fr": "Copié", "ru": "Скопировано", "it": "Copiato", "pl": "Skopiowano", "de": "Kopiert"},
+ "social.members": {"ko": "참여 인원", "en": "Players", "ja": "参加人数", "zh-CN": "参与人数", "zh-TW": "參與人數", "es": "Jugadores", "pt-BR": "Jogadores", "fr": "Joueurs", "ru": "Игроки", "it": "Giocatori", "pl": "Gracze", "de": "Spieler"},
+ "social.host": {"ko": "방장", "en": "Host", "ja": "ホスト", "zh-CN": "房主", "zh-TW": "房主", "es": "Anfitrión", "pt-BR": "Anfitrião", "fr": "Hôte", "ru": "Хост", "it": "Host", "pl": "Gospodarz", "de": "Host"},
+ "social.you": {"ko": "나", "en": "You", "ja": "自分", "zh-CN": "我", "zh-TW": "我", "es": "Tú", "pt-BR": "Você", "fr": "Vous", "ru": "Вы", "it": "Tu", "pl": "Ty", "de": "Du"},
+ "social.empty": {"ko": "빈 자리", "en": "Open slot", "ja": "空き", "zh-CN": "空位", "zh-TW": "空位", "es": "Libre", "pt-BR": "Vaga livre", "fr": "Place libre", "ru": "Свободно", "it": "Posto libero", "pl": "Wolne miejsce", "de": "Frei"},
+ "social.watch": {"ko": "전투 보기", "en": "Watch battle", "ja": "バトルを見る", "zh-CN": "观看战斗", "zh-TW": "觀看戰鬥", "es": "Ver batalla", "pt-BR": "Ver batalha", "fr": "Voir le combat", "ru": "Смотреть бой", "it": "Guarda battaglia", "pl": "Oglądaj walkę", "de": "Kampf ansehen"},
+ "social.visit": {"ko": "방 방문", "en": "Visit room", "ja": "部屋を訪問", "zh-CN": "拜访房间", "zh-TW": "拜訪房間", "es": "Visitar", "pt-BR": "Visitar", "fr": "Visiter", "ru": "В гости", "it": "Visita", "pl": "Odwiedź", "de": "Besuchen"},
+ "social.soon": {"ko": "준비 중", "en": "Coming soon", "ja": "準備中", "zh-CN": "即将推出", "zh-TW": "即將推出", "es": "Próximamente", "pt-BR": "Em breve", "fr": "Bientôt", "ru": "Скоро", "it": "In arrivo", "pl": "Wkrótce", "de": "Bald"},
+ "social.addBot": {"ko": "테스트용 가짜 플레이어 추가", "en": "Add test bot", "ja": "テスト用ボットを追加", "zh-CN": "添加测试机器人", "zh-TW": "新增測試機器人", "es": "Añadir bot de prueba", "pt-BR": "Adicionar bot de teste", "fr": "Ajouter un bot de test", "ru": "Добавить тестового бота", "it": "Aggiungi bot di prova", "pl": "Dodaj bota testowego", "de": "Testbot hinzufügen"},
+ "social.removeBot": {"ko": "내보내기", "en": "Remove", "ja": "外す", "zh-CN": "移除", "zh-TW": "移除", "es": "Quitar", "pt-BR": "Remover", "fr": "Retirer", "ru": "Убрать", "it": "Rimuovi", "pl": "Usuń", "de": "Entfernen"},
+ "social.steamSoon": {"ko": "스팀 친구 초대는 스팀 연동 후 열립니다.", "en": "Steam friend invites will open after Steam integration.", "ja": "Steamフレンド招待はSteam連携後に開放されます。", "zh-CN": "Steam好友邀请将在接入Steam后开放。", "zh-TW": "Steam好友邀請將在串接Steam後開放。", "es": "Las invitaciones de amigos de Steam llegarán tras la integración con Steam.", "pt-BR": "Convites de amigos da Steam chegam após a integração com a Steam.", "fr": "Les invitations d'amis Steam arriveront après l'intégration Steam.", "ru": "Приглашения друзей Steam появятся после интеграции со Steam.", "it": "Gli inviti degli amici di Steam arriveranno dopo l'integrazione con Steam.", "pl": "Zaproszenia znajomych ze Steam pojawią się po integracji ze Steam.", "de": "Steam-Freundeseinladungen kommen nach der Steam-Anbindung."},
+ "social.myName": {"ko": "내 이름", "en": "My name", "ja": "自分の名前", "zh-CN": "我的名字", "zh-TW": "我的名字", "es": "Mi nombre", "pt-BR": "Meu nome", "fr": "Mon nom", "ru": "Моё имя", "it": "Il mio nome", "pl": "Moje imię", "de": "Mein Name"},
+ "social.err.full": {"ko": "방이 가득 찼어요.", "en": "This room is full.", "ja": "ROOMが満員です。", "zh-CN": "房间已满。", "zh-TW": "房間已滿。", "es": "La sala está llena.", "pt-BR": "A sala está cheia.", "fr": "Le salon est complet.", "ru": "Комната заполнена.", "it": "La stanza è piena.", "pl": "Pokój jest pełny.", "de": "Der Raum ist voll."},
+ "social.err.version": {"ko": "게임 버전이 달라 입장할 수 없어요.", "en": "Can't join: game versions differ.", "ja": "ゲームのバージョンが異なるため参加できません。", "zh-CN": "游戏版本不同，无法加入。", "zh-TW": "遊戲版本不同，無法加入。", "es": "No puedes entrar: las versiones del juego son distintas.", "pt-BR": "Não é possível entrar: versões do jogo diferentes.", "fr": "Impossible de rejoindre : versions du jeu différentes.", "ru": "Нельзя войти: версии игры различаются.", "it": "Impossibile entrare: versioni del gioco diverse.", "pl": "Nie można dołączyć: różne wersje gry.", "de": "Beitritt nicht möglich: unterschiedliche Spielversionen."},
+ "social.err.notFound": {"ko": "방을 찾을 수 없어요.", "en": "Room not found.", "ja": "ROOMが見つかりません。", "zh-CN": "找不到房间。", "zh-TW": "找不到房間。", "es": "No se encontró la sala.", "pt-BR": "Sala não encontrada.", "fr": "Salon introuvable.", "ru": "Комната не найдена.", "it": "Stanza non trovata.", "pl": "Nie znaleziono pokoju.", "de": "Raum nicht gefunden."},
+ "social.err.invalid": {"ko": "방 코드가 올바르지 않아요.", "en": "Invalid room code.", "ja": "コードが正しくありません。", "zh-CN": "房间代码无效。", "zh-TW": "房間代碼無效。", "es": "Código no válido.", "pt-BR": "Código inválido.", "fr": "Code invalide.", "ru": "Неверный код.", "it": "Codice non valido.", "pl": "Nieprawidłowy kod.", "de": "Ungültiger Code."},
+ "social.msg.hostLeft": {"ko": "방장이 방을 닫았어요.", "en": "The host closed the room.", "ja": "ホストがROOMを閉じました。", "zh-CN": "房主关闭了房间。", "zh-TW": "房主關閉了房間。", "es": "El anfitrión cerró la sala.", "pt-BR": "O anfitrião fechou a sala.", "fr": "L'hôte a fermé le salon.", "ru": "Хост закрыл комнату.", "it": "L'host ha chiuso la stanza.", "pl": "Gospodarz zamknął pokój.", "de": "Der Host hat den Raum geschlossen."},
+ "social.msg.hostTimeout": {"ko": "방장과 연결이 끊겼어요.", "en": "Lost connection to the host.", "ja": "ホストとの接続が切れました。", "zh-CN": "与房主的连接已断开。", "zh-TW": "與房主的連線已中斷。", "es": "Se perdió la conexión con el anfitrión.", "pt-BR": "Conexão com o anfitrião perdida.", "fr": "Connexion à l'hôte perdue.", "ru": "Связь с хостом потеряна.", "it": "Connessione con l'host persa.", "pl": "Utracono połączenie z gospodarzem.", "de": "Verbindung zum Host verloren."},
+ "social.msg.removed": {"ko": "방에서 나왔어요.", "en": "You left the room.", "ja": "ROOMから退出しました。", "zh-CN": "你已离开房间。", "zh-TW": "你已離開房間。", "es": "Saliste de la sala.", "pt-BR": "Você saiu da sala.", "fr": "Vous avez quitté le salon.", "ru": "Вы вышли из комнаты.", "it": "Sei uscito dalla stanza.", "pl": "Opuszczono pokój.", "de": "Du hast den Raum verlassen."}
 }
 </script>
 <script id="mr-localization">
@@ -11734,7 +11760,8 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
     HEARTBEAT_MS:4000,        // 접속 확인 신호 간격
     TIMEOUT_MS:12000,         // 이 시간 동안 신호가 없으면 나간 것으로 처리
     JOIN_TIMEOUT_MS:5000,     // 입장 응답 대기 시간
-    MAX_MESSAGE_BYTES:16*1024 // 메시지 1개 최대 크기
+    MAX_MESSAGE_BYTES:16*1024,// 메시지 1개 최대 크기
+    DEV_TOOLS:true            // 테스트용 가짜 플레이어 버튼. 출시 전 false로 변경
   });
 
   // 메시지 종류. 앞의 ROOM_*/PING은 지금 사용, 나머지는 다음 단계용으로 이름만 예약
@@ -11906,7 +11933,7 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
   }
   function cleanMember(m){
     return { id:String(m.id).slice(0,64), name:String(m.name||'Player').slice(0,24), isHost:!!m.isHost,
-      slot:Math.max(0,Math.min(CONFIG.MAX_PARTY,Number(m.slot)||0)), joinedAt:Number(m.joinedAt)||0, version:Number(m.version)||0 };
+      slot:Math.max(0,Math.min(CONFIG.MAX_PARTY,Number(m.slot)||0)), joinedAt:Number(m.joinedAt)||0, version:Number(m.version)||0, isBot:!!m.isBot };
   }
   function getSnapshot(){
     return {
@@ -11940,7 +11967,7 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
       send(MSG.PING,{},{ roomId:room.roomId });
       const now=Date.now();
       if(room.state==='host'){
-        const gone=room.members.filter(m=>m.id!==room.hostId && now-(room.lastSeen.get(m.id)||0)>CONFIG.TIMEOUT_MS);
+        const gone=room.members.filter(m=>m.id!==room.hostId && !m.isBot && now-(room.lastSeen.get(m.id)||0)>CONFIG.TIMEOUT_MS);
         if(gone.length){
           room.members=room.members.filter(m=>!gone.includes(m));
           gone.forEach(m=>room.lastSeen.delete(m.id));
@@ -11999,6 +12026,25 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
       resetRoom(null);
       p?.resolve({ok:false,code:'cancelled'});
     }
+  }
+  // 테스트용 가짜 플레이어 (방장만, 이 PC에서만 존재. 다른 참여자에게는 일반 참여자처럼 보임)
+  const BOT_NAMES=['Mimi','Toto','Lumi','Pico','Nana','Kiki'];
+  function addFakePlayer(){
+    if(!CONFIG.DEV_TOOLS || room.state!=='host') return null;
+    if(room.members.length>=CONFIG.MAX_PARTY) return null;
+    const bot=cleanMember({ id:'bot-'+randomId(6), name:BOT_NAMES[Math.floor(Math.random()*BOT_NAMES.length)]+' (bot)', isHost:false, isBot:true, version:CONFIG.PROTOCOL_VERSION });
+    bot.slot=freeSlot(); bot.joinedAt=Date.now();
+    room.members.push(bot);
+    broadcastState(); changed();
+    return bot.id;
+  }
+  function removeFakePlayer(id){
+    if(room.state!=='host') return false;
+    const before=room.members.length;
+    room.members=room.members.filter(m=>!(m.isBot && m.id===id));
+    if(room.members.length===before) return false;
+    broadcastState(); changed();
+    return true;
   }
   // 다음 단계 모듈(관전·마이룸·이모티콘)이 방 안의 다른 사람에게 보낼 때 사용
   function sendToRoom(type,payload,to){
@@ -12099,10 +12145,187 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
     CONFIG, MSG,
     getPlayerId, getPlayerName, setPlayerName,
     createRoom, joinRoom, leaveRoom, sendToRoom,
+    addFakePlayer, removeFakePlayer,
     getSnapshot, on,
     transportKind:()=>transport?transport.kind:'none'
   });
 })();
 </script>
+<style id="mr-social-ui-style">
+#social-root{padding:12px;display:flex;flex-direction:column;gap:10px;box-sizing:border-box;}
+#social-root .social-card{background:var(--t-surface,#18263a);border:1px solid var(--t-line,#2f4560);border-radius:14px;padding:14px;}
+#social-root .social-hero{text-align:center;display:flex;flex-direction:column;gap:10px;align-items:stretch;padding:22px 16px;}
+#social-root .social-hero-icon{font-size:32px;color:var(--t-accent,#7ce3d1);display:flex;justify-content:center;}
+#social-root .social-hero-icon svg{width:36px;height:36px;}
+#social-root .social-title{font-size:16px;font-weight:900;color:var(--t-text,#e6eef5);}
+#social-root .social-desc{font-size:11.5px;color:var(--t-sub,#9fb1c4);line-height:1.45;}
+#social-root .social-btn{border:1px solid var(--t-line,#2f4560);background:transparent;color:var(--t-text,#e6eef5);border-radius:10px;padding:10px 12px;font-size:12px;font-weight:900;cursor:pointer;font-family:inherit;}
+#social-root .social-btn.primary{background:var(--t-accent,#7ce3d1);border-color:var(--t-accent,#7ce3d1);color:var(--t-accent-ink,#0f2a33);padding:12px;font-size:13px;}
+#social-root .social-btn.danger{color:var(--t-danger,#ef7d8c);border-color:rgba(239,125,140,.5);}
+#social-root .social-btn.small{padding:6px 9px;font-size:10.5px;border-radius:8px;}
+#social-root .social-btn.ghost{border-style:dashed;color:var(--t-sub,#9fb1c4);}
+#social-root .social-btn.wide{width:100%;}
+#social-root .social-btn:disabled{opacity:.45;cursor:default;}
+#social-root .social-join-row{display:flex;gap:8px;}
+#social-root .social-input{flex:1;min-width:0;background:var(--t-bg,#0f1824);border:1px solid var(--t-line,#2f4560);border-radius:10px;color:var(--t-text,#e6eef5);padding:10px 12px;font-size:13px;font-weight:800;letter-spacing:2px;text-transform:uppercase;font-family:inherit;}
+#social-root .social-input::placeholder{letter-spacing:0;text-transform:none;color:var(--t-mute,#71859b);font-weight:600;}
+#social-root .social-note,#social-root .social-me{font-size:10.5px;color:var(--t-mute,#71859b);line-height:1.4;}
+#social-root .social-me b{color:var(--t-sub,#9fb1c4);}
+#social-root .social-msg{font-size:11.5px;font-weight:800;color:var(--t-danger,#ef7d8c);text-align:center;}
+#social-root .social-room-head{display:flex;align-items:center;gap:10px;}
+#social-root .social-label{font-size:10px;color:var(--t-mute,#71859b);font-weight:800;}
+#social-root .social-code{font-size:20px;font-weight:1000;letter-spacing:3px;color:var(--t-accent,#7ce3d1);font-variant-numeric:tabular-nums;}
+#social-root .social-count{margin-left:auto;text-align:right;}
+#social-root .social-count-num{font-size:18px;font-weight:1000;color:var(--t-text,#e6eef5);font-variant-numeric:tabular-nums;}
+#social-root .social-slots{display:flex;flex-direction:column;gap:8px;}
+#social-root .social-slot{display:grid;grid-template-columns:40px 1fr;gap:6px 10px;align-items:center;background:var(--t-surface,#18263a);border:1px solid var(--t-line,#2f4560);border-radius:12px;padding:10px 12px;}
+#social-root .social-slot.is-self{border-color:var(--t-accent,#7ce3d1);}
+#social-root .social-slot.empty{border-style:dashed;background:transparent;}
+#social-root .social-avatar{grid-row:span 2;width:40px;height:40px;border-radius:50%;background:var(--t-bg,#0f1824);border:1px solid var(--t-line,#2f4560);display:flex;align-items:center;justify-content:center;font-weight:1000;color:var(--t-sub,#9fb1c4);font-size:15px;}
+#social-root .social-slot.is-host .social-avatar{color:var(--t-gold,#e8c96b);border-color:var(--t-gold,#e8c96b);}
+#social-root .social-slot-top{display:flex;align-items:center;gap:6px;min-width:0;}
+#social-root .social-name{font-size:13px;font-weight:900;color:var(--t-text,#e6eef5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+#social-root .social-name.muted{color:var(--t-mute,#71859b);font-weight:700;}
+#social-root .social-badge{flex:0 0 auto;font-size:9.5px;font-weight:900;padding:2px 7px;border-radius:999px;background:var(--t-bg,#0f1824);color:var(--t-sub,#9fb1c4);border:1px solid var(--t-line,#2f4560);}
+#social-root .social-badge.host{color:var(--t-gold,#e8c96b);border-color:rgba(232,201,107,.5);}
+#social-root .social-badge.you{color:var(--t-accent,#7ce3d1);border-color:rgba(124,227,209,.5);}
+#social-root .social-slot-actions{grid-column:2;display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+#social-root .social-slot-actions:empty{display:none;}
+#social-root .social-slot:has(.social-slot-actions:empty) .social-avatar{grid-row:auto;}
+#social-root .social-soon{font-size:9.5px;color:var(--t-mute,#71859b);}
+#social-root .social-spinner{width:28px;height:28px;border:3px solid var(--t-line,#2f4560);border-top-color:var(--t-accent,#7ce3d1);border-radius:50%;margin:0 auto;animation:social-spin .9s linear infinite;}
+@keyframes social-spin{to{transform:rotate(360deg);}}
+@media (prefers-reduced-motion:reduce){#social-root .social-spinner{animation:none;}}
+</style>
+<script id="mr-social-ui">
+/* 소셜 탭 ROOM 화면 — MRSocial(연결 기반) 위에서 화면만 담당 */
+(function(){
+  'use strict';
+  const S=window.MRSocial;
+  const root=document.getElementById('social-root');
+  if(!S||!root) return;
+
+  const ui={ message:'', copied:false, code:'' };
+  const ERR={ full:'social.err.full', version:'social.err.version', not_found:'social.err.notFound', invalid_code:'social.err.invalid' };
+  const CLOSED={ host_left:'social.msg.hostLeft', host_timeout:'social.msg.hostTimeout', removed:'social.msg.removed' };
+  const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const tr=key=>{ try{ return window.MRLocale?.k ? window.MRLocale.k(key) : key; }catch(e){ return key; } };
+  const T=key=>`<span data-i18n="${key}">${esc(tr(key))}</span>`;
+
+  function msgLine(){ return ui.message ? `<div class="social-msg">${T(ui.message)}</div>` : ''; }
+
+  function idleView(){
+    return `<div class="social-card social-hero">
+      <div class="social-hero-icon icon">👥</div>
+      <div class="social-title">${T('social.title')}</div>
+      <div class="social-desc">${T('social.desc')}</div>
+      <button class="social-btn primary" data-act="create">${T('social.create')}</button>
+      <div class="social-join-row">
+        <input id="social-code-input" class="social-input" maxlength="12" autocomplete="off" spellcheck="false"
+          data-i18n-attr="placeholder:social.codePlaceholder" placeholder="${esc(tr('social.codePlaceholder'))}" value="${esc(ui.code)}">
+        <button class="social-btn" data-act="join">${T('social.join')}</button>
+      </div>
+      ${msgLine()}
+      <div class="social-note">${T('social.steamSoon')}</div>
+      <div class="social-me">${T('social.myName')}: <b>${esc(S.getPlayerName())}</b></div>
+    </div>`;
+  }
+
+  function joiningView(s){
+    return `<div class="social-card social-hero">
+      <div class="social-spinner" aria-hidden="true"></div>
+      <div class="social-title">${T('social.joining')}</div>
+      <div class="social-desc">${T('social.code')}: <b>${esc(s.roomId)}</b></div>
+      <button class="social-btn" data-act="cancel">${T('social.cancel')}</button>
+    </div>`;
+  }
+
+  function slotView(s,slot){
+    const m=s.members.find(x=>x.slot===slot);
+    if(!m){
+      const canBot=s.isHost && S.CONFIG.DEV_TOOLS;
+      return `<div class="social-slot empty">
+        <div class="social-avatar">${slot}</div>
+        <div class="social-slot-top"><div class="social-name muted">${T('social.empty')}</div></div>
+        <div class="social-slot-actions">${canBot?`<button class="social-btn small ghost" data-act="add-bot">${T('social.addBot')}</button>`:''}</div>
+      </div>`;
+    }
+    const actions = m.isSelf ? '' :
+      `<button class="social-btn small" data-act="watch" data-id="${esc(m.id)}" disabled>${T('social.watch')}</button>
+       <button class="social-btn small" data-act="visit" data-id="${esc(m.id)}" disabled>${T('social.visit')}</button>
+       <span class="social-soon">${T('social.soon')}</span>
+       ${m.isBot && s.isHost ? `<button class="social-btn small ghost" data-act="remove-bot" data-id="${esc(m.id)}">${T('social.removeBot')}</button>`:''}`;
+    return `<div class="social-slot${m.isSelf?' is-self':''}${m.isHost?' is-host':''}">
+      <div class="social-avatar">${m.isHost?'👑':slot}</div>
+      <div class="social-slot-top">
+        <div class="social-name">${esc(m.name)}</div>
+        ${m.isHost?`<span class="social-badge host">${T('social.host')}</span>`:''}
+        ${m.isSelf?`<span class="social-badge you">${T('social.you')}</span>`:''}
+      </div>
+      <div class="social-slot-actions">${actions}</div>
+    </div>`;
+  }
+
+  function roomView(s){
+    const slots=[]; for(let i=1;i<=s.max;i++) slots.push(slotView(s,i));
+    return `<div class="social-card">
+      <div class="social-room-head">
+        <div><div class="social-label">${T('social.code')}</div><div class="social-code">${esc(s.roomId)}</div></div>
+        <button class="social-btn small" data-act="copy">${T(ui.copied?'social.copied':'social.copy')}</button>
+        <div class="social-count"><div class="social-label">${T('social.members')}</div><div class="social-count-num">${s.count} / ${s.max}</div></div>
+      </div>
+    </div>
+    <div class="social-slots">${slots.join('')}</div>
+    ${msgLine()}
+    <button class="social-btn danger wide" data-act="leave">${T(s.isHost?'social.close':'social.leave')}</button>`;
+  }
+
+  function render(){
+    const s=S.getSnapshot();
+    root.innerHTML = s.state==='idle' ? idleView() : s.state==='joining' ? joiningView(s) : roomView(s);
+    window.MRLocale?.refresh?.(root);
+  }
+
+  function join(){
+    const code=(ui.code||'').trim().toUpperCase();
+    ui.message='';
+    S.joinRoom(code).then(r=>{
+      if(!r.ok && r.code!=='cancelled'){ ui.message=ERR[r.code]||'social.err.notFound'; render(); }
+      else if(r.ok){ ui.code=''; }
+    });
+    render();
+  }
+
+  root.addEventListener('click',e=>{
+    const btn=e.target.closest('[data-act]');
+    if(!btn || btn.disabled) return;
+    const act=btn.dataset.act;
+    try{
+      if(act==='create'){ ui.message=''; S.createRoom(); }
+      else if(act==='join'){ join(); }
+      else if(act==='cancel'||act==='leave'){ ui.message=''; S.leaveRoom(); render(); }
+      else if(act==='copy'){
+        const code=S.getSnapshot().roomId||'';
+        try{ navigator.clipboard?.writeText(code); }catch(err){}
+        ui.copied=true; render();
+        setTimeout(()=>{ ui.copied=false; if(S.getSnapshot().state!=='idle') render(); },1500);
+      }
+      else if(act==='add-bot'){ S.addFakePlayer(); }
+      else if(act==='remove-bot'){ S.removeFakePlayer(btn.dataset.id); }
+    }catch(err){ console.warn('[social-ui]',err); }
+  });
+  root.addEventListener('input',e=>{
+    if(e.target.id==='social-code-input') ui.code=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12);
+  });
+  root.addEventListener('keydown',e=>{
+    if(e.target.id==='social-code-input' && e.key==='Enter'){ e.preventDefault(); join(); }
+  });
+
+  S.on('state',render);
+  S.on('closed',e=>{ ui.message=CLOSED[e.reason]||''; render(); });
+  render();
+})();
+</script>
+
 </body>
 </html>
