@@ -8821,6 +8821,67 @@ function createSocialDataFoundation(assets, emojis) {
         }
     };
 
+    // 소셜(친구 마이룸)용 읽기 전용 도우미: 아이템 정보 조회 + 내 도감에서 해당 아이템 보기
+    // 재화·보유 수량을 바꾸지 않는다. 카테고리는 마이룸에 놓이는 것(캐릭터·마이룸 배경·이모지)만 허용
+    (function(){
+        const ROOM_CATS=['char','char_bg','item'];
+        function legacyOf(category,assetId){
+            if(!ROOM_CATS.includes(category)) throw new Error('unsupported category');
+            return socialData.fromId(category,String(assetId));
+        }
+        function describeRoomItem(category,assetId){
+            const id=legacyOf(category,assetId);
+            const count=Math.max(0,Number(getInventoryRef(category)?.[id]?.count)||0);
+            // 아이템에 공식 이름이 없으므로 이름은 내보내지 않는다 (종류·등급만)
+            let group='',tier='N',image=null,text=null,defaultOwned=false,gacha=true;
+            if(category==='char'){
+                const m=CHARACTER_META[id]||{};
+                tier=m.tier||'N'; image=characterPath(id);
+                defaultOwned=!!m.defaultOwned; gacha=m.gachaEnabled!==false;
+            }else if(category==='char_bg'){
+                const m=BACKGROUND_META.lobby?.[id]||{};
+                tier=m.tier||'N'; image=backgroundPath('lobby',id);
+                defaultOwned=!!m.defaultOwned; gacha=m.gachaEnabled!==false;
+            }else{
+                const m=EMOJI_META_BY_SYMBOL[id]||{};
+                group=EMOJI_CATEGORY_LABELS[m.category]||''; tier=m.tier||'N';
+                image=REFERENCE_EMOJI_IMAGES?.[id]||null; text=image?null:String(id);
+            }
+            const routes=[];
+            if(defaultOwned) routes.push('default');
+            if(gacha) routes.push('gacha');
+            if(!routes.length) routes.push('special');
+            return {category,assetId:String(assetId),group,tier,count,owned:count>0,image,text,routes};
+        }
+        function openCodexItem(category,assetId){
+            const id=legacyOf(category,assetId);
+            const d=describeRoomItem(category,assetId);
+            activeItemCategory=category;
+            codexOwnedOnly=false;
+            codexTierFilter=TIER_ORDER.includes(d.tier)?d.tier:'ALL';
+            codexEmojiCategoryFilter=category==='item'?(EMOJI_META_BY_SYMBOL[id]?.category||'ALL'):'ALL';
+            // updateItemUI와 같은 기준으로 목록을 만들어 해당 아이템이 있는 페이지를 찾는다
+            let list=getCollectionEntries(category).filter(e=>e.cat!=='item'||!EMOJI_META_BY_SYMBOL[e.id]?.legacy);
+            if(category==='item'&&codexEmojiCategoryFilter!=='ALL') list=list.filter(e=>EMOJI_META_BY_SYMBOL[e.id]?.category===codexEmojiCategoryFilter);
+            if(codexTierFilter!=='ALL') list=list.filter(e=>e.tier===codexTierFilter);
+            const index=list.findIndex(e=>String(e.id)===String(id));
+            codexPage=index>=0?Math.floor(index/CODEX_PAGE_SIZE):0;
+            switchMenu('collection');
+            switchCollectionPage('item');
+            if(index<0) return false;
+            const pos=index-codexPage*CODEX_PAGE_SIZE;
+            requestAnimationFrame(()=>{
+                const card=document.querySelectorAll('#item-collection-grid .inv-item')[pos];
+                if(!card) return;
+                card.classList.remove('codex-focus'); void card.offsetWidth; card.classList.add('codex-focus');
+                card.scrollIntoView({block:'center',behavior:'smooth'});
+                setTimeout(()=>card.classList.remove('codex-focus'),2600);
+            });
+            return true;
+        }
+        window.MergeRunCodex=Object.freeze({describeRoomItem,openCodexItem});
+    })();
+
 
     // 네비게이션: 상점 / 플레이 / 컬렉션 / 도감 / 메뉴
     let currentMenu = 'battle';
@@ -10674,7 +10735,19 @@ function createSocialDataFoundation(assets, emojis) {
  "social.viewOnly": {"ko": "보기 전용", "en": "View only", "ja": "閲覧のみ", "zh-CN": "仅查看", "zh-TW": "僅檢視", "es": "Solo ver", "pt-BR": "Só visualizar", "fr": "Lecture seule", "ru": "Только просмотр", "it": "Solo visione", "pl": "Tylko podgląd", "de": "Nur ansehen"},
  "social.visitLoading": {"ko": "마이룸을 불러오는 중…", "en": "Loading room…", "ja": "マイルームを読み込み中…", "zh-CN": "正在加载我的房间…", "zh-TW": "正在載入我的房間…", "es": "Cargando habitación…", "pt-BR": "Carregando quarto…", "fr": "Chargement de la chambre…", "ru": "Загрузка комнаты…", "it": "Caricamento stanza…", "pl": "Wczytywanie pokoju…", "de": "Zimmer wird geladen…"},
  "social.visitNoData": {"ko": "마이룸 정보를 받을 수 없어요.", "en": "Can't load this room.", "ja": "マイルームを受信できません。", "zh-CN": "无法接收我的房间信息。", "zh-TW": "無法接收我的房間資訊。", "es": "No se puede cargar la habitación.", "pt-BR": "Não foi possível carregar o quarto.", "fr": "Impossible de charger la chambre.", "ru": "Не удаётся загрузить комнату.", "it": "Impossibile caricare la stanza.", "pl": "Nie można wczytać pokoju.", "de": "Zimmer kann nicht geladen werden."},
- "social.botMirrorRoom": {"ko": "테스트 봇은 내 마이룸을 대신 보여줘요.", "en": "Test bots show your own room instead.", "ja": "テスト用ボットは自分のマイルームを代わりに表示します。", "zh-CN": "测试机器人会显示你自己的房间。", "zh-TW": "測試機器人會顯示你自己的房間。", "es": "Los bots de prueba muestran tu propia habitación.", "pt-BR": "Bots de teste mostram seu próprio quarto.", "fr": "Les bots de test affichent votre propre chambre.", "ru": "Тестовые боты показывают вашу комнату.", "it": "I bot di prova mostrano la tua stanza.", "pl": "Boty testowe pokazują twój pokój.", "de": "Testbots zeigen dein eigenes Zimmer."}
+ "social.botMirrorRoom": {"ko": "테스트 봇은 내 마이룸을 대신 보여줘요.", "en": "Test bots show your own room instead.", "ja": "テスト用ボットは自分のマイルームを代わりに表示します。", "zh-CN": "测试机器人会显示你自己的房间。", "zh-TW": "測試機器人會顯示你自己的房間。", "es": "Los bots de prueba muestran tu propia habitación.", "pt-BR": "Bots de teste mostram seu próprio quarto.", "fr": "Les bots de test affichent votre propre chambre.", "ru": "Тестовые боты показывают вашу комнату.", "it": "I bot di prova mostrano la tua stanza.", "pl": "Boty testowe pokazują twój pokój.", "de": "Testbots zeigen dein eigenes Zimmer."},
+ "social.roomItems": {"ko": "방에 있는 아이템", "en": "Items in this room", "ja": "この部屋のアイテム", "zh-CN": "房间里的物品", "zh-TW": "房間裡的物品", "es": "Objetos de la sala", "pt-BR": "Itens do quarto", "fr": "Objets de la chambre", "ru": "Предметы в комнате", "it": "Oggetti nella stanza", "pl": "Przedmioty w pokoju", "de": "Gegenstände im Zimmer"},
+ "social.cat.char": {"ko": "캐릭터", "en": "Character", "ja": "キャラクター", "zh-CN": "角色", "zh-TW": "角色", "es": "Personaje", "pt-BR": "Personagem", "fr": "Personnage", "ru": "Персонаж", "it": "Personaggio", "pl": "Postać", "de": "Charakter"},
+ "social.cat.bg": {"ko": "마이룸 배경", "en": "Room background", "ja": "マイルーム背景", "zh-CN": "房间背景", "zh-TW": "房間背景", "es": "Fondo de habitación", "pt-BR": "Fundo do quarto", "fr": "Fond de chambre", "ru": "Фон комнаты", "it": "Sfondo stanza", "pl": "Tło pokoju", "de": "Zimmerhintergrund"},
+ "social.cat.emoji": {"ko": "이모지", "en": "Emoji", "ja": "絵文字", "zh-CN": "表情", "zh-TW": "表情", "es": "Emoji", "pt-BR": "Emoji", "fr": "Emoji", "ru": "Эмодзи", "it": "Emoji", "pl": "Emoji", "de": "Emoji"},
+ "social.myOwnership": {"ko": "내 보유", "en": "In my collection", "ja": "自分の所持", "zh-CN": "我的拥有", "zh-TW": "我的擁有", "es": "En mi colección", "pt-BR": "Na minha coleção", "fr": "Dans ma collection", "ru": "В моей коллекции", "it": "Nella mia collezione", "pl": "W mojej kolekcji", "de": "In meiner Sammlung"},
+ "social.owned": {"ko": "보유 중", "en": "Owned", "ja": "所持", "zh-CN": "已拥有", "zh-TW": "已擁有", "es": "Lo tienes", "pt-BR": "Possui", "fr": "Possédé", "ru": "Есть", "it": "Posseduto", "pl": "Posiadane", "de": "Vorhanden"},
+ "social.notOwned": {"ko": "미보유", "en": "Not owned", "ja": "未所持", "zh-CN": "未拥有", "zh-TW": "未擁有", "es": "No lo tienes", "pt-BR": "Não possui", "fr": "Non possédé", "ru": "Нет", "it": "Non posseduto", "pl": "Brak", "de": "Nicht vorhanden"},
+ "social.route": {"ko": "획득 경로", "en": "How to get", "ja": "入手方法", "zh-CN": "获取途径", "zh-TW": "獲取途徑", "es": "Cómo obtener", "pt-BR": "Como obter", "fr": "Obtention", "ru": "Где получить", "it": "Come ottenerlo", "pl": "Jak zdobyć", "de": "Erhalt"},
+ "social.route.gacha": {"ko": "뽑기", "en": "Gacha", "ja": "ガチャ", "zh-CN": "抽取", "zh-TW": "抽取", "es": "Gacha", "pt-BR": "Gacha", "fr": "Gacha", "ru": "Гача", "it": "Gacha", "pl": "Gacha", "de": "Gacha"},
+ "social.route.default": {"ko": "기본 지급", "en": "Starter item", "ja": "初期所持", "zh-CN": "初始赠送", "zh-TW": "初始贈送", "es": "Inicial", "pt-BR": "Inicial", "fr": "De départ", "ru": "Стартовый", "it": "Iniziale", "pl": "Startowy", "de": "Startgegenstand"},
+ "social.route.special": {"ko": "특별 획득", "en": "Special", "ja": "特別入手", "zh-CN": "特殊获取", "zh-TW": "特殊獲取", "es": "Especial", "pt-BR": "Especial", "fr": "Spécial", "ru": "Особый", "it": "Speciale", "pl": "Specjalne", "de": "Spezial"},
+ "social.openCodex": {"ko": "내 도감에서 보기", "en": "View in my catalog", "ja": "自分の図鑑で見る", "zh-CN": "在我的图鉴中查看", "zh-TW": "在我的圖鑑中查看", "es": "Ver en mi catálogo", "pt-BR": "Ver no meu catálogo", "fr": "Voir dans mon catalogue", "ru": "Открыть в каталоге", "it": "Vedi nel mio catalogo", "pl": "Zobacz w katalogu", "de": "Im Katalog ansehen"}
 }
 </script>
 <script id="mr-localization">
@@ -12652,6 +12725,38 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
 @keyframes visit-heart{0%{opacity:0;transform:translate(-50%,-35%) scale(.55);}18%{opacity:1;}100%{opacity:0;transform:translate(calc(-50% + var(--hx)),calc(-50% - 62px)) scale(1.2) rotate(var(--hr));}}
 #social-visit .visit-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 16px;background:rgba(15,24,36,.72);color:var(--t-sub,#9fb1c4);font-size:11.5px;font-weight:800;z-index:9;}
 #social-visit .visit-overlay[hidden]{display:none;}
+#social-visit .visit-items-title{font-size:10.5px;font-weight:800;color:var(--t-mute,#71859b);margin-bottom:6px;}
+#social-visit .visit-items-title b{color:var(--t-sub,#9fb1c4);}
+#social-visit .visit-chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin;}
+#social-visit .visit-chip{position:relative;flex:0 0 auto;width:52px;height:52px;border-radius:10px;border:1px solid var(--t-line,#2f4560);background:var(--t-bg,#0f1824);padding:3px;cursor:pointer;overflow:hidden;}
+#social-visit .visit-chip:hover,#social-visit .visit-chip:focus-visible{border-color:var(--t-accent,#7ce3d1);}
+#social-visit .visit-chip-img{width:100%;height:100%;object-fit:contain;display:block;}
+#social-visit .visit-chip-img.bg{object-fit:cover;border-radius:7px;}
+#social-visit .visit-chip-img.as-text{display:flex;align-items:center;justify-content:center;font-size:24px;}
+#social-visit .visit-chip-tier,.visit-detail .visit-chip-tier{position:absolute;left:3px;top:3px;font-size:8px;font-weight:1000;padding:1px 4px;border-radius:5px;background:rgba(0,0,0,.65);color:#fff;line-height:1.2;}
+#social-visit .visit-chip.unowned{border-style:dashed;}
+#social-visit .visit-chip-new{position:absolute;right:3px;bottom:3px;width:13px;height:13px;border-radius:50%;background:var(--t-gold,#e8c96b);color:#1a1a1a;font-size:9px;font-weight:1000;display:flex;align-items:center;justify-content:center;}
+.visit-detail{position:fixed;inset:0;z-index:20000;background:rgba(5,10,18,.6);display:flex;align-items:center;justify-content:center;padding:16px;}
+.visit-detail-card{width:min(320px,100%);background:var(--t-surface,#18263a);border:1px solid var(--t-line,#2f4560);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px;color:var(--t-text,#e6eef5);box-shadow:0 12px 40px rgba(0,0,0,.45);}
+.visit-detail-visual{height:170px;border-radius:12px;background:var(--t-bg,#0f1824);display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.visit-detail-img{max-width:100%;max-height:100%;object-fit:contain;}
+.visit-detail-visual.bg .visit-detail-img{width:100%;height:100%;object-fit:cover;}
+.visit-detail-img.as-text{font-size:72px;line-height:1;}
+.visit-detail-top{display:flex;align-items:center;gap:6px;}
+.visit-detail .visit-detail-top .visit-chip-tier{position:static;font-size:10px;padding:2px 7px;}
+.visit-detail-cat{font-size:10.5px;font-weight:800;color:var(--t-mute,#71859b);}
+.visit-detail-name{font-size:16px;font-weight:1000;}
+.visit-detail-title{font-size:11px;color:var(--t-sub,#9fb1c4);margin-top:-4px;}
+.visit-detail-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11.5px;color:var(--t-sub,#9fb1c4);padding:6px 0;border-top:1px solid var(--t-line,#2f4560);}
+.visit-detail-row b.ok{color:var(--t-accent,#7ce3d1);}
+.visit-detail-row b.no{color:var(--t-gold,#e8c96b);}
+.visit-routes{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;}
+.visit-route{font-size:10px;font-weight:900;padding:2px 8px;border-radius:999px;border:1px solid var(--t-line,#2f4560);color:var(--t-text,#e6eef5);}
+.visit-detail-actions{display:flex;gap:8px;margin-top:4px;}
+.visit-detail-btn{flex:1;border:1px solid var(--t-line,#2f4560);background:transparent;color:var(--t-text,#e6eef5);border-radius:10px;padding:10px;font-size:12px;font-weight:900;cursor:pointer;font-family:inherit;}
+.visit-detail-btn.primary{background:var(--t-accent,#7ce3d1);border-color:var(--t-accent,#7ce3d1);color:var(--t-accent-ink,#0f2a33);}
+html body #app #item-collection-grid .inv-item.codex-focus{outline:3px solid var(--t-accent,#7ce3d1)!important;outline-offset:1px!important;box-shadow:0 0 0 3px var(--t-accent,#7ce3d1),0 0 16px rgba(124,227,209,.7)!important;opacity:1!important;filter:none!important;animation:codex-focus-pulse .8s ease-in-out 3;z-index:2;}
+@keyframes codex-focus-pulse{50%{outline-color:transparent;}}
 #social-visit .visit-note{font-size:10px;color:var(--t-mute,#71859b);}
 #social-visit .visit-note:empty{display:none;}
 @media (prefers-reduced-motion:reduce){#social-visit .visit-char.love,#social-visit .visit-heart{animation:none;opacity:0;}}
@@ -12710,10 +12815,11 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
         <div class="visit-layer"></div>
         <div class="visit-overlay">${T('social.visitLoading')}</div>
       </div>
+      <div class="visit-items"></div>
       <div class="visit-note"></div>
     </div>`;
     view.els={ room:box.querySelector('.visit-room'), bg:box.querySelector('.visit-bg'), layer:box.querySelector('.visit-layer'),
-      overlay:box.querySelector('.visit-overlay'), note:box.querySelector('.visit-note') };
+      overlay:box.querySelector('.visit-overlay'), note:box.querySelector('.visit-note'), items:box.querySelector('.visit-items') };
     box.querySelector('.visit-name').textContent=view.name;
     if(view.mirror) view.els.note.innerHTML=T('social.botMirrorRoom');
   }
@@ -12750,7 +12856,62 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
     });
     e.layer.innerHTML=parts.join('');
     setOverlay(null);
+    renderItems(room);
   }
+
+  /* ---------- 방에 있는 아이템 목록 + 상세 팝업 ---------- */
+  const C=window.MergeRunCodex;
+  const CAT_KEY={ char_bg:'social.cat.bg', char:'social.cat.char', item:'social.cat.emoji' };
+  function thumb(d,cls){
+    if(d.image) return `<img class="${cls}" src="${esc(d.image)}" alt="" draggable="false">`;
+    return `<span class="${cls} as-text">${esc(d.text||'?')}</span>`;
+  }
+  function renderItems(room){
+    const el=view.els?.items; if(!el||!C) return;
+    const list=[], seen=new Set();
+    const push=(cat,id)=>{ const k=cat+':'+id; if(seen.has(k)) return; seen.add(k); try{ list.push(C.describeRoomItem(cat,id)); }catch(e){} };
+    push('char_bg',room.background.assetId);
+    room.characters.forEach(c=>push('char',c.assetId));
+    room.emojis.forEach(m=>push('item',m.assetId));
+    el.innerHTML=`<div class="visit-items-title">${T('social.roomItems')} <b>${list.length}</b></div>
+      <div class="visit-chips">${list.map(d=>`<button class="visit-chip${d.owned?'':' unowned'}" data-cat="${esc(d.category)}" data-id="${esc(d.assetId)}">
+        ${thumb(d,'visit-chip-img'+(d.category==='char_bg'?' bg':''))}<span class="visit-chip-tier tier-${esc(d.tier)}">${esc(d.tier)}</span>
+        ${d.owned?'':'<span class="visit-chip-new" aria-hidden="true">?</span>'}</button>`).join('')}</div>`;
+  }
+  function openDetail(cat,id){
+    if(!C) return;
+    let d; try{ d=C.describeRoomItem(cat,id); }catch(e){ return; }
+    closeDetail();
+    const routes=d.routes.map(r=>`<span class="visit-route">${T('social.route.'+r)}</span>`).join('');
+    const wrap=document.createElement('div');
+    wrap.className='visit-detail';
+    wrap.innerHTML=`<div class="visit-detail-card" role="dialog" aria-modal="true">
+      <div class="visit-detail-visual${d.category==='char_bg'?' bg':''}">${thumb(d,'visit-detail-img')}</div>
+      <div class="visit-detail-top"><span class="visit-chip-tier tier-${esc(d.tier)}">${esc(d.tier)}</span></div>
+      <div class="visit-detail-name">${T(CAT_KEY[d.category])}</div>
+      ${d.group?`<div class="visit-detail-title">${esc(d.group)}</div>`:''}
+      <div class="visit-detail-row"><span>${T('social.myOwnership')}</span><b class="${d.owned?'ok':'no'}">${d.owned?T('social.owned')+(d.count>1?` ×${d.count}`:''):T('social.notOwned')}</b></div>
+      <div class="visit-detail-row"><span>${T('social.route')}</span><div class="visit-routes">${routes}</div></div>
+      <div class="visit-detail-actions">
+        <button class="visit-detail-btn primary" data-detail="codex">${T('social.openCodex')}</button>
+        <button class="visit-detail-btn" data-detail="close">${T('social.spectateClose')}</button>
+      </div>
+    </div>`;
+    wrap.dataset.cat=d.category; wrap.dataset.id=d.assetId;
+    wrap.addEventListener('click',ev=>{
+      if(ev.target===wrap || ev.target.closest('[data-detail="close"]')){ closeDetail(); return; }
+      if(ev.target.closest('[data-detail="codex"]')){
+        const c=wrap.dataset.cat, i=wrap.dataset.id;
+        closeDetail();
+        try{ C.openCodexItem(c,i); }catch(e){ console.warn('[social-visit] codex',e); }
+      }
+    });
+    document.body.appendChild(wrap);
+    window.MRLocale?.refresh?.(wrap);
+    wrap.querySelector('[data-detail="codex"]')?.focus();
+  }
+  function closeDetail(){ document.querySelectorAll('.visit-detail').forEach(x=>x.remove()); }
+  document.addEventListener('keydown',ev=>{ if(ev.key==='Escape') closeDetail(); });
   function hearts(char,ev){
     const room=view.els?.room; if(!room) return;
     const r=room.getBoundingClientRect(), cr=char.getBoundingClientRect();
@@ -12789,6 +12950,7 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
   }
   function close(notify=true){
     clearTimeout(view.timer);
+    closeDetail();
     view.target=null; view.mirror=false; view.els=null; view.timer=null;
     box.innerHTML='';
     if(notify!==null) emitChange();
@@ -12796,6 +12958,8 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
 
   box.addEventListener('click',e=>{
     if(e.target.closest('[data-visit="close"]')){ close(); return; }
+    const chip=e.target.closest('.visit-chip');
+    if(chip){ openDetail(chip.dataset.cat,chip.dataset.id); return; }
     const ch=e.target.closest('.visit-char');
     if(ch) hearts(ch,e);
   });
