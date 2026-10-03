@@ -8879,7 +8879,14 @@ function createSocialDataFoundation(assets, emojis) {
             });
             return true;
         }
-        window.MergeRunCodex=Object.freeze({describeRoomItem,openCodexItem});
+        // 보낼 수 있는 이모지 = 내가 보유한 이모지만 (읽기 전용 목록)
+        function ownedEmojis(){
+            return EMOJI_CATALOG.filter(e=>!e.legacy && (Number(itemInventory[e.symbol]?.count)||0)>0).map(e=>{
+                const src=REFERENCE_EMOJI_IMAGES?.[e.symbol]||null;
+                return {assetId:e.id,image:src,text:src?null:e.symbol,count:Number(itemInventory[e.symbol].count)||0};
+            });
+        }
+        window.MergeRunCodex=Object.freeze({describeRoomItem,openCodexItem,ownedEmojis});
     })();
 
 
@@ -10747,7 +10754,10 @@ function createSocialDataFoundation(assets, emojis) {
  "social.route.gacha": {"ko": "뽑기", "en": "Gacha", "ja": "ガチャ", "zh-CN": "抽取", "zh-TW": "抽取", "es": "Gacha", "pt-BR": "Gacha", "fr": "Gacha", "ru": "Гача", "it": "Gacha", "pl": "Gacha", "de": "Gacha"},
  "social.route.default": {"ko": "기본 지급", "en": "Starter item", "ja": "初期所持", "zh-CN": "初始赠送", "zh-TW": "初始贈送", "es": "Inicial", "pt-BR": "Inicial", "fr": "De départ", "ru": "Стартовый", "it": "Iniziale", "pl": "Startowy", "de": "Startgegenstand"},
  "social.route.special": {"ko": "특별 획득", "en": "Special", "ja": "特別入手", "zh-CN": "特殊获取", "zh-TW": "特殊獲取", "es": "Especial", "pt-BR": "Especial", "fr": "Spécial", "ru": "Особый", "it": "Speciale", "pl": "Specjalne", "de": "Spezial"},
- "social.openCodex": {"ko": "내 도감에서 보기", "en": "View in my catalog", "ja": "自分の図鑑で見る", "zh-CN": "在我的图鉴中查看", "zh-TW": "在我的圖鑑中查看", "es": "Ver en mi catálogo", "pt-BR": "Ver no meu catálogo", "fr": "Voir dans mon catalogue", "ru": "Открыть в каталоге", "it": "Vedi nel mio catalogo", "pl": "Zobacz w katalogu", "de": "Im Katalog ansehen"}
+ "social.openCodex": {"ko": "내 도감에서 보기", "en": "View in my catalog", "ja": "自分の図鑑で見る", "zh-CN": "在我的图鉴中查看", "zh-TW": "在我的圖鑑中查看", "es": "Ver en mi catálogo", "pt-BR": "Ver no meu catálogo", "fr": "Voir dans mon catalogue", "ru": "Открыть в каталоге", "it": "Vedi nel mio catalogo", "pl": "Zobacz w katalogu", "de": "Im Katalog ansehen"},
+ "social.emoteSend": {"ko": "이모지", "en": "Emoji", "ja": "絵文字", "zh-CN": "表情", "zh-TW": "表情", "es": "Emoji", "pt-BR": "Emoji", "fr": "Emoji", "ru": "Эмодзи", "it": "Emoji", "pl": "Emoji", "de": "Emoji"},
+ "social.emotePick": {"ko": "보낼 이모지 선택", "en": "Pick an emoji to send", "ja": "送る絵文字を選択", "zh-CN": "选择要发送的表情", "zh-TW": "選擇要傳送的表情", "es": "Elige un emoji", "pt-BR": "Escolha um emoji", "fr": "Choisissez un emoji", "ru": "Выберите эмодзи", "it": "Scegli un emoji", "pl": "Wybierz emoji", "de": "Emoji auswählen"},
+ "social.emoteEmpty": {"ko": "보유한 이모지가 없어요. 뽑기에서 모을 수 있어요.", "en": "You don't own any emoji yet. Collect them from the gacha.", "ja": "所持している絵文字がありません。ガチャで集められます。", "zh-CN": "你还没有表情，可以通过抽取获得。", "zh-TW": "你還沒有表情，可以透過抽取獲得。", "es": "Aún no tienes emojis. Consíguelos en el gacha.", "pt-BR": "Você ainda não tem emojis. Colete no gacha.", "fr": "Vous n'avez pas encore d'emoji. Obtenez-en via le gacha.", "ru": "У вас пока нет эмодзи. Соберите их в гаче.", "it": "Non hai ancora emoji. Ottienili dal gacha.", "pl": "Nie masz jeszcze emoji. Zdobądź je w gacha.", "de": "Du hast noch keine Emojis. Sammle sie im Gacha."}
 }
 </script>
 <script id="mr-localization">
@@ -11872,7 +11882,7 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
     BATTLE_EVENT:'battle.event',    // (예약) 공격·스킬 이벤트
     MYROOM_REQUEST:'myroom.request',// 방문자 → 방 주인: 마이룸 데이터 요청
     MYROOM_DATA:'myroom.data',      // 방 주인 → 방문자: 마이룸 배치 데이터
-    EMOTE:'emote'                   // (예약) 이모티콘 보내기
+    EMOTE:'emote'                   // 보는 사람 → 대상: 이모지 보내기 (ID만)
   });
   const KNOWN_TYPES=new Set(Object.values(MSG));
   const ROOM_TYPES=new Set([MSG.ROOM_JOIN,MSG.ROOM_ACCEPT,MSG.ROOM_REJECT,MSG.ROOM_STATE,MSG.ROOM_LEAVE,MSG.ROOM_CLOSE,MSG.PING]);
@@ -12974,6 +12984,176 @@ html body #app #item-collection-grid .inv-item.codex-focus{outline:3px solid var
   });
 })();
 </script>
+<style id="mr-social-emote-style">
+.mr-emote-btn{flex:0 0 auto;border:1px solid var(--t-line,#2f4560);background:transparent;color:var(--t-text,#e6eef5);border-radius:8px;padding:5px 9px;font-size:10.5px;font-weight:900;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px;}
+.mr-emote-btn.open{border-color:var(--t-accent,#7ce3d1);color:var(--t-accent,#7ce3d1);}
+.mr-emote-btn:disabled{opacity:.5;cursor:default;}
+.mr-emote-picker{background:var(--t-bg,#0f1824);border:1px solid var(--t-line,#2f4560);border-radius:10px;padding:8px;}
+.mr-emote-picker-head{display:flex;align-items:center;justify-content:space-between;font-size:10px;font-weight:800;color:var(--t-mute,#71859b);margin-bottom:6px;}
+.mr-emote-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:5px;max-height:132px;overflow-y:auto;}
+.mr-emote-pick{height:38px;border-radius:8px;border:1px solid transparent;background:var(--t-surface,#18263a);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:22px;padding:4px;}
+.mr-emote-pick:hover,.mr-emote-pick:focus-visible{border-color:var(--t-accent,#7ce3d1);}
+.mr-emote-pick:disabled{opacity:.4;cursor:default;}
+.mr-emote-pick img{width:26px;height:26px;display:block;}
+.mr-emote-empty{font-size:11px;color:var(--t-sub,#9fb1c4);text-align:center;padding:10px 4px;line-height:1.45;}
+.mr-emote-pop{position:absolute;z-index:30;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:2px;transform:translate(-50%,-50%);animation:mr-emote-rise 1.8s ease-out forwards;}
+.mr-emote-pop .mr-emote-face{width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:38px;line-height:1;filter:drop-shadow(0 3px 4px rgba(0,0,0,.35));}
+.mr-emote-pop .mr-emote-face img{width:100%;height:100%;}
+.mr-emote-pop .mr-emote-who{font-size:9.5px;font-weight:900;color:#fff;background:rgba(0,0,0,.55);border-radius:999px;padding:1px 7px;white-space:nowrap;max-width:110px;overflow:hidden;text-overflow:ellipsis;}
+@keyframes mr-emote-rise{0%{opacity:0;transform:translate(-50%,-30%) scale(.5);}15%{opacity:1;transform:translate(-50%,-50%) scale(1.15);}25%{transform:translate(-50%,-50%) scale(1);}80%{opacity:1;}100%{opacity:0;transform:translate(-50%,-110%) scale(1);}}
+#mr-emote-toasts{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:19000;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;}
+.mr-emote-toast{display:flex;align-items:center;gap:7px;background:rgba(15,24,36,.92);border:1px solid var(--t-line,#2f4560);border-radius:999px;padding:4px 12px 4px 5px;color:var(--t-text,#e6eef5);font-size:11px;font-weight:800;box-shadow:0 6px 18px rgba(0,0,0,.35);animation:mr-emote-toast 2.6s ease forwards;}
+.mr-emote-toast .mr-emote-face{width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:22px;}
+.mr-emote-toast .mr-emote-face img{width:100%;height:100%;}
+@keyframes mr-emote-toast{0%{opacity:0;transform:translateY(-8px);}10%,85%{opacity:1;transform:none;}100%{opacity:0;transform:translateY(-6px);}}
+@media (prefers-reduced-motion:reduce){.mr-emote-pop,.mr-emote-toast{animation-duration:.01s;animation-delay:1.6s;}}
+</style>
+<script id="mr-social-emote">
+/* =====================================================================
+ * 이모지 보내기 (관전 중 / 친구 마이룸 방문 중)
+ *  - 보유한 이모지만 보낼 수 있음. 보내는 데이터는 이모지 ID 하나
+ *  - 받는 쪽: 전투 화면 또는 마이룸 화면 위에 잠깐 표시, 둘 다 안 보이면 상단 알림
+ *  - 보내기 간격 2초, 받는 쪽도 같은 사람의 과도한 전송은 무시
+ *  - 이미지 이모티콘으로 1:1 교체되면 같은 ID로 자동 반영
+ * ===================================================================== */
+(function(){
+  'use strict';
+  const S=window.MRSocial, C=window.MergeRunCodex;
+  if(!S||!C) return;
+  const MSG=S.MSG;
+  const COOLDOWN_MS=2000, RECV_GAP_MS=1200, MAX_ON_SCREEN=4, RECENT_MAX=8;
+  const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const tr=key=>{ try{ return window.MRLocale?.k ? window.MRLocale.k(key) : key; }catch(e){ return key; } };
+  const T=key=>`<span data-i18n="${key}">${esc(tr(key))}</span>`;
+
+  let lastSentAt=0;
+  const recent=[];                 // 최근 보낸 이모지 (이번 실행 동안만)
+  const lastFrom=new Map();        // 받는 쪽 도배 방지
+
+  function face(d){ return d.image?`<img src="${esc(d.image)}" alt="" draggable="false">`:esc(d.text||''); }
+  function describe(assetId){ try{ return C.describeRoomItem('item',assetId); }catch(e){ return null; } }  // 모르는 ID는 null
+
+  // 컨테이너 위에 이모지를 띄움 (보내는 쪽 패널, 받는 쪽 전투/마이룸 화면 공통)
+  function pop(container,d,who){
+    if(!container||!d) return;
+    const pops=container.querySelectorAll(':scope > .mr-emote-pop');
+    if(pops.length>=MAX_ON_SCREEN) pops[0].remove();
+    if(getComputedStyle(container).position==='static') container.style.position='relative';
+    const el=document.createElement('div');
+    el.className='mr-emote-pop';
+    el.style.left=(25+Math.random()*50)+'%';
+    el.style.top=(35+Math.random()*30)+'%';
+    el.innerHTML=`<div class="mr-emote-face">${face(d)}</div>${who?`<div class="mr-emote-who">${esc(who)}</div>`:''}`;
+    container.appendChild(el);
+    setTimeout(()=>el.remove(),1900);
+  }
+  function toast(d,who){
+    let host=document.getElementById('mr-emote-toasts');
+    if(!host){ host=document.createElement('div'); host.id='mr-emote-toasts'; document.body.appendChild(host); }
+    while(host.children.length>=3) host.firstChild.remove();
+    const el=document.createElement('div');
+    el.className='mr-emote-toast';
+    el.innerHTML=`<span class="mr-emote-face">${face(d)}</span><span></span>`;
+    el.lastChild.textContent=who||'';
+    host.appendChild(el);
+    setTimeout(()=>el.remove(),2700);
+  }
+  const visible=el=>{ if(!el) return false; const r=el.getBoundingClientRect(); return r.width>0 && r.height>0 && el.offsetParent!==null; };
+
+  /* ---------- 받는 쪽 ---------- */
+  S.on('message',msg=>{
+    if(msg.type!==MSG.EMOTE) return;
+    const now=Date.now();
+    if(now-(lastFrom.get(msg.from)||0)<RECV_GAP_MS) return;
+    lastFrom.set(msg.from,now);
+    const d=describe(String(msg.payload.assetId||''));
+    if(!d) return;
+    const who=S.getSnapshot().members.find(m=>m.id===msg.from)?.name||'';
+    const ctx=msg.payload.ctx==='room'?'room':'battle';
+    const stage=document.getElementById('battle-stage'), room=document.getElementById('char-preview-zone');
+    const target=ctx==='room'?(visible(room)?room:visible(stage)?stage:null):(visible(stage)?stage:visible(room)?room:null);
+    if(target) pop(target,d,who); else toast(d,who);
+  });
+
+  /* ---------- 보내는 쪽 ---------- */
+  function send(targetId,assetId,ctx){
+    const now=Date.now();
+    if(now-lastSentAt<COOLDOWN_MS) return false;
+    const own=C.ownedEmojis().some(e=>e.assetId===assetId);
+    if(!own) return false;                                  // 보유한 것만
+    const snap=S.getSnapshot();
+    const m=snap.members.find(x=>x.id===targetId);
+    if(!m || m.isSelf) return false;
+    lastSentAt=now;
+    const i=recent.indexOf(assetId); if(i>=0) recent.splice(i,1);
+    recent.unshift(assetId); recent.length=Math.min(recent.length,RECENT_MAX);
+    if(!m.isBot) S.sendToRoom(MSG.EMOTE,{ assetId, ctx:ctx==='room'?'room':'battle' },targetId);
+    return true;
+  }
+
+  // 관전/방문 패널에 붙는 보내기 버튼 + 선택창
+  function attach(panel,opts){
+    if(!panel || panel.querySelector('.mr-emote-btn')) return;
+    const head=panel.querySelector(opts.headSelector);
+    const closeBtn=head?.querySelector(opts.closeSelector);
+    if(!head) return;
+    const btn=document.createElement('button');
+    btn.type='button'; btn.className='mr-emote-btn';
+    btn.innerHTML=`<span aria-hidden="true">😊</span>${T('social.emoteSend')}`;
+    head.insertBefore(btn,closeBtn||null);
+    if(closeBtn) closeBtn.style.marginLeft='0';
+    btn.style.marginLeft='auto';
+    let picker=null, cdTimer=null;
+    function renderPicker(){
+      const list=C.ownedEmojis();
+      const order=new Map(recent.map((id,i)=>[id,i]));
+      list.sort((a,b)=>(order.has(a.assetId)?order.get(a.assetId):99)-(order.has(b.assetId)?order.get(b.assetId):99));
+      const cooling=Date.now()-lastSentAt<COOLDOWN_MS;
+      picker.innerHTML=list.length
+        ? `<div class="mr-emote-picker-head">${T('social.emotePick')}<span>${list.length}</span></div>
+           <div class="mr-emote-grid">${list.map(e=>`<button type="button" class="mr-emote-pick" data-emote="${esc(e.assetId)}"${cooling?' disabled':''}>${face(e)}</button>`).join('')}</div>`
+        : `<div class="mr-emote-empty">${T('social.emoteEmpty')}</div>`;
+    }
+    function toggle(force){
+      const open=force??!picker;
+      if(!open){ picker?.remove(); picker=null; btn.classList.remove('open'); return; }
+      picker=document.createElement('div'); picker.className='mr-emote-picker';
+      head.insertAdjacentElement('afterend',picker);
+      btn.classList.add('open'); renderPicker();
+      window.MRLocale?.refresh?.(picker);
+    }
+    btn.addEventListener('click',()=>toggle());
+    panel.addEventListener('click',e=>{
+      const pick=e.target.closest('.mr-emote-pick');
+      if(!pick || pick.disabled) return;
+      const id=pick.dataset.emote, target=opts.target();
+      if(!target) return;
+      if(send(target,id,opts.ctx)){
+        const d=C.ownedEmojis().find(x=>x.assetId===id);
+        pop(panel.querySelector(opts.stageSelector),d,'');
+        try{ window.playSfx?.('characterSelect'); }catch(err){}
+        renderPicker();
+        clearTimeout(cdTimer); cdTimer=setTimeout(()=>{ if(picker) renderPicker(); },COOLDOWN_MS+20);
+      }
+    });
+  }
+
+  // 관전·방문 패널이 새로 그려질 때마다 버튼을 붙인다
+  const hosts=[
+    { box:document.getElementById('social-spectate'), opts:{ headSelector:'.spec-head', closeSelector:'.spec-close', stageSelector:'.spec-stage', ctx:'battle', target:()=>window.MRSpectate?.watching?.() } },
+    { box:document.getElementById('social-visit'),    opts:{ headSelector:'.visit-head', closeSelector:'.visit-close', stageSelector:'.visit-room', ctx:'room',   target:()=>window.MRVisit?.visiting?.() } }
+  ];
+  hosts.forEach(h=>{
+    if(!h.box) return;
+    const sync=()=>{ const panel=h.box.firstElementChild; if(panel) attach(panel,h.opts); };
+    new MutationObserver(sync).observe(h.box,{childList:true});
+    sync();
+  });
+
+  window.MREmote=Object.freeze({ send, owned:()=>C.ownedEmojis() });
+})();
+</script>
+
 
 
 
