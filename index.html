@@ -4107,17 +4107,34 @@ window.MRBattleFX=(()=>{
             state.paid[m.id]=saved.paid?.[m.id]===true;
             if(state.paid[m.id])state.progress[m.id]=m.target;
         }
-        state.paid.all=saved.paid?.all===true&&DAILY_MISSIONS.every(m=>state.paid[m.id]);
+        state.paid.all=saved.paid?.all===true&&DAILY_MISSIONS.every(m=>state.progress[m.id]>=m.target);
         return state;
+    }
+    // Hybrid daily: missions complete automatically, rewards are claimed by tapping.
+    // Anything left unclaimed at the daily reset is paid automatically on the next day (never lost).
+    function dailyMissionComplete(state,m){return Number(state?.progress?.[m.id]||0)>=m.target;}
+    function dailyAllComplete(state){return DAILY_MISSIONS.every(m=>dailyMissionComplete(state,m));}
+    function dailyReadyList(state){
+        const ready=DAILY_MISSIONS.filter(m=>dailyMissionComplete(state,m)&&!state.paid[m.id]).map(m=>m.id);
+        if(dailyAllComplete(state)&&!state.paid.all)ready.push('all');
+        return ready;
+    }
+    function dailyRewardOf(id){return id==='all'?DAILY_ALL_CLEAR_REWARD:(DAILY_MISSIONS.find(m=>m.id===id)?.reward||0);}
+    function dailyUnclaimedTotal(state){return dailyReadyList(state).reduce((sum,id)=>sum+dailyRewardOf(id),0);}
+    let dailyCarryDelta=0,dailyCarryNotice=0;
+    function carryUnclaimedDaily(oldState){
+        const amount=dailyUnclaimedTotal(oldState);
+        if(amount>0){fragments+=amount;dailyCarryDelta+=amount;dailyCarryNotice+=amount;}
+        return amount;
     }
     function advanceDailyMissions(state,kind,amount,date){
         const next=normalizeDailyMissionState(state,date),paid=[];
         const mission=DAILY_MISSIONS.find(m=>m.id===kind);
         if(mission&&Number.isFinite(amount)&&amount>0)next.progress[kind]=Math.min(mission.target,next.progress[kind]+Math.floor(amount));
-        let reward=0;
-        for(const m of DAILY_MISSIONS)if(!next.paid[m.id]&&next.progress[m.id]>=m.target){next.paid[m.id]=true;reward+=m.reward;paid.push(m.id);}
-        if(!next.paid.all&&DAILY_MISSIONS.every(m=>next.paid[m.id])){next.paid.all=true;reward+=DAILY_ALL_CLEAR_REWARD;paid.push('all');}
-        return {state:next,reward,paid};
+        const before=normalizeDailyMissionState(state,date);
+        const completed=DAILY_MISSIONS.filter(m=>!dailyMissionComplete(before,m)&&dailyMissionComplete(next,m)).map(m=>m.id);
+        if(completed.length&&dailyAllComplete(next)&&!dailyAllComplete(before))completed.push('all');
+        return {state:next,reward:0,paid,completed};
     }
     let dailyMissions=newDailyMissionState(getLocalDayKey());
     let dailyMissionsReady=false,dailyReturnMenu='battle',dailyToastTimer=null;
@@ -4148,7 +4165,21 @@ window.MRBattleFX=(()=>{
     function ensureDailyMissionDay(){
         const today=getLocalDayKey();
         if(dailyMissions.date===today)return false;
+        carryUnclaimedDaily(dailyMissions);
         dailyMissions=newDailyMissionState(today);return true;
+    }
+    // Saves the day change and tells the player about yesterday's auto-paid rewards.
+    function flushDailyCarry(){
+        const delta=dailyCarryDelta;dailyCarryDelta=0;
+        saveDailyMissionProgress(delta);
+        if(dailyCarryNotice>0){
+            const amount=dailyCarryNotice;dailyCarryNotice=0;
+            updateTopUI();refreshShopWallet();
+            setTimeout(()=>{
+                window.MRFX?.notify({type:'mission',icon:dailyIcon('gift'),text:dailyText('어제 받지 못한 보상 · 조각 +{amount} 지급',{amount}),ms:2800});
+                flyFragmentReward(amount,document.getElementById('nav-daily'));playSfx('fragment');
+            },1200);
+        }
     }
     // Reward feedback: shards / merge / gold fly from where they were earned into their top-bar counter.
     const CURRENCY_FLY={
@@ -4229,36 +4260,60 @@ window.MRBattleFX=(()=>{
         if(!dailyMissionsReady||resetInProgress||(kind!=='runs'&&runFinished))return;
         const result=advanceDailyMissions(dailyMissions,kind,amount,getLocalDayKey());
         dailyMissions=result.state;
-        if(result.reward)fragments+=result.reward;
-        // A single write includes progress, completion flags and the rewarded balance.
-        saveDailyMissionProgress(result.reward);
-        if(result.reward){
-            updateTopUI();refreshShopWallet();playSfx('fragment');
-            const toast=document.getElementById('daily-reward-toast');
-            const missionIndex=DAILY_MISSIONS.findIndex(m=>result.paid.includes(m.id));
-            const missionCard=currentMenu==='daily'&&missionIndex>=0?document.querySelectorAll('#daily-mission-cards .dg-mission')[missionIndex]:null;
-            requestAnimationFrame(()=>flyFragmentReward(result.reward,missionCard||(toast?.classList.contains('show')?toast:null)||toast));
-            if(window.MRFX){
-                const key=result.paid.includes('all')?'미션 완료 + 올클리어 · 조각 +{amount} 자동 지급':'미션 완료 · 조각 +{amount} 자동 지급';
-                window.MRFX.notify({type:'mission',icon:dailyIcon('gift'),text:dailyText(key,{amount:result.reward}),ms:2000});
-            }else if(toast){
-                const key=result.paid.includes('all')?'미션 완료 + 올클리어 · 조각 +{amount} 자동 지급':'미션 완료 · 조각 +{amount} 자동 지급';
-                toast.innerHTML=dailyIcon('gift')+`<span>${dailyEscape(dailyText(key,{amount:result.reward}))}</span>`;
-                toast.classList.add('show');clearTimeout(dailyToastTimer);dailyToastTimer=setTimeout(()=>toast.classList.remove('show'),4200);
-            }
+        saveDailyMissionProgress(0);
+        if(result.completed.length){
+            const allNow=result.completed.includes('all');
+            const key=allNow?'올클리어! 데일리에서 보상을 받으세요':'미션 완료! 데일리에서 보상을 받으세요';
+            window.MRFX?.notify({type:'mission',icon:dailyIcon('gift'),text:dailyText(key),ms:2200});
+            playSfx('selector',{gain:.6});
+            const nav=document.getElementById('nav-daily');nav?.animate?.([{transform:'scale(1)'},{transform:'scale(1.15)'},{transform:'scale(1)'}],{duration:360});
+            // Desktop (exe): taskbar badge/flash; the toast is sent once, when the all-clear becomes claimable.
+            callDesktopBridge('dailyReward',{ready:dailyReadyList(dailyMissions).length});
+            if(allNow)notifyUser('daily','🎁 데일리 보상 준비 완료','미션 3개를 모두 달성했어요. 보상을 받으세요.');
         }
         renderDailyMissions();
     }
+    // Claim one reward ('runs' | 'merges' | 'kills' | 'all') or every ready reward at once.
+    function claimDaily(ids,sourceEl){
+        ensureDailyMissionDay();
+        const ready=dailyReadyList(dailyMissions).filter(id=>ids.includes(id));
+        if(!ready.length)return 0;
+        let amount=0;
+        for(const id of ready){dailyMissions.paid[id]=true;amount+=dailyRewardOf(id);}
+        fragments+=amount;
+        saveDailyMissionProgress(amount);
+        updateTopUI();refreshShopWallet();playSfx('fragment');
+        flyFragmentReward(amount,sourceEl||document.getElementById('daily-mission-cards'));
+        callDesktopBridge('dailyReward',{ready:dailyReadyList(dailyMissions).length});
+        renderDailyMissions();
+        return amount;
+    }
+    window.claimDailyReward=function(id,el){claimDaily([id],el);};
+    window.claimAllDailyRewards=function(el){claimDaily(['runs','merges','kills','all'],el);};
     function dailyRing(percent){
         const c=2*Math.PI*26,p=Math.max(0,Math.min(100,percent));
         return `<svg class="dg-ring-svg" viewBox="0 0 64 64" aria-hidden="true"><circle class="dg-ring-track" cx="32" cy="32" r="26"/><circle class="dg-ring-fill" cx="32" cy="32" r="26" stroke-dasharray="${c.toFixed(2)}" stroke-dashoffset="${(c*(1-p/100)).toFixed(2)}"/></svg>`;
     }
     function renderDailyMissions(){
         if(!dailyMissionsReady)return;
-        const changed=ensureDailyMissionDay();if(changed&&!resetInProgress)saveDailyMissionProgress();
-        const completed=DAILY_MISSIONS.filter(m=>dailyMissions.paid[m.id]).length;
+        const changed=ensureDailyMissionDay();if(changed&&!resetInProgress)flushDailyCarry();
+        const completed=DAILY_MISSIONS.filter(m=>dailyMissionComplete(dailyMissions,m)).length;
+        const readyIds=dailyReadyList(dailyMissions);
         setUiText(document.getElementById('daily-nav-count'),completed+'/3');
-        const nav=document.getElementById('nav-daily');if(nav)nav.classList.toggle('daily-complete',dailyMissions.paid.all);
+        const nav=document.getElementById('nav-daily');
+        if(nav){nav.classList.toggle('daily-complete',dailyMissions.paid.all);nav.classList.toggle('has-reward',readyIds.length>0);}
+        let claimAll=document.getElementById('daily-claim-all');
+        const cardsHost=document.getElementById('daily-mission-cards');
+        if(!claimAll&&cardsHost){
+            claimAll=document.createElement('button');claimAll.type='button';claimAll.id='daily-claim-all';claimAll.className='dg-claim-all';
+            claimAll.addEventListener('click',()=>window.claimAllDailyRewards(claimAll));
+            cardsHost.parentNode.insertBefore(claimAll,cardsHost);
+        }
+        if(claimAll){
+            const total=readyIds.reduce((sum,id)=>sum+dailyRewardOf(id),0);
+            claimAll.hidden=!readyIds.length;
+            claimAll.innerHTML=`${dailyIcon('gift')}<span>${dailyEscape(dailyText('모두 받기'))}</span><b>${dailyIcon('fragment')}+${total}</b>`;
+        }
         const host=document.getElementById('daily-mission-cards');if(!host)return;
         const t=(key,values)=>dailyEscape(dailyText(key,values));
         const fmt=n=>formatCompactNumber(Math.max(0,Math.trunc(Number(n)||0)));
@@ -4274,12 +4329,18 @@ window.MRBattleFX=(()=>{
         const chip=n=>`<span class="dg-chip">${dailyIcon('fragment')}<b>+${n}</b></span>`;
         setUiHTML(host,DAILY_MISSIONS.map(m=>{
             const progress=dailyMissions.progress[m.id],done=dailyMissions.paid[m.id],pct=100*progress/m.target;
-            return `<article class="dg-mission ${done?'is-done':''}" title="${t(m.title)}" aria-label="${t(m.title)} ${progress} / ${m.target}"><div class="dg-ring">${dailyRing(done?100:pct)}<span class="dg-ring-icon">${dailyIcon(done?'check':m.icon)}</span></div><div class="dg-label" data-no-i18n>${dailyEscape(tk(m.label))}</div><div class="dg-count" data-no-i18n><b>${fmt(progress)}</b><span>/${fmt(m.target)}</span></div>${chip(m.reward)}</article>`;
+            const ready=readyIds.includes(m.id);
+            const claimAttrs=ready?` role="button" tabindex="0" onclick="claimDailyReward('${m.id}',this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();claimDailyReward('${m.id}',this);}"`:'';
+            return `<article class="dg-mission ${done?'is-done':''} ${ready?'is-ready':''}"${claimAttrs} title="${t(m.title)}" aria-label="${t(m.title)} ${progress} / ${m.target}"><div class="dg-ring">${dailyRing(done?100:pct)}<span class="dg-ring-icon">${dailyIcon(done?'check':m.icon)}</span></div><div class="dg-label" data-no-i18n>${dailyEscape(tk(m.label))}</div><div class="dg-count" data-no-i18n><b>${fmt(progress)}</b><span>/${fmt(m.target)}</span></div>${ready?`<span class="dg-claim">${t('받기')} +${m.reward}</span>`:chip(m.reward)}</article>`;
         }).join(''));
         const bonus=document.getElementById('daily-all-clear');
         if(bonus){
-            setUiHTML(bonus,`<div class="dg-pips" aria-label="${completed} / 3">${DAILY_MISSIONS.map(m=>`<span class="dg-pip ${dailyMissions.paid[m.id]?'done':''}">${dailyIcon(dailyMissions.paid[m.id]?'check':m.icon)}</span>`).join('')}</div><span class="dg-bonus-arrow" aria-hidden="true">${dailyIcon('arrow')}</span><span class="dg-bonus-gift" title="${t('올클리어 보너스')}" aria-label="${t('올클리어 보너스')}">${dailyIcon(dailyMissions.paid.all?'check':'gift')}</span>${chip(DAILY_ALL_CLEAR_REWARD)}`);
+            setUiHTML(bonus,`<div class="dg-pips" aria-label="${completed} / 3">${DAILY_MISSIONS.map(m=>`<span class="dg-pip ${dailyMissionComplete(dailyMissions,m)?'done':''}">${dailyIcon(dailyMissionComplete(dailyMissions,m)?'check':m.icon)}</span>`).join('')}</div><span class="dg-bonus-arrow" aria-hidden="true">${dailyIcon('arrow')}</span><span class="dg-bonus-gift" title="${t('올클리어 보너스')}" aria-label="${t('올클리어 보너스')}">${dailyIcon(dailyMissions.paid.all?'check':'gift')}</span>${readyIds.includes('all')?`<span class="dg-claim">${t('받기')} +${DAILY_ALL_CLEAR_REWARD}</span>`:chip(DAILY_ALL_CLEAR_REWARD)}`);
             bonus.classList.toggle('is-done',dailyMissions.paid.all);
+            const allReady=readyIds.includes('all');
+            bonus.classList.toggle('is-ready',allReady);
+            if(allReady){bonus.setAttribute('role','button');bonus.tabIndex=0;bonus.onclick=()=>window.claimDailyReward('all',bonus);bonus.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();window.claimDailyReward('all',bonus);}};}
+            else{bonus.removeAttribute('role');bonus.removeAttribute('tabindex');bonus.onclick=null;bonus.onkeydown=null;}
         }
         setUiHTML(document.getElementById('daily-record-cards'),Object.entries(RECORD_FRAGMENT_REWARDS).map(([period,reward])=>{
             const paid=!!claims[period],target=getBestScoreByPeriod(period)+1;
@@ -4301,12 +4362,14 @@ window.MRBattleFX=(()=>{
     };
     window.closeDailyMissions=function(){switchMenu(dailyReturnMenu==='daily'?'battle':dailyReturnMenu);};
     function initializeDailyMissions(){
-        dailyMissionsReady=true;renderDailyMissions();
+        dailyMissionsReady=true;
+        if(dailyCarryDelta||dailyCarryNotice)flushDailyCarry();
+        renderDailyMissions();
         setInterval(()=>{
             if(resetInProgress)return;
             // The countdown must keep ticking in every mode, including the test unlock.
             if(currentMenu==='daily')updateDailyResetClock();
-            if(ensureDailyMissionDay()){saveDailyMissionProgress();renderDailyMissions();}
+            if(ensureDailyMissionDay()){flushDailyCarry();renderDailyMissions();}
         },1000);
     }
     // Visual feedback only. The existing simulation still owns item duration/cost.
@@ -6206,6 +6269,7 @@ function createSocialDataFoundation(assets, emojis) {
             if(saved){
                 if(saved.starterSelection?.version===1)starterSelection=saved.starterSelection;
                 fragments=Math.max(0,Number(saved.fragments)||0);
+                if(saved.dailyMissions?.date&&saved.dailyMissions.date!==getLocalDayKey())carryUnclaimedDaily(normalizeDailyMissionState(saved.dailyMissions,saved.dailyMissions.date));
                 dailyMissions=normalizeDailyMissionState(saved.dailyMissions,getLocalDayKey());
                 if(saved.recordFragmentClaims?.date===getLocalDayKey()){
                     recordFragmentClaims={date:saved.recordFragmentClaims.date,periods:{}};
@@ -11391,5 +11455,23 @@ html body #battle-chain-pop[data-tier="max"].bump{animation:fxMaxPulse .5s ease-
  document.addEventListener('click',e=>{const n=e.target.closest?.('#nav-collection,#nav-codex');if(n)document.querySelectorAll('.mrfx-has-new').forEach(x=>x.classList.remove('mrfx-has-new'));},true);
 })();
 </script>
+<style id="mr-daily-claim">
+/* 데일리 하이브리드: 완료 → 받기 대기(반짝) → 받음 */
+.dg-mission.is-ready,.dg-bonus.is-ready{cursor:pointer;border-color:#ffd772!important;background:linear-gradient(160deg,#3a3420,#22303f)!important;box-shadow:0 0 0 1px rgba(255,215,114,.35),0 0 16px rgba(255,215,114,.25);animation:dgReady 1.6s ease-in-out infinite;}
+.dg-mission.is-ready:hover,.dg-bonus.is-ready:hover{filter:brightness(1.08);}
+.dg-mission.is-ready .dg-ring-fill{stroke:#ffd772;}
+.dg-mission.is-ready .dg-ring-icon{color:#ffe7a6;}
+.dg-claim{display:inline-flex;align-items:center;gap:3px;padding:4px 10px;border-radius:999px;background:linear-gradient(180deg,#ffe08a,#f0b43c);color:#3a2600;font-size:11px;font-weight:1000;white-space:nowrap;box-shadow:0 2px 0 #b8862a;}
+.dg-claim-all{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;margin:0 0 8px;padding:11px 14px;border:0;border-radius:12px;background:linear-gradient(180deg,#ffe08a,#f0b43c);color:#3a2600;font-size:14px;font-weight:1000;cursor:pointer;box-shadow:0 4px 0 #b8862a,0 8px 18px rgba(240,180,60,.25);}
+.dg-claim-all[hidden]{display:none;}
+.dg-claim-all .daily-icon{width:17px;height:17px;}
+.dg-claim-all b{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:999px;background:rgba(58,38,0,.15);}
+.dg-claim-all:active{transform:translateY(3px);box-shadow:0 1px 0 #b8862a;}
+#nav-daily{position:relative;}
+#nav-daily.has-reward::after{content:"";position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:#ff5d6c;box-shadow:0 0 0 2px #0f1824,0 0 8px rgba(255,93,108,.7);animation:dgDot 1.4s ease-in-out infinite;}
+@keyframes dgReady{50%{box-shadow:0 0 0 1px rgba(255,215,114,.55),0 0 24px rgba(255,215,114,.45);}}
+@keyframes dgDot{50%{transform:scale(1.25);}}
+@media (prefers-reduced-motion:reduce){.dg-mission.is-ready,.dg-bonus.is-ready,#nav-daily.has-reward::after{animation:none;}}
+</style>
 </body>
 </html>
