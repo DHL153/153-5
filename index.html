@@ -3419,15 +3419,15 @@ html body #game-startup-screen.is-leaving{opacity:0!important;transition:opacity
 <div class="control-name">배수</div>
 <div class="cost-label" id="mult-cost">무료</div>
 </button>
-<button class="btn-item btn-auto" id="btn-auto" onclick="toggleAutoDrop()">
-<span class="icon-main">🤖</span>
-<div class="control-name">오토</div>
-<div class="cost-label" id="auto-label">OFF</div>
-</button>
 <button class="btn-item btn-organize" onclick="useItem('organize')">
 <span class="icon-main">🧲</span>
 <div class="control-name">정리</div>
 <div class="cost-label" id="cost-organize">🪙 100</div>
+</button>
+<button class="btn-item btn-auto" id="btn-auto" onclick="toggleAutoDrop()">
+<span class="icon-main">🤖</span>
+<div class="control-name">오토</div>
+<div class="cost-label" id="auto-label">OFF</div>
 </button>
 <button class="btn-item btn-shake" onclick="useItem('shake')">
 <span class="icon-main">🌪️</span>
@@ -3448,15 +3448,15 @@ html body #game-startup-screen.is-leaving{opacity:0!important;transition:opacity
     <span class="mmi-name">배수</span>
     <span class="mmi-cost" id="merge-mini-mult-cost">무료</span>
   </button>
-  <button class="merge-mini-item-btn btn-auto" id="merge-mini-auto-btn" onclick="toggleAutoDrop()">
-    <span class="mmi-icon">🤖</span>
-    <span class="mmi-name">오토</span>
-    <span class="mmi-cost" id="merge-mini-auto-label">OFF</span>
-  </button>
   <button class="merge-mini-item-btn btn-organize" onclick="useItem('organize')">
     <span class="mmi-icon">🧲</span>
     <span class="mmi-name">정리</span>
     <span class="mmi-cost" id="mini-cost-organize">🪙 100</span>
+  </button>
+  <button class="merge-mini-item-btn btn-auto" id="merge-mini-auto-btn" onclick="toggleAutoDrop()">
+    <span class="mmi-icon">🤖</span>
+    <span class="mmi-name">오토</span>
+    <span class="mmi-cost" id="merge-mini-auto-label">OFF</span>
   </button>
   <button class="merge-mini-item-btn btn-shake" onclick="useItem('shake')">
     <span class="mmi-icon">🌪️</span>
@@ -4013,6 +4013,7 @@ window.MRBattleFX=(()=>{
     function updateTopUI() {
         setUiText(uiMerge,formatCompactNumber(mergeCount));
         setUiText(uiGold,formatCompactNumber(gold));
+        if(typeof updateSkillAffordability==='function')updateSkillAffordability();
         const scoreEl = document.getElementById('val-score'); if (scoreEl) setUiText(scoreEl,formatCompactNumber(runScore));
         const menuScore = document.getElementById('menu-current-score'); if (menuScore) setUiText(menuScore,formatCompactNumber(runScore));
         updateGachaUI(); // 상태 변경 시 버튼 상태 업데이트
@@ -4920,7 +4921,17 @@ window.MRBattleFX=(()=>{
         return Math.max(base,Math.round(raw/10)*10);
     }
 
+    // Skill bar: dim a paid skill (and show its price in red) while the player can't afford it.
+    function updateSkillAffordability(){
+        try{
+            ['organize','shake','tornado'].forEach(type=>{
+                const short=(Number(gold)||0)<getRunItemCost(type);
+                document.querySelectorAll(`#ui-section .btn-${type},#merge-mini-item-bar .btn-${type}`).forEach(b=>b.classList.toggle('no-gold',short));
+            });
+        }catch(e){}
+    }
     function updateRunItemCostUI() {
+        updateSkillAffordability();
         ['organize','shake','tornado'].forEach(type=>{
             const cost=getRunItemCost(type);
             const els=[
@@ -11623,6 +11634,63 @@ html body #battle-chain-pop[data-tier="max"].bump{animation:fxMaxPulse .5s ease-
 /* Owned-count badge sits inside the card so overflow:hidden cards never clip it; pill grows for 2-3 digits. */
 html body #app .inv-item .count,html body #app .char-item-btn .count,html body #app.codex-mode #item-collection-grid .inv-item .count{position:absolute!important;top:5px!important;right:5px!important;left:auto!important;bottom:auto!important;box-sizing:border-box!important;min-width:20px!important;width:auto!important;height:20px!important;padding:0 6px!important;border-radius:999px!important;border:1.5px solid rgba(255,255,255,.92)!important;background:#ff4f87!important;color:#fff!important;font-size:11px!important;font-weight:900!important;line-height:1!important;display:flex!important;align-items:center!important;justify-content:center!important;white-space:nowrap!important;z-index:4!important;box-shadow:0 1px 4px rgba(0,0,0,.35)!important;pointer-events:none;}
 html body #app #char-item-list.emoji-library .char-item-btn .count,html body #app #gacha-grid .inv-item .count{top:1px!important;right:1px!important;min-width:16px!important;height:16px!important;padding:0 4px!important;font-size:9px!important;}
+</style>
+<style id="mr-skillbar-a">
+/* Skill bar · style A (dark glass + colour accent). Order: 배수 | 정리 | [오토 x1.2] | 쉐이크 | 토네이도 */
+html body #app #view-battle #ui-section .item-group{display:flex!important;align-items:center!important;gap:7px!important;}
+html body #app #view-battle #ui-section .btn-item,html body #app #merge-mini-item-bar .merge-mini-item-btn{
+ --c:#9fb1c4;position:relative!important;overflow:hidden!important;flex:1 1 0!important;min-width:0!important;
+ border:0!important;border-radius:14px!important;
+ background:linear-gradient(180deg,#24314b,#1a2539)!important;background-color:#1d283d!important;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 2px 6px rgba(0,0,0,.35)!important;
+ color:#eef3fb!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;
+ transition:transform .12s ease,box-shadow .2s ease,opacity .2s ease,filter .2s ease!important;}
+html body #app #view-battle #ui-section .btn-item{height:66px!important;min-height:0!important;max-height:none!important;padding:4px 2px 4px!important;}
+html body #app #view-battle #ui-section,#app #view-battle #ui-section .item-group{overflow:visible!important;}
+html body #app #view-battle #ui-section .btn-item::before,html body #app #merge-mini-item-bar .merge-mini-item-btn::before{content:""!important;position:absolute!important;left:16%!important;right:16%!important;top:0!important;height:3px!important;border-radius:0 0 3px 3px!important;background:var(--c)!important;opacity:.95;display:block!important;}
+html body #app #view-battle #ui-section .btn-item:active,html body #app #merge-mini-item-bar .merge-mini-item-btn:active{transform:translateY(1px) scale(.97)!important;}
+html body #app #view-battle #ui-section .btn-mult,html body #app #merge-mini-item-bar .btn-mult{--c:#b79bff;}
+html body #app #view-battle #ui-section .btn-auto,html body #app #merge-mini-item-bar .btn-auto{--c:#6fe0c8;}
+html body #app #view-battle #ui-section .btn-organize,html body #app #merge-mini-item-bar .btn-organize{--c:#f2c86b;}
+html body #app #view-battle #ui-section .btn-shake,html body #app #merge-mini-item-bar .btn-shake{--c:#7cc7ff;}
+html body #app #view-battle #ui-section .btn-tornado,html body #app #merge-mini-item-bar .btn-tornado{--c:#ff9a6b;}
+/* icon chip */
+html body #app #view-battle #ui-section .btn-item .icon-main,html body #app #merge-mini-item-bar .mmi-icon{
+ width:22px!important;height:22px!important;margin:0 auto!important;border-radius:7px!important;flex:0 0 auto!important;position:static!important;transform:none!important;display:grid!important;place-items:center!important;
+ color:var(--c)!important;background:color-mix(in srgb,var(--c) 16%,transparent)!important;font-size:14px!important;font-weight:900!important;line-height:1!important;}
+html body #app #view-battle #ui-section .btn-item .icon-main svg,html body #app #merge-mini-item-bar .mmi-icon svg{width:16px!important;height:16px!important;color:var(--c)!important;stroke:currentColor!important;}
+html body #app #view-battle #ui-section .btn-item .control-name,html body #app #merge-mini-item-bar .mmi-name{margin-top:2px!important;font-size:12px!important;font-weight:800!important;color:#eef3fb!important;line-height:1.1!important;white-space:nowrap!important;}
+html body #app #view-battle #ui-section .btn-item .cost-label,html body #app #merge-mini-item-bar .mmi-cost{
+ display:inline-flex!important;align-items:center!important;gap:2px!important;margin-top:2px!important;padding:1px 7px!important;border-radius:99px!important;
+ background:rgba(0,0,0,.28)!important;color:#f2c86b!important;font-size:10.5px!important;font-weight:800!important;line-height:1.2!important;white-space:nowrap!important;}
+html body #app #view-battle #ui-section .btn-mult .cost-label,html body #app #merge-mini-item-bar .btn-mult .mmi-cost,
+html body #app #view-battle #ui-section .btn-auto .cost-label,html body #app #merge-mini-item-bar .btn-auto .mmi-cost{color:#8fa1bb!important;}
+/* 오토: centre, 1.2x */
+html body #app #view-battle #ui-section .btn-auto{flex:1.2 1 0!important;height:77px!important;padding:5px 2px 5px!important;border-radius:16px!important;z-index:2!important;}
+html body #app #view-battle #ui-section .btn-auto .icon-main{width:30px!important;height:30px!important;border-radius:10px!important;}
+html body #app #view-battle #ui-section .btn-auto .icon-main svg{width:19px!important;height:19px!important;}
+html body #app #view-battle #ui-section .btn-auto .control-name{font-size:14px!important;}
+html body #app #merge-mini-item-bar .btn-auto{flex:1.2 1 0!important;}
+/* 오토 ON */
+html body #app #view-battle #ui-section .btn-auto.active,html body #app #merge-mini-item-bar .btn-auto.active{
+ background:linear-gradient(180deg,#1f4a48,#173533)!important;box-shadow:inset 0 0 0 1.5px #6fe0c8,0 0 14px rgba(111,224,200,.28)!important;}
+html body #app #view-battle #ui-section .btn-auto.active .cost-label,html body #app #merge-mini-item-bar .btn-auto.active .mmi-cost{color:#6fe0c8!important;}
+/* 배수 active (x2+) keeps a violet glow */
+html body #app #view-battle #ui-section .btn-mult.boost-on,html body #app #merge-mini-item-bar .btn-mult.boost-on{box-shadow:inset 0 0 0 1.5px #b79bff,0 0 12px rgba(183,155,255,.25)!important;}
+/* not enough gold */
+html body #app #view-battle #ui-section .btn-item.no-gold,html body #app #merge-mini-item-bar .merge-mini-item-btn.no-gold{opacity:.55!important;filter:saturate(.6)!important;}
+html body #app #view-battle #ui-section .btn-item.no-gold .cost-label,html body #app #merge-mini-item-bar .no-gold .mmi-cost{color:#ff8a8a!important;}
+/* mini bar sizing */
+html body #app #merge-mini-item-bar{align-items:center!important;gap:5px!important;grid-template-columns:1fr 1fr 1.2fr 1fr 1fr!important;}
+html body #app #merge-mini-item-bar .btn-auto{align-self:stretch!important;}
+html body #app #merge-mini-item-bar .merge-mini-item-btn{padding:6px 1px 5px!important;border-radius:11px!important;}
+html body #app #merge-mini-item-bar .mmi-icon{width:24px!important;height:24px!important;border-radius:8px!important;font-size:11px!important;}
+html body #app #merge-mini-item-bar .mmi-icon svg{width:15px!important;height:15px!important;}
+html body #app #merge-mini-item-bar .mmi-name{font-size:10.5px!important;margin-top:2px!important;}
+html body #app #merge-mini-item-bar .mmi-cost{font-size:9.5px!important;padding:1px 5px!important;margin-top:2px!important;}
+html body #app #view-battle #ui-section .btn-item>*,html body #app #merge-mini-item-bar .merge-mini-item-btn>*{position:static!important;transform:none!important;margin-bottom:0!important;flex:0 0 auto!important;}
+html body #app #view-battle #ui-section .btn-item .control-name{margin-top:3px!important;line-height:14px!important;height:14px!important;overflow:visible!important;}
+html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!important;}
 </style>
 </body>
 </html>
