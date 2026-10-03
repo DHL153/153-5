@@ -3178,29 +3178,32 @@ html body #game-startup-screen.is-leaving{opacity:0!important;transition:opacity
  function kick(){if(!raf)raf=requestAnimationFrame(frame);}
  // --- tips (Korean source; other languages use the game dictionary, else English) ---
  var TIPS=[
-  ['연속으로 머지하면 합체음이 도·레·미·파·솔로 올라가요!','Chain merges and the merge sound climbs do-re-mi-fa-sol!'],
-  ['높은 단계 구슬로 공격할수록 타격이 더 강해져요.','Higher-level beads hit harder in battle.'],
-  ['중복 아이템은 분해해서 조각으로 바꿀 수 있어요.','Dismantle duplicate items into fragments.'],
-  ['조각을 모아 원하는 아이템과 교환하세요.','Collect fragments and exchange them for the item you want.'],
-  ['같은 등급 아이템 10개를 합성하면 상위 등급을 얻어요.','Combine 10 items of the same tier to get a higher tier.'],
-  ['데일리 미션은 매일 {time}에 초기화돼요.','Daily missions reset every day at {time}.'],
-  ['미니 모드로 다른 일을 하면서도 게임이 계속 진행돼요.','Mini mode keeps the game running while you do other things.'],
-  ['보스를 처치하면 많은 골드를 얻어요.','Defeat bosses for a lot of gold.']
+  {ko:'연속으로 머지하면 합체음이 도·레·미·파·솔로 올라가요!',en:'Chain merges and the merge sound climbs do-re-mi-fa-sol!',fr:'Enchaînez les fusions : le son monte do-ré-mi-fa-sol !',it:'Concatena le fusioni: il suono sale do-re-mi-fa-sol!',de:'Kettenfusionen lassen den Klang Do-Re-Mi-Fa-Sol hochsteigen!',es:'¡Encadena fusiones y el sonido sube do-re-mi-fa-sol!',ru:'Сливайте подряд — звук поднимается до-ре-ми-фа-соль!','pt-BR':'Encadeie fusões e o som sobe dó-ré-mi-fá-sol!','zh-CN':'连续合成时，合成音会按 do·re·mi·fa·sol 逐级升高！','zh-TW':'連續合成時，合成音會依 do·re·mi·fa·sol 逐級升高！',ja:'連続でマージすると、合体音がド・レ・ミ・ファ・ソと上がっていきます！',pl:'Łącz seriami, a dźwięk wspina się do-re-mi-fa-sol!'},
+  {ko:'높은 단계 구슬로 공격할수록 타격 연출이 더 화려해져요.',en:'The higher the orb level, the flashier your attacks look.',fr:'Plus l’orbe est de haut niveau, plus vos attaques sont spectaculaires.',it:'Più alto è il livello della sfera, più spettacolari sono gli attacchi.',de:'Je höher die Orb-Stufe, desto spektakulärer sehen deine Angriffe aus.',es:'Cuanto mayor es el nivel del orbe, más espectaculares son tus ataques.',ru:'Чем выше уровень сферы, тем зрелищнее ваши атаки.','pt-BR':'Quanto maior o nível da esfera, mais vistosos ficam seus ataques.','zh-CN':'球体等级越高，攻击特效越华丽。','zh-TW':'球體等級越高，攻擊特效越華麗。',ja:'高いレベルのオーブで攻撃するほど、攻撃演出が派手になります。',pl:'Im wyższy poziom kuli, tym efektowniejsze ataki.'},
+  {ko:'중복 아이템은 분해해서 조각으로 바꿀 수 있어요.',en:'Salvage duplicate items to turn them into Shards.',fr:'Recyclez les objets en double pour obtenir des Fragments.',it:'Ricicla gli oggetti doppi per ottenere Frammenti.',de:'Zerlege doppelte Gegenstände in Fragmente.',es:'Desmonta los objetos repetidos para convertirlos en Fragmentos.',ru:'Разбирайте дубликаты, чтобы получить Осколки.','pt-BR':'Desmonte itens repetidos para transformá-los em Fragmentos.','zh-CN':'重复的道具可以分解成碎片。','zh-TW':'重複的道具可以分解成碎片。',ja:'重複したアイテムは分解して欠片に変えられます。',pl:'Rozmontuj zduplikowane przedmioty, aby zdobyć Odłamki.'},
+  {ko:'조각을 모아 원하는 아이템과 교환하세요.',en:'Collect Shards and exchange them for the item you want.',fr:'Accumulez des Fragments et échangez-les contre l’objet de votre choix.',it:'Raccogli Frammenti e scambiali con l’oggetto che desideri.',de:'Sammle Fragmente und tausche sie gegen den gewünschten Gegenstand.',es:'Reúne Fragmentos y cámbialos por el objeto que quieras.',ru:'Копите Осколки и обменивайте их на нужный предмет.','pt-BR':'Junte Fragmentos e troque pelo item que quiser.','zh-CN':'收集碎片，兑换你想要的道具。','zh-TW':'收集碎片，兌換你想要的道具。',ja:'欠片を集めて、欲しいアイテムと交換しましょう。',pl:'Zbieraj Odłamki i wymieniaj je na wybrany przedmiot.'},
+  {ko:'같은 등급 아이템 10개를 합성하면 상위 등급을 얻어요.',en:'Craft 10 items of the same tier to get one of the next tier.',fr:'Fusionnez 10 objets du même rang pour obtenir le rang supérieur.',it:'Combina 10 oggetti dello stesso grado per ottenere il grado superiore.',de:'Kombiniere 10 Gegenstände derselben Stufe für die nächsthöhere Stufe.',es:'Fusiona 10 objetos del mismo rango para obtener el rango superior.',ru:'Синтез 10 предметов одного ранга даёт предмет ранга выше.','pt-BR':'Combine 10 itens do mesmo nível para obter o nível superior.','zh-CN':'合成 10 个同等级道具，可获得更高等级道具。','zh-TW':'合成 10 個同等級道具，可獲得更高等級道具。',ja:'同じランクのアイテムを10個合成すると、上位ランクが手に入ります。',pl:'Synteza 10 przedmiotów tej samej rangi daje przedmiot wyższej rangi.'},
+  {ko:'데일리 미션은 매일 {time}에 초기화돼요.',en:'Daily missions reset every day at {time}.',fr:'Les missions quotidiennes se réinitialisent chaque jour à {time}.',it:'Le missioni giornaliere si azzerano ogni giorno {time}.',de:'Tägliche Missionen werden jeden Tag um {time} zurückgesetzt.',es:'Las misiones diarias se reinician cada día {time}.',ru:'Ежедневные задания обновляются каждый день в {time}.','pt-BR':'As missões diárias reiniciam todos os dias {time}.','zh-CN':'每日任务于每天{time}重置。','zh-TW':'每日任務於每天{time}重置。',ja:'デイリーミッションは毎日{time}にリセットされます。',pl:'Misje dzienne resetują się codziennie o {time}.'},
+  {ko:'미니 모드로 다른 일을 하면서도 게임이 계속 진행돼요.',en:'Mini mode keeps the game running while you do other things.',fr:'Le mode mini laisse le jeu tourner pendant que vous faites autre chose.',it:'La modalità mini fa proseguire il gioco mentre fai altro.',de:'Im Mini-Modus läuft das Spiel weiter, während du anderes erledigst.',es:'El modo mini mantiene el juego en marcha mientras haces otras cosas.',ru:'В мини-режиме игра продолжается, пока вы заняты другим.','pt-BR':'O modo mini mantém o jogo rodando enquanto você faz outras coisas.','zh-CN':'开启迷你模式，做其他事时游戏也会继续进行。','zh-TW':'開啟迷你模式，做其他事時遊戲也會繼續進行。',ja:'ミニモードなら、他の作業をしながらでもゲームが進みます。',pl:'Tryb mini pozwala grze toczyć się, gdy robisz coś innego.'},
+  {ko:'보스를 처치하면 많은 골드를 얻어요.',en:'Defeat bosses to earn lots of Gold.',fr:'Battez les boss pour gagner beaucoup d’Or.',it:'Sconfiggi i boss per ottenere molto Oro.',de:'Besiege Bosse, um viel Gold zu erhalten.',es:'Derrota a los jefes para ganar mucho Oro.',ru:'Побеждайте боссов, чтобы получить много Золота.','pt-BR':'Derrote chefes para ganhar muito Ouro.','zh-CN':'击败首领可获得大量金币。','zh-TW':'擊敗首領可獲得大量金幣。',ja:'ボスを倒すと、たくさんのゴールドが手に入ります。',pl:'Pokonuj bossów, aby zdobyć dużo Złota.'}
  ];
+ var MIDNIGHT={ko:'자정',en:'midnight',fr:'minuit',it:'a mezzanotte',de:'Mitternacht',es:'a medianoche',ru:'полночь','pt-BR':'à meia-noite','zh-CN':'午夜0点','zh-TW':'午夜0點',ja:'午前0時',pl:'północy'};
+ var TIME_PREFIX={it:'alle ',es:'a las ','pt-BR':'às '};
+ function curLang(){var c=(window.MRLocale&&window.MRLocale.language)||lang||'ko';return TIPS[0][c]?c:'en';}
  function resetTimeLabel(){
   // Today the daily reset is the player's local midnight. When the Steam server time (UTC 00:00) is
   // introduced, set window.MR_DAILY_RESET_UTC_HOUR=0 and this shows the player's local time automatically.
-  var h=window.MR_DAILY_RESET_UTC_HOUR;
+  var h=window.MR_DAILY_RESET_UTC_HOUR,c=curLang();
   if(typeof h==='number'){
    var d=new Date();d.setUTCHours(h,0,0,0);
-   try{return new Intl.DateTimeFormat(lang,{hour:'numeric',minute:'2-digit'}).format(d);}catch(e){return d.toLocaleTimeString();}
+   var t;try{t=new Intl.DateTimeFormat(c,{hour:'numeric',minute:'2-digit'}).format(d);}catch(e){t=d.toLocaleTimeString();}
+   return (TIME_PREFIX[c]||'')+t;
   }
-  return lang==='ko'?'자정':(window.MRLocale&&window.MRLocale.t?window.MRLocale.t('자정'):'midnight');
+  return MIDNIGHT[c]||MIDNIGHT.en;
  }
  function tipText(i){
-  var ko=TIPS[i][0],en=TIPS[i][1],cur=(window.MRLocale&&window.MRLocale.language)||lang,txt;
-  if(cur==='ko')txt=ko;else{var t=window.MRLocale&&window.MRLocale.t?window.MRLocale.t(ko):ko;txt=(t&&t!==ko)?t:en;}
-  return txt.replace('{time}',resetTimeLabel());
+  var c=curLang();
+  return (TIPS[i][c]||TIPS[i].en).replace('{time}',resetTimeLabel());
  }
  var tipIndex=Math.floor(Math.random()*TIPS.length),tipTimer=0;
  function showTip(){
