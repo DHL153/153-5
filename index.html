@@ -4331,6 +4331,16 @@ window.MRBattleFX=(()=>{
         return {left:rect.left+(x-bx)/bw*rect.width-10,top:rect.top+(y-by)/bh*rect.height-10,width:20,height:20,bottom:rect.top+(y-by)/bh*rect.height+10};
     }
     window.worldPointToClient=worldPointToClient;
+    // 화면 연출용 좌표를 머지판(#merge-box) 안쪽으로 제한한다. 물리 위치는 바꾸지 않는다.
+    function clampPointToMergeBox(p,margin=14){
+        if(!p) return p;
+        const box=document.getElementById('merge-box')?.getBoundingClientRect();
+        if(!box||!box.width||!box.height) return p;
+        const w=p.width||20,h=p.height||20;
+        const cx=Math.min(box.right-margin,Math.max(box.left+margin,p.left+w/2));
+        const cy=Math.min(box.bottom-margin,Math.max(box.top+margin,p.top+h/2));
+        return {left:cx-w/2,top:cy-h/2,width:w,height:h,bottom:cy+h/2};
+    }
     function flyCurrencyReward(kind,amount,source){
         try{
         const cfg=CURRENCY_FLY[kind];if(!cfg)return;
@@ -10156,8 +10166,9 @@ function createSocialDataFoundation(assets, emojis) {
                     Matter.Body.setVelocity(newBody, { x: 0, y: -2.5 }); Composite.add(window.world, newBody); 
                     MR.beginSmile(newBody, BEAD_META_BY_PATH[equippedSkins[merge.level]], engine.timing.timestamp);
                     createMergeEffect(newBody, merge.level);
-                    window.MRFX?.mergeOrb(worldPointToClient(midX, midY), merge.level);
-                    if(merge.level>=6) window.MRFX?.mergeImpact(worldPointToClient(midX, midY), merge.level>=LEVELS.length-1, !!gameSettings.screenShake);
+                    const fxPoint=clampPointToMergeBox(worldPointToClient(midX, midY));
+                    window.MRFX?.mergeOrb(fxPoint, merge.level);
+                    if(merge.level>=6) window.MRFX?.mergeImpact(fxPoint, merge.level>=LEVELS.length-1, !!gameSettings.screenShake);
                     {
                         const nextChain=(Date.now()-lastScoreMergeAt<=SCORE_CHAIN_WINDOW_MS)?scoreChain+1:1;
                         const isMax=merge.level>=LEVELS.length-1;
@@ -11440,7 +11451,15 @@ html body #battle-chain-pop[data-tier="max"].bump{animation:fxMaxPulse .5s ease-
     orbBag={key:ids,list,last:orbBag.last};
    }
    const pickId=orbBag.list.shift();orbBag.last=pickId;
-   const [hero,hr]=heroes.find(([h])=>h.id===pickId)||heroes[0];
+   let [hero,hr]=heroes.find(([h])=>h.id===pickId)||heroes[0];
+   // 컷인 중: 원래 캐릭터는 숨겨져 있으므로 같은 슬롯의 컷인 캐릭터(없으면 보이는 컷인 아무나)로 모은다
+   const st=document.getElementById('battle-stage'),cut=document.getElementById('skill-cinematic');
+   if(st&&(st.dataset.teamSkill==='on'||cut?.classList.contains('on'))){
+    const portraits=[...(cut?.querySelectorAll('.team-cut-in')||[])].map(p=>[p,tightRect(p)||visible(p)]).filter(([,r])=>r&&r.width);
+    if(!portraits.length)return;
+    const slot=hero.dataset.teamSlot;
+    [hero,hr]=portraits.find(([p])=>p.dataset.teamSlot===slot)||portraits[Math.floor(Math.random()*portraits.length)];
+   }
    lastOrb=now;orbCount++;
    const t=tierOf(level);
    const sx=point.left+(point.width||0)/2,sy=point.top+(point.height||0)/2,tx=hr.left+hr.width*.5,ty=hr.top+hr.height*.45;
