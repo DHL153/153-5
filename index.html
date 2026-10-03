@@ -11146,7 +11146,8 @@ html body #battle-chain-pop[data-tier="max"].bump{animation:fxMaxPulse .5s ease-
  const tierOf=level=>level>=8?3:level>=5?2:1;
  const TIER_COLOR=['','#6fdadc','#b69afa','#f5c972'];
  function hitBurst(r,t){
-  if(!r)return;
+  // Skip during the boss WARNING overlay: the burst is a body-level fixed element and would draw over it.
+  if(!r||warnUntil>performance.now())return;
   const el=document.createElement('div');el.className='mrfx-hitburst t'+t;
   const size=34+t*22;
   Object.assign(el.style,{left:(r.left+r.width*.45)+'px',top:(r.top+r.height*.5)+'px',width:size+'px',height:size+'px',marginLeft:(-size/2)+'px',marginTop:(-size/2)+'px'});
@@ -11410,12 +11411,12 @@ html body #battle-chain-pop[data-tier="max"].bump{animation:fxMaxPulse .5s ease-
 .mrfx-reveal .rv-tier{position:absolute;left:10px;top:10px;padding:3px 9px;border-radius:999px;background:var(--rv-c);color:#0f1b2c;font-size:12px;font-weight:1000;letter-spacing:.5px;z-index:2;}
 .mrfx-reveal[data-tier="UR"] .rv-tier{background:linear-gradient(90deg,#ff6b8a,#ffd772,#7ce3d1,#8fb4ff,#c99bff);}
 .mrfx-reveal .rv-new{position:absolute;right:10px;top:10px;padding:3px 8px;border-radius:999px;background:#ff5d6c;color:#fff;font-size:11px;font-weight:1000;letter-spacing:.8px;z-index:2;box-shadow:0 0 10px rgba(255,93,108,.6);}
-.mrfx-reveal .rv-art{position:absolute;left:9%;right:9%;top:13%;bottom:25%;display:flex;align-items:center;justify-content:center;}
+.mrfx-reveal .rv-art{position:absolute;left:9%;right:9%;top:14%;bottom:12%;display:flex;align-items:center;justify-content:center;}
 .mrfx-reveal .rv-art img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;filter:drop-shadow(0 6px 10px rgba(0,0,0,.45));}
 .mrfx-reveal .rv-art.cover img{width:100%;height:100%;object-fit:cover;border-radius:10px;}
 .mrfx-reveal .rv-art .emoji,.mrfx-reveal .rv-art span{font-size:min(16vh,96px)!important;line-height:1;}
 .mrfx-reveal .rv-art .reference-emoji{width:min(22vh,140px)!important;height:auto!important;}
-.mrfx-reveal .rv-info{position:absolute;left:8px;right:8px;bottom:12px;text-align:center;}
+.mrfx-reveal .rv-info{display:none!important;position:absolute;left:8px;right:8px;bottom:12px;text-align:center;}
 .mrfx-reveal .rv-type{font-size:10px;font-weight:800;color:#9fb1c4;letter-spacing:.6px;}
 .mrfx-reveal .rv-name{margin-top:2px;font-size:15px;font-weight:1000;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .mrfx-reveal .rv-burst{position:absolute;left:50%;top:50%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;pointer-events:none;z-index:3;background:radial-gradient(circle,#fff 0 20%,var(--rv-c) 40%,transparent 70%);animation:rvBurst .6s ease-out forwards;}
@@ -11480,9 +11481,7 @@ html body #battle-chain-pop[data-tier="max"].bump{animation:fxMaxPulse .5s ease-
   const q=s=>root.querySelector(s);
   q('.rv-title').textContent=opts.title||'';
   q('.rv-tier').textContent=tier;
-  // When the item has no own name (e.g. emoji), show the type once as the name.
-  q('.rv-type').textContent=(it.name&&it.name!==it.type)?T(it.type||''):'';
-  q('.rv-name').textContent=it.name&&it.name!==it.type?it.name:T(it.type||'');
+  // Names are intentionally not shown on the reveal card: art only, for every item type.
   const art=q('.rv-art');art.innerHTML=it.artHtml||'';if(it.cover)art.classList.add('cover');
   art.querySelectorAll('img').forEach(im=>{im.removeAttribute('style');im.draggable=false;});
   if(it.isNew){const n=document.createElement('div');n.className='rv-new';n.textContent='NEW';q('.rv-front').appendChild(n);}
