@@ -21,7 +21,12 @@ window.MR = (() => {
     }
     musicGain.gain.setTargetAtTime(musicVolume,audioContext.currentTime,.15);
   }
+  // 소셜·마이룸용 아이콘 (icon-nodes.js에 없는 것만 보충)
+  window.MR_ICON_NODES=window.MR_ICON_NODES||{};
+  if(!window.MR_ICON_NODES.Users)window.MR_ICON_NODES.Users=[["path",{"d":"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"}],["circle",{"cx":"9","cy":"7","r":"4"}],["path",{"d":"M22 21v-2a4 4 0 0 0-3-3.87"}],["path",{"d":"M16 3.13a4 4 0 0 1 0 7.75"}]];
+  if(!window.MR_ICON_NODES.House)window.MR_ICON_NODES.House=[["path",{"d":"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"}],["path",{"d":"M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"}]];
   const emojiIcons = {
+    '🏠':'House','👥':'Users',
     '⚔':'Swords','🗡':'Sword','🛒':'ShoppingBag','🎒':'Layers','📚':'BookOpen','☰':'Menu',
     '🏆':'Trophy','⭐':'Star','🌟':'Star','🪙':'Coins','🧩':'Puzzle','🔄':'Repeat2','🤖':'Bot',
     '🧲':'Magnet','🌪':'Waves','🌀':'Tornado','⏸':'Pause','▶':'Play','↗':'Maximize2',
@@ -193,9 +198,9 @@ window.MR = (() => {
     $('quick-sound').innerHTML=icon('Volume2');
     $('quick-mini-merge').innerHTML=icon('Circle')+'<span class="shortcut-label">머지</span>';
     $('quick-mini-battle').innerHTML=icon('Swords')+'<span class="shortcut-label">전투</span>';
-    const navIcons={shop:'ShoppingBag',battle:'Swords',collection:'Layers',codex:'BookOpen',menu:'Menu'};
+    const navIcons={shop:'ShoppingBag',collection:'Layers',battle:'Swords',social:'Users',menu:'Menu'};
     Object.entries(navIcons).forEach(([id,name])=>{
-      const el=$('nav-'+id);el.querySelector('.icon').innerHTML=icon(name);el.setAttribute('role','button');el.tabIndex=0;
+      const el=$('nav-'+id);if(!el)return;el.querySelector('.icon').innerHTML=icon(name);el.setAttribute('role','button');el.tabIndex=0;
       el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();el.click();}});
     });
     polishIcons($('app'));
