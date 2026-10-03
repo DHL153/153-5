@@ -8832,25 +8832,26 @@ function createSocialDataFoundation(assets, emojis) {
         function describeRoomItem(category,assetId){
             const id=legacyOf(category,assetId);
             const count=Math.max(0,Number(getInventoryRef(category)?.[id]?.count)||0);
-            let name='',title='',tier='N',image=null,text=null,defaultOwned=false,gacha=true;
+            // 아이템에 공식 이름이 없으므로 이름은 내보내지 않는다 (종류·등급만)
+            let group='',tier='N',image=null,text=null,defaultOwned=false,gacha=true;
             if(category==='char'){
                 const m=CHARACTER_META[id]||{};
-                name=m.name||''; title=m.title||''; tier=m.tier||'N'; image=characterPath(id);
+                tier=m.tier||'N'; image=characterPath(id);
                 defaultOwned=!!m.defaultOwned; gacha=m.gachaEnabled!==false;
             }else if(category==='char_bg'){
                 const m=BACKGROUND_META.lobby?.[id]||{};
-                name=m.name||''; tier=m.tier||'N'; image=backgroundPath('lobby',id);
+                tier=m.tier||'N'; image=backgroundPath('lobby',id);
                 defaultOwned=!!m.defaultOwned; gacha=m.gachaEnabled!==false;
             }else{
                 const m=EMOJI_META_BY_SYMBOL[id]||{};
-                name=EMOJI_CATEGORY_LABELS[m.category]||'이모지'; title=m.id||''; tier=m.tier||'N';
+                group=EMOJI_CATEGORY_LABELS[m.category]||''; tier=m.tier||'N';
                 image=REFERENCE_EMOJI_IMAGES?.[id]||null; text=image?null:String(id);
             }
             const routes=[];
             if(defaultOwned) routes.push('default');
             if(gacha) routes.push('gacha');
             if(!routes.length) routes.push('special');
-            return {category,assetId:String(assetId),name,title,tier,count,owned:count>0,image,text,routes};
+            return {category,assetId:String(assetId),group,tier,count,owned:count>0,image,text,routes};
         }
         function openCodexItem(category,assetId){
             const id=legacyOf(category,assetId);
@@ -12886,9 +12887,9 @@ html body #app #item-collection-grid .inv-item.codex-focus{outline:3px solid var
     wrap.className='visit-detail';
     wrap.innerHTML=`<div class="visit-detail-card" role="dialog" aria-modal="true">
       <div class="visit-detail-visual${d.category==='char_bg'?' bg':''}">${thumb(d,'visit-detail-img')}</div>
-      <div class="visit-detail-top"><span class="visit-chip-tier tier-${esc(d.tier)}">${esc(d.tier)}</span><span class="visit-detail-cat">${T(CAT_KEY[d.category])}</span></div>
-      <div class="visit-detail-name">${esc(d.name)}</div>
-      ${d.title?`<div class="visit-detail-title">${esc(d.title)}</div>`:''}
+      <div class="visit-detail-top"><span class="visit-chip-tier tier-${esc(d.tier)}">${esc(d.tier)}</span></div>
+      <div class="visit-detail-name">${T(CAT_KEY[d.category])}</div>
+      ${d.group?`<div class="visit-detail-title">${esc(d.group)}</div>`:''}
       <div class="visit-detail-row"><span>${T('social.myOwnership')}</span><b class="${d.owned?'ok':'no'}">${d.owned?T('social.owned')+(d.count>1?` ×${d.count}`:''):T('social.notOwned')}</b></div>
       <div class="visit-detail-row"><span>${T('social.route')}</span><div class="visit-routes">${routes}</div></div>
       <div class="visit-detail-actions">
