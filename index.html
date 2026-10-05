@@ -13469,6 +13469,9 @@ html body #battle-stage.battle-action-pause[data-rush] #battle-panorama{animatio
  function pause(){if(isMini())window.toggleMiniPause?.();else if(curTab()==='battle')window.toggleManualPause?.();}
  function mini(){if(isMini())window.setMiniMode?.(false);else window.setMiniMode?.(true,'merge');}
  const reveal=()=>document.querySelector('.mrfx-reveal');
+ // Game over: restart with a fresh press once the result has finished counting (same moment the button appears).
+ const gameOverEl=()=>{const o=document.getElementById('overlay-gameover');return o&&getComputedStyle(o).display!=='none'?o:null;};
+ function tryRestart(){const o=gameOverEl();if(!o)return false;if(o.classList.contains('go-done'))window.instantRestart?.();return true;}
  function revealAdvance(){const r=reveal();if(!r)return false;const ok=r.querySelector('.rv-ok');if(r.classList.contains('p-show')&&ok)ok.click();else r.click();return true;}
  function escape(){document.activeElement?.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));}
  const typing=t=>t&&(t.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
@@ -13489,6 +13492,7 @@ html body #battle-stage.battle-action-pause[data-rush] #battle-panorama{animatio
   if(e.defaultPrevented||typing(e.target)||e.ctrlKey||e.metaKey||e.altKey)return;
   const k=e.key,lk=k.length===1?k.toLowerCase():k;held.fast=e.shiftKey;
   if(reveal()){if(k===' '||k==='Enter'){e.preventDefault();if(!e.repeat)revealAdvance();}return;}
+  if(gameOverEl()){if(k===' '||k==='Enter'||lk==='r'){e.preventDefault();if(!e.repeat){window.mrStopHoldDrop?.();tryRestart();}}return;}
   if(lk==='q'||lk==='e'){if(!e.repeat){e.preventDefault();tab(lk==='e'?1:-1);}return;}
   if(lk==='m'){if(!e.repeat){e.preventDefault();mini();}return;}
   if(lk==='p'){if(!e.repeat){e.preventDefault();pause();}return;}
@@ -13522,7 +13526,9 @@ html body #battle-stage.battle-action-pause[data-rush] #battle-panorama{animatio
    held.fast=pressed(p,10); // L3 = fast aim
    const R=reveal(),inBattle=curTab()==='battle'&&!modalOpen();
    const aNow=pressed(p,0);
-   if(edge(id,0,aNow)){if(R)revealAdvance();else if(inBattle){held.padDrop=true;window.mrStartHoldDrop?.(true);}else document.activeElement?.click?.();}
+   const aEdge=edge(id,0,aNow);
+   if(aEdge&&gameOverEl()){window.mrStopHoldDrop?.();tryRestart();}
+   else if(aEdge){if(R)revealAdvance();else if(inBattle){held.padDrop=true;window.mrStartHoldDrop?.(true);}else document.activeElement?.click?.();}
    if(!aNow&&held.padDrop){held.padDrop=false;window.mrStopHoldDrop?.();}
    if(edge(id,1,pressed(p,1))){escape();}
    if(edge(id,2,pressed(p,2))&&inBattle)SKILLS[3]();
@@ -13532,7 +13538,7 @@ html body #battle-stage.battle-action-pause[data-rush] #battle-panorama{animatio
    if(edge(id,11,pressed(p,11))&&inBattle)SKILLS[1]();
    if(edge(id,4,pressed(p,4))&&!R)tab(-1);
    if(edge(id,5,pressed(p,5))&&!R)tab(1);
-   if(edge(id,9,pressed(p,9))&&!R)pause();
+   if(edge(id,9,pressed(p,9))&&!R){if(!tryRestart())pause();}
    if(edge(id,8,pressed(p,8))&&!R)mini();
   }
   if(padX&&curTab()==='battle'&&!modalOpen())kick();
