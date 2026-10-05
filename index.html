@@ -10308,6 +10308,23 @@ function createSocialDataFoundation(assets, emojis) {
         });
         catcher.addEventListener('pointercancel', (e) => { if (!isDragging) return; isDragging = false; catcher.releasePointerCapture(e.pointerId); dropLine.style.display = 'none'; });
 
+        // Keyboard / controller aiming (used by the mr-input module). dx is in board units; returns false when aiming isn't possible.
+        window.mrCanAim=()=>!(isAutoDrop || currentMenu !== 'battle' || isGameOver || globalPause || isDragging);
+        window.mrAimBy=function(dx){
+            if(!window.mrCanAim())return false;
+            const r=LEVELS[nextDropLevel].radius;
+            lastMouseX=Math.min(Math.max(lastMouseX+dx,r),CANVAS_WIDTH-r);
+            const px=physicsArea.offsetLeft+(window.mergeViewPoint(lastMouseX,20).x/CANVAS_WIDTH)*physicsArea.clientWidth;
+            dropLine.style.left=px+'px';dropLine.style.display=canDrop?'block':'none';
+            if(canDrop)window.updatePreview?.();
+            return true;
+        };
+        window.mrDrop=function(){
+            if(!window.mrCanAim()||!canDrop)return false;
+            window.executeDrop(lastMouseX);return true;
+        };
+        window.mrBoardWidth=()=>CANVAS_WIDTH;
+
         window.executeDrop = function(xPos) {
             if (!window.world || !canDrop || isGameOver || globalPause || currentMenu !== 'battle') return;
             const levelData = LEVELS[nextDropLevel]; const startX = Math.min(Math.max(Number(xPos) || CANVAS_WIDTH / 2, levelData.radius), CANVAS_WIDTH - levelData.radius);
@@ -13420,6 +13437,93 @@ html body #battle-chain-pop[data-tier="max"] .cp-gauge i{background:#fff;}
 /* Chain rush: attacks don't freeze the background while the rush is on (improvement 1). */
 html body #battle-stage.battle-action-pause[data-rush] #battle-panorama{animation-play-state:running!important;}
 </style>
+<script id="mr-input">
+// Keyboard + controller play (Steam Deck / gamepad). Mouse and touch keep working unchanged.
+// Keyboard: ←/→ or A/D aim (Shift = faster), Space/↓ drop, 1-5 skills, Q/E tabs, P pause, M mini mode.
+// Controller (standard mapping): stick/D-pad aim, A drop, X auto, Y shake, LT organize, RT tornado, R3 boost,
+//   LB/RB tabs, Start pause, Back mini mode, B back/close. In the gacha reveal: A advances, B skips.
+(function(){
+ const TABS=['shop','collection','battle','social','menu'];
+ const SKILLS={1:()=>window.toggleMultiplier?.(),2:()=>window.useItem?.('organize'),3:()=>window.toggleAutoDrop?.(),4:()=>window.useItem?.('shake'),5:()=>window.useItem?.('tornado')};
+ const app=()=>document.getElementById('app');
+ const isMini=()=>!!app()?.classList.contains('mini-mode');
+ const curTab=()=>{const a=document.querySelector('.nav-item.active');return a?a.id.replace('nav-',''):'battle';};
+ function tab(step){const i=TABS.indexOf(curTab());const n=TABS[(Math.max(0,i)+step+TABS.length)%TABS.length];window.switchMenu?.(n);}
+ function pause(){if(isMini())window.toggleMiniPause?.();else if(curTab()==='battle')window.toggleManualPause?.();}
+ function mini(){if(isMini())window.setMiniMode?.(false);else window.setMiniMode?.(true,'merge');}
+ const reveal=()=>document.querySelector('.mrfx-reveal');
+ function revealAdvance(){const r=reveal();if(!r)return false;const ok=r.querySelector('.rv-ok');if(r.classList.contains('p-show')&&ok)ok.click();else r.click();return true;}
+ function escape(){document.activeElement?.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));}
+ const typing=t=>t&&(t.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+ const modalOpen=()=>!!document.querySelector('.mrfx-reveal,[role="dialog"]:not([hidden]),#event-overlay[style*="flex"]');
+
+ // ---- aiming loop (shared by keys and sticks) ----
+ const held={left:false,right:false,fast:false};let padX=0,raf=0,last=0;
+ function loop(now){
+  const dt=Math.min(50,now-(last||now));last=now;
+  let dir=(held.right?1:0)-(held.left?1:0);if(!dir&&Math.abs(padX)>0)dir=padX;
+  if(dir){const w=window.mrBoardWidth?.()||420;window.mrAimBy?.(dir*w*(held.fast?1.6:.85)*dt/1000);}
+  raf=(dir||pads())?requestAnimationFrame(loop):0;if(!raf)last=0;
+ }
+ const kick=()=>{if(!raf){last=0;raf=requestAnimationFrame(loop);}};
+
+ // ---- keyboard ----
+ document.addEventListener('keydown',e=>{
+  if(e.defaultPrevented||typing(e.target)||e.ctrlKey||e.metaKey||e.altKey)return;
+  const k=e.key,lk=k.length===1?k.toLowerCase():k;held.fast=e.shiftKey;
+  if(reveal()){if(k===' '||k==='Enter'){e.preventDefault();if(!e.repeat)revealAdvance();}return;}
+  if(lk==='q'||lk==='e'){if(!e.repeat){e.preventDefault();tab(lk==='e'?1:-1);}return;}
+  if(lk==='m'){if(!e.repeat){e.preventDefault();mini();}return;}
+  if(lk==='p'){if(!e.repeat){e.preventDefault();pause();}return;}
+  if(modalOpen()||curTab()!=='battle')return;
+  if(k==='ArrowLeft'||lk==='a'){e.preventDefault();held.left=true;kick();return;}
+  if(k==='ArrowRight'||lk==='d'){e.preventDefault();held.right=true;kick();return;}
+  if(k===' '||k==='ArrowDown'){e.preventDefault();if(!e.repeat)window.mrDrop?.();return;}
+  if(/^[1-5]$/.test(k)){e.preventDefault();if(!e.repeat)SKILLS[k]();return;}
+ });
+ document.addEventListener('keyup',e=>{
+  const k=e.key,lk=k.length===1?k.toLowerCase():k;held.fast=e.shiftKey;
+  if(k==='ArrowLeft'||lk==='a')held.left=false;
+  if(k==='ArrowRight'||lk==='d')held.right=false;
+ });
+ window.addEventListener('blur',()=>{held.left=held.right=false;});
+
+ // ---- controller ----
+ const prev={};
+ function pads(){return [...(navigator.getGamepads?.()||[])].some(Boolean);}
+ function pressed(p,i){const b=p.buttons[i];return !!b&&(b.pressed||b.value>.5);}
+ function edge(id,i,now){const key=id+':'+i,was=prev[key];prev[key]=now;return now&&!was;}
+ function poll(){
+  const list=[...(navigator.getGamepads?.()||[])].filter(Boolean);
+  padX=0;
+  for(const p of list){
+   const id=p.index,ax=p.axes[0]||0;
+   const dl=pressed(p,14),dr=pressed(p,15);
+   const x=dl?-1:dr?1:(Math.abs(ax)>.22?(ax-Math.sign(ax)*.22)/.78:0);
+   if(x)padX=x;
+   held.fast=pressed(p,10); // L3 = fast aim
+   const R=reveal(),inBattle=curTab()==='battle'&&!modalOpen();
+   if(edge(id,0,pressed(p,0))){if(R)revealAdvance();else if(inBattle)window.mrDrop?.();else document.activeElement?.click?.();}
+   if(edge(id,1,pressed(p,1))){escape();}
+   if(edge(id,2,pressed(p,2))&&inBattle)SKILLS[3]();
+   if(edge(id,3,pressed(p,3))&&inBattle)SKILLS[4]();
+   if(edge(id,6,pressed(p,6))&&inBattle)SKILLS[2]();
+   if(edge(id,7,pressed(p,7))&&inBattle)SKILLS[5]();
+   if(edge(id,11,pressed(p,11))&&inBattle)SKILLS[1]();
+   if(edge(id,4,pressed(p,4))&&!R)tab(-1);
+   if(edge(id,5,pressed(p,5))&&!R)tab(1);
+   if(edge(id,9,pressed(p,9))&&!R)pause();
+   if(edge(id,8,pressed(p,8))&&!R)mini();
+  }
+  if(padX&&curTab()==='battle'&&!modalOpen())kick();
+  if(list.length)requestAnimationFrame(poll);else polling=false;
+ }
+ let polling=false;
+ function startPoll(){if(!polling){polling=true;requestAnimationFrame(poll);}}
+ window.addEventListener('gamepadconnected',startPoll);
+ if(pads())startPoll();
+})();
+</script>
 <style id="mr-ur-upgrade">
 /* UR gacha: SSR disguise -> crack + flash -> rainbow -> stars gather -> flip (rings, stars out, letters). */
 .mrfx-reveal .rv-crack{position:absolute;inset:-6px;z-index:5;pointer-events:none;opacity:0;border-radius:16px;
