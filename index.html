@@ -3252,7 +3252,7 @@ html body #game-startup-screen.is-leaving{opacity:0!important;transition:opacity
 </script>
 <!-- 💡 상단 바 (에너지 완전 삭제, 타이머 복구) -->
 <div id="top-bar">
-<div class="stat-badge timer" id="top-gacha-timer"><span class="draw-label" aria-label="선물">🎁</span><span class="draw-countdown">😊10:00</span><span class="draw-countdown">✨30:00</span></div>
+<div class="stat-badge timer" id="top-gacha-timer"><span class="draw-label" aria-label="선물">🎁</span><span class="draw-countdown">😊10:00</span><span class="draw-countdown">✨20:00</span></div>
 <button id="btn-test-unlock-all" class="test-unlock-btn" type="button" onclick="toggleTestUnlockAll()" title="테스트용: 모든 수집 리소스 보유 상태를 임시로 전환"><span class="unlock-line unlock-icon">🔒</span><span class="unlock-line">전체</span><span class="unlock-line">해금 OFF</span></button>
 <div class="top-stats"><div class="stat-badge score">🏆 <span id="val-score">0</span></div>
 <div class="stat-badge piece" title="컬렉션 조각">🧩 <span id="val-fragments">0</span></div>
@@ -3297,7 +3297,7 @@ html body #game-startup-screen.is-leaving{opacity:0!important;transition:opacity
 <div class="cost"><span style="color:#f3a35c;">🪙 3K</span></div>
 <div class="cost"><span style="color:#c9b8f2;">🔄 300</span></div>
 <div class="cost"><span style="color:#d29bf0;">R 84% · SR 14% · SSR 1.99% · UR 0.01%</span></div>
-<div class="cost"><span id="premium-gacha-timer-display" style="color:#27ae60;">⏳ 30:00</span></div>
+<div class="cost"><span id="premium-gacha-timer-display" style="color:#27ae60;">⏳ 20:00</span></div>
 </div>
 </button>
 <button class="btn-gacha" id="btn-emoji-gacha" onclick="pullEmojiGacha()" style="border-color:#ffeaa7; box-shadow:0 6px 0 #fdcb6e;">
@@ -3381,7 +3381,7 @@ html body #game-startup-screen.is-leaving{opacity:0!important;transition:opacity
   <div class="mini-stat mini-merge-stat">🔄 <span id="mini-merge">0</span></div>
   <div class="mini-stat mini-gold-stat">🪙 <span id="mini-gold">1K</span></div>
   <div class="mini-spacer"></div>
-  <div class="mini-stat" id="mini-gacha">🎁 😊10:00 · ✨30:00</div>
+  <div class="mini-stat" id="mini-gacha">🎁 😊10:00 · ✨20:00</div>
   <button class="mini-pause-btn" id="mini-pause-btn" onclick="toggleMiniPause()" aria-label="일시정지" title="일시정지">⏸</button>
   <button class="mini-exit-btn" onclick="setMiniMode(false)" aria-label="미니 모드 종료">↗</button>
 </div>
@@ -5559,7 +5559,7 @@ window.MRBattleFX=(()=>{
     const EMOJI_GACHA_INTERVAL_SECONDS = 10 * 60;
     const PREMIUM_GACHA_GOLD_COST = 3000;
     const PREMIUM_GACHA_MERGE_COST = 300;
-    const PREMIUM_GACHA_INTERVAL_SECONDS = 30 * 60;
+    const PREMIUM_GACHA_INTERVAL_SECONDS = 20 * 60;
 
     let emojiGachaTimer = EMOJI_GACHA_INTERVAL_SECONDS;
     let premiumGachaTimer = PREMIUM_GACHA_INTERVAL_SECONDS;
@@ -5610,7 +5610,7 @@ window.MRBattleFX=(()=>{
         if(!isPremiumGachaReady&&premiumGachaTimer<=0){isPremiumGachaReady=true;done.push('premium');}
         if(announce)for(const kind of done){
             playSfx('freeGachaReady');
-            if(typeof notifyUser==='function')notifyUser('gacha',kind==='emoji'?'😊 이모지 뽑기 준비 완료':'✨ 프리미엄 뽑기 준비 완료',kind==='emoji'?'10분 쿨타임이 끝났습니다.':'30분 쿨타임이 끝났습니다.');
+            if(typeof notifyUser==='function')notifyUser('gacha',kind==='emoji'?'😊 이모지 뽑기 준비 완료':'✨ 프리미엄 뽑기 준비 완료',kind==='emoji'?'10분 쿨타임이 끝났습니다.':'20분 쿨타임이 끝났습니다.');
         }
         return done;
     }
