@@ -10272,7 +10272,7 @@ function createSocialDataFoundation(assets, emojis) {
             const point=window.mergeViewPoint?window.mergeViewPoint(lastMouseX,20):{x:lastMouseX,y:20};
             previewDiv.style.width=(data.radius*2*scale)+'px';previewDiv.style.height=(data.radius*2*scale)+'px';
             previewDiv.style.top=(physicsArea.offsetTop+point.y*physicsArea.clientHeight/CANVAS_HEIGHT)+'px';
-            previewDiv.style.left=(physicsArea.offsetLeft+point.x*scale)+'px';
+            previewDiv.style.left=(typeof window.mrBoardXToLocal==='function'?window.mrBoardXToLocal(lastMouseX):(physicsArea.offsetLeft+point.x*scale))+'px';
             dropLine.style.top=physicsArea.offsetTop+'px';dropLine.style.bottom='auto';dropLine.style.height=physicsArea.clientHeight+'px';
             dropLine.style.left=previewDiv.style.left; 
             if (skinSrc) {
@@ -10289,34 +10289,50 @@ function createSocialDataFoundation(assets, emojis) {
         updateNormalEnemyHud(normalEnemyHp,NORMAL_ENEMY_MAX_HP,true);
 
         const catcher = document.getElementById('touch-catcher'); let isDragging = false;
+        // Board x -> preview/drop-line left (same math the pointer handlers always used).
+        function boardXToLocal(x){
+            return physicsArea.offsetLeft+(window.mergeViewPoint(x,20).x/CANVAS_WIDTH)*physicsArea.clientWidth;
+        }
+        window.mrBoardXToLocal=boardXToLocal;
+        // Hold to keep dropping (mouse/touch hold, Space, controller A): one drop every HOLD_DROP_MS while held.
+        const HOLD_DROP_MS=600;let holdDropTimer=0,holdDropped=false;
+        function stopHoldDrop(){clearInterval(holdDropTimer);holdDropTimer=0;}
+        function startHoldDrop(dropNow){
+            stopHoldDrop();holdDropped=false;
+            if(dropNow&&window.mrDrop?.())holdDropped=true;
+            holdDropTimer=setInterval(()=>{if(window.mrDrop?.())holdDropped=true;},HOLD_DROP_MS);
+        }
+        window.mrStartHoldDrop=startHoldDrop;window.mrStopHoldDrop=stopHoldDrop;
         
         catcher.addEventListener('pointerdown', (e) => { 
             if (isAutoDrop || currentMenu !== 'battle' || isGameOver || globalPause || !canDrop) return;
             isDragging = true; const rect = catcher.getBoundingClientRect(); const levelData = LEVELS[nextDropLevel];
             let rawX = window.mergePointerX((e.clientX - rect.left) * CANVAS_WIDTH / Math.max(1,rect.width)); lastMouseX = Math.min(Math.max(rawX, levelData.radius), CANVAS_WIDTH - levelData.radius);
-            const px=physicsArea.offsetLeft+(window.mergeViewPoint(lastMouseX,20).x/CANVAS_WIDTH)*physicsArea.clientWidth; dropLine.style.display = 'block'; previewDiv.style.left = px+'px'; dropLine.style.left = px+'px'; catcher.setPointerCapture(e.pointerId);
+            const px=boardXToLocal(lastMouseX); dropLine.style.display = 'block'; previewDiv.style.left = px+'px'; dropLine.style.left = px+'px'; startHoldDrop(false); catcher.setPointerCapture(e.pointerId);
         });
         catcher.addEventListener('pointermove', (e) => {
             if(!isDragging) return; const rect = catcher.getBoundingClientRect(); const levelData = LEVELS[nextDropLevel];
             let rawX = window.mergePointerX((e.clientX - rect.left) * CANVAS_WIDTH / Math.max(1,rect.width)); lastMouseX = Math.min(Math.max(rawX, levelData.radius), CANVAS_WIDTH - levelData.radius);
-            const px=physicsArea.offsetLeft+(window.mergeViewPoint(lastMouseX,20).x/CANVAS_WIDTH)*physicsArea.clientWidth; dropLine.style.display = 'block'; previewDiv.style.left = px+'px'; dropLine.style.left = px+'px';
+            const px=boardXToLocal(lastMouseX); dropLine.style.display = 'block'; previewDiv.style.left = px+'px'; dropLine.style.left = px+'px';
         });
         catcher.addEventListener('pointerup', (e) => { 
             if (!isDragging) return; isDragging = false; catcher.releasePointerCapture(e.pointerId);
+            stopHoldDrop(); if(holdDropped){ holdDropped=false; return; } // already dropping while held
             if (isAutoDrop || currentMenu !== 'battle' || isGameOver || globalPause || !canDrop) { dropLine.style.display = 'none'; return; }
             window.executeDrop(lastMouseX); 
         });
-        catcher.addEventListener('pointercancel', (e) => { if (!isDragging) return; isDragging = false; catcher.releasePointerCapture(e.pointerId); dropLine.style.display = 'none'; });
+        catcher.addEventListener('pointercancel', (e) => { stopHoldDrop(); if (!isDragging) return; isDragging = false; catcher.releasePointerCapture(e.pointerId); dropLine.style.display = 'none'; });
 
         // Keyboard / controller aiming (used by the mr-input module). dx is in board units; returns false when aiming isn't possible.
-        window.mrCanAim=()=>!(isAutoDrop || currentMenu !== 'battle' || isGameOver || globalPause || isDragging);
+        window.mrCanAim=()=>!(isAutoDrop || currentMenu !== 'battle' || isGameOver || globalPause);
         window.mrAimBy=function(dx){
             if(!window.mrCanAim())return false;
             const r=LEVELS[nextDropLevel].radius;
             lastMouseX=Math.min(Math.max(lastMouseX+dx,r),CANVAS_WIDTH-r);
-            const px=physicsArea.offsetLeft+(window.mergeViewPoint(lastMouseX,20).x/CANVAS_WIDTH)*physicsArea.clientWidth;
-            dropLine.style.left=px+'px';dropLine.style.display=canDrop?'block':'none';
             if(canDrop)window.updatePreview?.();
+            const px=boardXToLocal(lastMouseX);previewDiv.style.left=px+'px';
+            // Keep the aim line visible even during the 0.5s drop cooldown, so moving never looks "invisible".
+            dropLine.style.left=px+'px';dropLine.style.display='block';
             return true;
         };
         window.mrDrop=function(){
@@ -13478,15 +13494,16 @@ html body #battle-stage.battle-action-pause[data-rush] #battle-panorama{animatio
   if(modalOpen()||curTab()!=='battle')return;
   if(k==='ArrowLeft'||lk==='a'){e.preventDefault();held.left=true;kick();return;}
   if(k==='ArrowRight'||lk==='d'){e.preventDefault();held.right=true;kick();return;}
-  if(k===' '||k==='ArrowDown'){e.preventDefault();if(!e.repeat)window.mrDrop?.();return;}
+  if(k===' '||k==='ArrowDown'){e.preventDefault();if(!e.repeat){held.drop=true;window.mrStartHoldDrop?.(true);}return;}
   if(/^[1-5]$/.test(k)){e.preventDefault();if(!e.repeat)SKILLS[k]();return;}
  });
  document.addEventListener('keyup',e=>{
   const k=e.key,lk=k.length===1?k.toLowerCase():k;held.fast=e.shiftKey;
   if(k==='ArrowLeft'||lk==='a')held.left=false;
   if(k==='ArrowRight'||lk==='d')held.right=false;
+  if(k===' '||k==='ArrowDown'){if(held.drop){held.drop=false;window.mrStopHoldDrop?.();}}
  });
- window.addEventListener('blur',()=>{held.left=held.right=false;});
+ window.addEventListener('blur',()=>{held.left=held.right=false;if(held.drop){held.drop=false;window.mrStopHoldDrop?.();}});
 
  // ---- controller ----
  const prev={};
@@ -13503,7 +13520,9 @@ html body #battle-stage.battle-action-pause[data-rush] #battle-panorama{animatio
    if(x)padX=x;
    held.fast=pressed(p,10); // L3 = fast aim
    const R=reveal(),inBattle=curTab()==='battle'&&!modalOpen();
-   if(edge(id,0,pressed(p,0))){if(R)revealAdvance();else if(inBattle)window.mrDrop?.();else document.activeElement?.click?.();}
+   const aNow=pressed(p,0);
+   if(edge(id,0,aNow)){if(R)revealAdvance();else if(inBattle){held.padDrop=true;window.mrStartHoldDrop?.(true);}else document.activeElement?.click?.();}
+   if(!aNow&&held.padDrop){held.padDrop=false;window.mrStopHoldDrop?.();}
    if(edge(id,1,pressed(p,1))){escape();}
    if(edge(id,2,pressed(p,2))&&inBattle)SKILLS[3]();
    if(edge(id,3,pressed(p,3))&&inBattle)SKILLS[4]();
