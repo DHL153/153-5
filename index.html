@@ -13466,7 +13466,7 @@ html body #battle-stage.battle-action-pause[data-rush] #battle-panorama{animatio
 </style>
 <script id="mr-input">
 // Keyboard + controller play (Steam Deck / gamepad). Mouse and touch keep working unchanged.
-// Keyboard: ←/→ or A/D aim (Shift = faster), Space/↓ drop, 1-5 skills, Q/E tabs, P pause, M mini merge, N mini battle, R restart.
+// Keyboard: ←/→ or A/D aim (Shift = faster), Space/↓ drop, 1-5 skills, Q/E tabs, P pause, M mini merge, N mini battle, Space/Enter restart.
 // Keys are matched by physical position (e.code) so they work with the Korean IME on. Bindings live in window.MRControls.
 // Controller (standard mapping): stick/D-pad aim, A drop, X auto, Y shake, LT organize, RT tornado, R3 boost,
 //   LB/RB tabs, Start pause, Back mini mode, B back/close. In the gacha reveal: A advances, B skips.
@@ -13506,7 +13506,7 @@ html body #battle-stage.battle-action-pause[data-rush] #battle-panorama{animatio
  // Physical key positions (KeyboardEvent.code), so keys work with Korean IME on and on any layout (AZERTY, QWERTZ…).
  const DEFAULT_BINDS={left:['ArrowLeft','KeyA'],right:['ArrowRight','KeyD'],drop:['Space','ArrowDown'],
   skill1:['Digit1','Numpad1'],skill2:['Digit2','Numpad2'],skill3:['Digit3','Numpad3'],skill4:['Digit4','Numpad4'],skill5:['Digit5','Numpad5'],
-  tabPrev:['KeyQ'],tabNext:['KeyE'],pause:['KeyP'],mini:['KeyM'],miniBattle:['KeyN'],restart:['KeyR']};
+  tabPrev:['KeyQ'],tabNext:['KeyE'],pause:['KeyP'],mini:['KeyM'],miniBattle:['KeyN']};
  const BIND_KEY='mergeRoll.keybinds.v1';
  // Keys that can never be assigned (system, IME, modifiers, menu/confirm keys).
  const BLOCKED=new Set(['Escape','Tab','Enter','NumpadEnter','Backspace','CapsLock','ContextMenu','MetaLeft','MetaRight','OSLeft','OSRight','AltLeft','AltRight','ControlLeft','ControlRight','ShiftLeft','ShiftRight','Lang1','Lang2','HangulMode','HanjaMode','KanaMode','NumLock','ScrollLock','Pause','PrintScreen','Insert','Home','End','PageUp','PageDown']);
@@ -13555,7 +13555,7 @@ html body #battle-stage.battle-action-pause[data-rush] #battle-panorama{animatio
   if(e.defaultPrevented||typing(e.target)||e.ctrlKey||e.metaKey||e.altKey)return;
   const c=e.code,act=actionOf(c);held.fast=e.shiftKey;
   if(reveal()){if(c==='Space'||CONFIRM.has(c)){e.preventDefault();if(!e.repeat)revealAdvance();}return;}
-  if(gameOverEl()){if(act==='drop'||act==='restart'||CONFIRM.has(c)){e.preventDefault();if(!e.repeat){window.mrStopHoldDrop?.();tryRestart();}}return;}
+  if(gameOverEl()){if(c==='Space'||CONFIRM.has(c)){ /* restart: Space / Enter only (fixed) */e.preventDefault();if(!e.repeat){window.mrStopHoldDrop?.();tryRestart();}}return;}
   if(act==='tabPrev'||act==='tabNext'){if(!e.repeat){e.preventDefault();tab(act==='tabNext'?1:-1);}return;}
   if(act==='mini'||act==='miniBattle'){if(!e.repeat){e.preventDefault();mini(act==='miniBattle'?'battle':'merge');}return;}
   if(act==='pause'){if(!e.repeat){e.preventDefault();pause();}return;}
@@ -13600,7 +13600,7 @@ html body #battle-stage.battle-action-pause[data-rush] #battle-panorama{animatio
    ['일시정지 / 계속',kbCodes(binds.pause),chips(['Start'])],
    ['미니 모드 - 머지',kbCodes(binds.mini),chips(['Back'])],
    ['미니 모드 - 전투',kbCodes(binds.miniBattle),chips(['Back ×2'])],
-   ['재시작 (게임 오버 화면)',chips([...binds.drop.map(keyLabel),'Enter',...binds.restart.map(keyLabel)]),chips(['A','Start'])],
+   ['재시작 (게임 오버 화면)',chips(['Space','Enter']),chips(['A','Start'])],
    ['뽑기 연출 넘기기',chips(['Space','Enter']),chips(['A'])],
    ['뒤로 · 닫기',chips(['Esc']),chips(['B'])]
   ];
@@ -13615,7 +13615,7 @@ html body #battle-stage.battle-action-pause[data-rush] #battle-panorama{animatio
    ['일시정지 / 계속',slots('pause')],
    ['미니 모드 - 머지',slots('mini')],
    ['미니 모드 - 전투',slots('miniBattle')],
-   ['재시작 (게임 오버 화면)',chips([...binds.drop.map(keyLabel),'Enter'])+'<span class="mr-key-or">/</span>'+slots('restart')],
+   ['재시작 (게임 오버 화면)',chips(['Space','Enter'])],
    ['뽑기 연출 넘기기',chips(['Space','Enter'])],
    ['뒤로 · 닫기',chips(['Esc'])]
   ];
