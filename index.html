@@ -5645,7 +5645,7 @@ window.MRBattleFX=(()=>{
         if(topTimer) {
             const e = isEmojiGachaReady ? '😊✅' : `😊${formatTimerMMSS(emojiGachaTimer)}`;
             const p = isPremiumGachaReady ? '✨✅' : `✨${formatTimerMMSS(premiumGachaTimer)}`;
-            setUiHTML(topTimer,`<span class="draw-label" aria-label="선물">🎁</span><span class="draw-countdown">${e}</span><span class="draw-countdown">${p}</span>`);
+            setUiHTML(topTimer,`<span class="draw-label" aria-label="선물">🎁</span><span class="draw-countdown">${e}</span><span class="draw-countdown">${p}</span>${window.MRSteamUI?.topTimerHtml?.()||''}`);
             topTimer.style.borderColor = (isEmojiGachaReady || isPremiumGachaReady) ? '#27ae60' : '#f39c12';
             topTimer.style.backgroundColor = (isEmojiGachaReady || isPremiumGachaReady) ? '#f0fff4' : '#fffdf2';
         }
@@ -10857,7 +10857,16 @@ function createSocialDataFoundation(assets, emojis) {
  "social.err.locked": {"ko": "방이 잠겨 있어요.", "en": "This room is locked.", "ja": "ROOMはロックされています。", "zh-CN": "房间已锁定。", "zh-TW": "房間已鎖定。", "es": "La sala está bloqueada.", "pt-BR": "A sala está trancada.", "fr": "Ce salon est verrouillé.", "ru": "Вход в комнату закрыт.", "it": "La stanza è bloccata.", "pl": "Pokój jest zablokowany.", "de": "Der Raum ist gesperrt."},
  "social.err.kicked": {"ko": "이 방에는 다시 들어갈 수 없어요.", "en": "You can’t rejoin this room.", "ja": "このROOMには再参加できません。", "zh-CN": "无法再次加入此房间。", "zh-TW": "無法再次加入此房間。", "es": "No puedes volver a entrar en esta sala.", "pt-BR": "Você não pode voltar a esta sala.", "fr": "Vous ne pouvez pas revenir dans ce salon.", "ru": "Вы не можете вернуться в эту комнату.", "it": "Non puoi rientrare in questa stanza.", "pl": "Nie możesz wrócić do tego pokoju.", "de": "Du kannst diesem Raum nicht erneut beitreten."},
  "social.err.taken": {"ko": "이미 사용 중인 번호예요.", "en": "That number is already in use.", "ja": "その番号はすでに使われています。", "zh-CN": "该号码已被使用。", "zh-TW": "該號碼已被使用。", "es": "Ese número ya está en uso.", "pt-BR": "Esse número já está em uso.", "fr": "Ce numéro est déjà utilisé.", "ru": "Этот номер уже занят.", "it": "Questo numero è già in uso.", "pl": "Ten numer jest już zajęty.", "de": "Diese Nummer ist bereits vergeben."},
- "social.msg.kicked": {"ko": "방장이 나를 방에서 내보냈어요.", "en": "The host removed you from the room.", "ja": "ホストによってROOMから外されました。", "zh-CN": "你已被房主移出房间。", "zh-TW": "你已被房主移出房間。", "es": "El anfitrión te sacó de la sala.", "pt-BR": "O anfitrião removeu você da sala.", "fr": "L’hôte vous a retiré du salon.", "ru": "Хост удалил вас из комнаты.", "it": "L’host ti ha rimosso dalla stanza.", "pl": "Gospodarz usunął cię z pokoju.", "de": "Der Host hat dich aus dem Raum entfernt."}
+ "social.msg.kicked": {"ko": "방장이 나를 방에서 내보냈어요.", "en": "The host removed you from the room.", "ja": "ホストによってROOMから外されました。", "zh-CN": "你已被房主移出房间。", "zh-TW": "你已被房主移出房間。", "es": "El anfitrión te sacó de la sala.", "pt-BR": "O anfitrião removeu você da sala.", "fr": "L’hôte vous a retiré du salon.", "ru": "Хост удалил вас из комнаты.", "it": "L’host ti ha rimosso dalla stanza.", "pl": "Gospodarz usunął cię z pokoju.", "de": "Der Host hat dich aus dem Raum entfernt."},
+ "steam.gift.title": {"ko": "선물 도착!", "en": "Gift arrived!", "ja": "ギフト到着！", "zh-CN": "礼物到了！", "zh-TW": "禮物到了！", "es": "¡Llegó un regalo!", "pt-BR": "Chegou um presente!", "fr": "Cadeau reçu !", "ru": "Подарок получен!", "it": "Regalo arrivato!", "pl": "Prezent dotarł!", "de": "Geschenk erhalten!"},
+ "steam.tradable": {"ko": "거래 가능", "en": "Tradable", "ja": "取引可能", "zh-CN": "可交易", "zh-TW": "可交易", "es": "Intercambiable", "pt-BR": "Negociável", "fr": "Échangeable", "ru": "Можно обменять", "it": "Scambiabile", "pl": "Wymienialny", "de": "Handelbar"},
+ "steam.codexNew": {"ko": "도감 +1", "en": "Catalog +1", "ja": "図鑑 +1", "zh-CN": "图鉴 +1", "zh-TW": "圖鑑 +1", "es": "Catálogo +1", "pt-BR": "Catálogo +1", "fr": "Catalogue +1", "ru": "Каталог +1", "it": "Catalogo +1", "pl": "Katalog +1", "de": "Katalog +1"},
+ "steam.owned": {"ko": "보유", "en": "Owned", "ja": "所持", "zh-CN": "已拥有", "zh-TW": "已擁有", "es": "Tienes", "pt-BR": "Possui", "fr": "Possédé", "ru": "Есть", "it": "Posseduto", "pl": "Posiadane", "de": "Besitz"},
+ "steam.codex": {"ko": "도감", "en": "Catalog", "ja": "図鑑", "zh-CN": "图鉴", "zh-TW": "圖鑑", "es": "Catálogo", "pt-BR": "Catálogo", "fr": "Catalogue", "ru": "Каталог", "it": "Catalogo", "pl": "Katalog", "de": "Katalog"},
+ "steam.confirm": {"ko": "확인", "en": "OK", "ja": "確認", "zh-CN": "确定", "zh-TW": "確定", "es": "Aceptar", "pt-BR": "OK", "fr": "OK", "ru": "ОК", "it": "OK", "pl": "OK", "de": "OK"},
+ "steam.next": {"ko": "다음", "en": "Next", "ja": "次", "zh-CN": "下次", "zh-TW": "下次", "es": "Siguiente", "pt-BR": "Próximo", "fr": "Prochain", "ru": "Далее", "it": "Prossimo", "pl": "Następny", "de": "Nächstes"},
+ "steam.reset": {"ko": "리셋", "en": "Reset", "ja": "リセット", "zh-CN": "重置", "zh-TW": "重置", "es": "Reinicio", "pt-BR": "Reinício", "fr": "Réinit.", "ru": "Сброс", "it": "Reset", "pl": "Reset", "de": "Reset"},
+ "steam.timer.title": {"ko": "STEAM 뽑기 · {min}분마다 · 최대 {max}번", "en": "STEAM Draw · every {min} min · max {max}", "ja": "STEAMガチャ · {min}分ごと · 最大{max}回", "zh-CN": "STEAM 抽取 · 每{min}分钟 · 最多{max}次", "zh-TW": "STEAM 抽取 · 每{min}分鐘 · 最多{max}次", "es": "Sorteo STEAM · cada {min} min · máx. {max}", "pt-BR": "Sorteio STEAM · a cada {min} min · máx. {max}", "fr": "Tirage STEAM · toutes les {min} min · max {max}", "ru": "STEAM-розыгрыш · каждые {min} мин · макс. {max}", "it": "Estrazione STEAM · ogni {min} min · max {max}", "pl": "Losowanie STEAM · co {min} min · maks. {max}", "de": "STEAM-Ziehung · alle {min} Min. · max. {max}"}
 }
 </script>
 <script id="mr-localization">
@@ -12285,6 +12294,146 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
   });
   setInterval(tick,1000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick();});
+})();
+</script>
+<style id="mr-steam-style">
+/* STEAM = 파랑(#6cb8ff), 로컬 = 민트(#7ce3d1). 문구는 단어 단위, 문장은 줄바꿈. */
+:root{--steam:#6cb8ff;--steam-text:#8cc8ff;--steam-deep:#17324f;--steam-line:#2b5a86;--local:#7ce3d1;}
+#app #top-bar #top-gacha-timer .steam-divider{width:1px;height:16px;background:currentColor;opacity:.3;flex:0 0 1px;}
+#app #top-bar #top-gacha-timer .steam-countdown{color:var(--steam-text)!important;cursor:pointer;border-radius:6px;}
+#app #top-bar #top-gacha-timer .steam-countdown:focus-visible{outline:2px solid var(--steam);outline-offset:2px;}
+#app #top-bar #top-gacha-timer .steam-countdown .ui-icon{color:var(--steam);}
+.steam-count{display:inline-block;padding:0 5px;border-radius:5px;background:var(--steam-deep);color:var(--steam-text);font-size:.85em;font-weight:900;line-height:1.5;}
+.steam-countdown.is-full .steam-count{opacity:.65;}
+.steam-gift-shade{position:fixed;inset:0;z-index:10050;background:rgba(4,8,14,.78);display:flex;align-items:center;justify-content:center;padding:16px;animation:steamFade .18s ease-out;}
+.steam-gift{width:min(330px,100%);background:#15233a;border:2px solid var(--steam);border-radius:20px;padding:22px 18px 18px;display:flex;flex-direction:column;align-items:center;gap:14px;color:#e6eef5;box-shadow:0 18px 60px rgba(0,0,0,.5);animation:steamPop .32s cubic-bezier(.2,1.4,.4,1);}
+.steam-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;background:var(--steam-deep);color:var(--steam-text);font-size:13px;font-weight:900;letter-spacing:.5px;}
+.steam-gift h2{margin:0;font-size:26px;font-weight:900;}
+.steam-gift-art{position:relative;width:180px;height:180px;border-radius:18px;background:#0f1824;border:2px solid var(--steam);display:flex;align-items:center;justify-content:center;}
+.steam-gift-art img{width:160px;height:160px;object-fit:contain;}
+.steam-badge,.steam-tier{position:absolute;top:8px;padding:2px 7px;border-radius:6px;font-size:11px;font-weight:900;letter-spacing:.4px;}
+.steam-badge{left:8px;background:var(--steam-deep);color:var(--steam-text);}
+.steam-tier{right:8px;font-size:12px;background:#22263a;}
+.steam-tier[data-tier="SR"]{color:#b69afa}.steam-tier[data-tier="SSR"]{color:#ffd772;background:#3d3218}.steam-tier[data-tier="UR"]{color:#ff9ad5;background:#3a1d31}
+.steam-gift-name{margin:-6px 0 0;font-size:14px;font-weight:700;color:#b9c7d6;text-align:center;}
+.steam-gift-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%;}
+.steam-gift-tile{padding:10px 0;border-radius:12px;background:#0f1824;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:13px;font-weight:700;}
+.steam-gift-tile .ui-icon{width:22px;height:22px;}
+.steam-gift-tile.is-steam{color:var(--steam-text)}.steam-gift-tile.is-local{color:var(--local)}
+.steam-gift-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%;}
+.steam-gift-actions button{height:48px;border-radius:12px;font:inherit;font-size:15px;font-weight:900;cursor:pointer;}
+.steam-gift-actions .ghost{border:1px solid #2f4560;background:transparent;color:#e6eef5;}
+.steam-gift-actions .primary{border:0;background:var(--steam);color:#0b1f33;}
+.steam-gift-actions button:focus-visible{outline:2px solid #fff;outline-offset:2px;}
+.steam-gift-next{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#9fb1c4;}
+.steam-gift-next .ui-icon{width:14px;height:14px;}
+.steam-gift-more{font-size:12px;color:#9fb1c4;margin-top:-6px;}
+@keyframes steamFade{from{opacity:0}to{opacity:1}}
+@keyframes steamPop{from{transform:scale(.85);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.steam-gift-shade,.steam-gift{animation:none}}
+</style>
+<script id="mr-steam-ui">
+/* STEAM 화면 연결: ② 상단 타이머 + 선물 연출. (데이터·규칙은 mr-steam, 여기는 화면만) */
+(function(){
+  'use strict';
+  const S=window.MRSteam;if(!S)return;
+  const k=(id,v)=>window.MRLocale?.k?.(id,v)??id;
+  const ICON={
+    tag:'<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="7.5" r="1.3"/>',
+    trade:'<path d="M7 7h11l-3-3M17 17H6l3 3"/>',
+    codex:'<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><path d="M16.5 14v5M14 16.5h5"/>',
+    clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    shard:'<path d="M12 3l7 9-7 9-7-9z"/>'
+  };
+  const icon=(name,cls='')=>`<svg class="ui-icon ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[name]||''}</svg>`;
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function fmt(sec){
+    sec=Math.max(0,Math.ceil(sec));const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60,p=n=>String(n).padStart(2,'0');
+    return h?`${h}:${p(m)}:${p(s)}`:`${p(m)}:${p(s)}`;
+  }
+  function artPath(it){
+    try{return it.category==='char'?characterPath(it.localId):battleCharacterPath(it.localId);}catch(e){return '';}
+  }
+
+  // ---------- ② 상단 타이머 ----------
+  // updateGachaUI가 매초 이 HTML을 붙인다 (같으면 다시 그리지 않음).
+  function topTimerHtml(){
+    const st=S.getStatus(),title=k('steam.timer.title',{min:S.CONFIG.DROP_INTERVAL_MIN,max:st.max});
+    const time=st.limit?`${k('steam.reset')} ${fmt(st.resetInSec)}`:fmt(st.remainingSec);
+    return `<span class="steam-divider" aria-hidden="true"></span><span class="draw-countdown steam-countdown${st.limit?' is-full':''}" role="button" tabindex="0" data-steam-open="shop" title="${esc(title)}" aria-label="${esc(title+' · '+time+' · '+st.count+'/'+st.max)}">${icon('tag')}${esc(time)}<span class="steam-count">${st.count}/${st.max}</span></span>`;
+  }
+  function openSteamShop(){
+    if(typeof window.switchMenu==='function')window.switchMenu('shop');
+    window.MRSteamUI?.showShopTab?.('steam'); // ③에서 연결
+  }
+  document.addEventListener('click',e=>{if(e.target.closest?.('[data-steam-open="shop"]'))openSteamShop();});
+  document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.closest?.('[data-steam-open="shop"]')){e.preventDefault();openSteamShop();}});
+
+  // ---------- ② 선물 연출 ----------
+  let showing=false;
+  function blocked(){
+    // 다른 창(확인창·시작 캐릭터 선택·뽑기 연출)이 열려 있으면 끝난 뒤 보여준다
+    if(showing||dialogPause)return true;
+    const starter=document.getElementById('mr-starter');
+    if(starter&&starter.offsetParent!==null)return true;
+    return !!document.querySelector('.mr-dialog-shade,.mrfx-reveal,.mrfx-overlay');
+  }
+  async function flush(){
+    if(blocked())return;
+    const ids=S.takePending();if(!ids.length)return;
+    const inv=await S.getInventory();
+    const items=ids.map(id=>inv.editions.find(x=>x.itemId===id)).filter(Boolean);
+    if(!items.length)return;
+    showing=true;
+    try{await showGift(items,inv);}finally{showing=false;}
+    flush();
+  }
+  function showGift(items,inv){return new Promise(resolve=>{
+    const it=items[0],st=S.getStatus();
+    const copies=inv.editions.filter(x=>x.category===it.category&&x.localId===it.localId).length;
+    const isNew=copies<=1;
+    const previousFocus=document.activeElement;
+    const wasPaused={dialog:dialogPause};
+    dialogPause=true;globalPause=true;if(window.gameRunner)window.gameRunner.enabled=false;
+    const siblings=[...document.body.children].filter(el=>el.tagName!=='SCRIPT');
+    const inert=siblings.map(el=>el.inert);siblings.forEach(el=>el.inert=true);
+    const shade=document.createElement('div');shade.className='steam-gift-shade';
+    shade.innerHTML=`<div class="steam-gift" role="dialog" aria-modal="true" aria-labelledby="steam-gift-title">
+      <span class="steam-pill">${icon('tag')}STEAM ${st.count}/${st.max}</span>
+      <h2 id="steam-gift-title">${esc(k('steam.gift.title'))}</h2>
+      <div class="steam-gift-art"><img src="${esc(artPath(it))}" alt="${esc(it.name)}"><span class="steam-badge">STEAM</span><span class="steam-tier" data-tier="${esc(it.tier)}">${esc(it.tier)}</span></div>
+      <p class="steam-gift-name">${esc(it.name)}</p>
+      <div class="steam-gift-grid">
+        <div class="steam-gift-tile is-steam">${icon('trade')}<span>${esc(k('steam.tradable'))}</span></div>
+        <div class="steam-gift-tile is-local">${icon('codex')}<span>${esc(isNew?k('steam.codexNew'):k('steam.owned')+' ×'+copies)}</span></div>
+      </div>
+      ${items.length>1?`<span class="steam-gift-more">+${items.length-1}</span>`:''}
+      <div class="steam-gift-actions"><button type="button" class="ghost" data-act="codex">${esc(k('steam.codex'))}</button><button type="button" class="primary" data-act="ok">${esc(k('steam.confirm'))}</button></div>
+      <span class="steam-gift-next">${icon('clock')}${esc(st.limit?k('steam.reset')+' '+fmt(st.resetInSec):k('steam.next')+' '+fmt(st.remainingSec))}</span>
+    </div>`;
+    document.body.append(shade);
+    let done=false;
+    function close(act){
+      if(done)return;done=true;
+      shade.remove();siblings.forEach((el,i)=>el.inert=inert[i]);
+      dialogPause=wasPaused.dialog;globalPause=!!(manualPause||navigationPause||systemPause||dialogPause);
+      if(window.gameRunner)window.gameRunner.enabled=!globalPause;
+      previousFocus?.focus?.({preventScroll:true});
+      if(act==='codex'){window.switchMenu?.('collection');window.MRSteamUI?.showCodex?.(it);} // ④에서 연결
+      resolve(act);
+    }
+    shade.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(b)close(b.dataset.act);});
+    shade.addEventListener('keydown',e=>{
+      if(e.key==='Escape'){e.preventDefault();close('ok');}
+      if(e.key==='Tab'){const f=[...shade.querySelectorAll('button')],i=f.indexOf(document.activeElement);e.preventDefault();f[(i+(e.shiftKey?-1:1)+f.length)%f.length].focus();}
+    });
+    shade.querySelector('[data-act="ok"]').focus({preventScroll:true});
+    try{window.playSfx?.('newRecord');}catch(e){}
+  });}
+  S.on('grant',()=>setTimeout(flush,0));
+  setInterval(flush,2000); // 놓친 선물(창 닫힘·다른 창 열림)도 다시 보여준다
+
+  window.MRSteamUI=Object.assign(window.MRSteamUI||{},{topTimerHtml,icon,fmt,artPath,flush});
 })();
 </script>
 <script id="mr-social-core">
