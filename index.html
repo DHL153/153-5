@@ -6109,6 +6109,53 @@ window.MRBattleFX=(()=>{
     let ownershipActionBusy=false;
     function ownershipText(text){return window.MRLocale?.t(text)||text;}
     function sameItem(a,b){return String(a)===String(b);}
+    // ===== C안: STEAM 에디션도 '사용'(전투 편성·마이룸 배치)은 가능 =====
+    // 분리 원칙은 재화·재료에만 적용: 분해·합성·선택권·저장에는 STEAM을 절대 섞지 않는다.
+    // STEAM 보유 수는 비동기로 오므로, 확인 전에는 마지막으로 확인한 값(캐시)을 쓴다 → 켜자마자 편성이 풀리지 않게.
+    var STEAM_OWNED_CACHE_KEY='mrSteamOwnedCache.v1'; // 로컬 세이브 초기화와 무관 (실제 스팀 인벤토리처럼)
+    var steamOwnedCache=null; // var: 저장 복원이 이 줄보다 먼저 실행돼도 TDZ 오류가 나지 않게
+    function steamOwnedCount(category,id){
+        if(category!=='char'&&category!=='battle_char')return 0;
+        const c=window.MRSteamCodex;if(c&&c.ready)return Number(c.count(category,id)||0);
+        if(!steamOwnedCache){try{steamOwnedCache=JSON.parse(localStorage.getItem('mrSteamOwnedCache.v1')||'{}')||{};}catch(e){steamOwnedCache={};}}
+        return Number(steamOwnedCache[category+'::'+id]||0);
+    }
+    function usableCount(category,id){return Math.max(0,Number(getInventoryRef(category)?.[id]?.count)||0)+steamOwnedCount(category,id);}
+    // 로컬(민트) · STEAM(파랑) 보유 막대: 도감·전투 편성·마이룸 공통
+    function sourceBarsHtml(category,id,extraClass=''){
+        if(!window.MRSteamCodex?.eligible?.(category,id))return '';
+        const l=Math.max(0,Number(getInventoryRef(category)?.[id]?.count)||0),st=steamOwnedCount(category,id);
+        const k=(key,f)=>window.MRLocale?.k?.(key)||f;
+        const label=`${k('steam.tab.local','로컬')} ${l>0?'✓':'–'} · STEAM ${st>0?'×'+st:'–'}`;
+        return `<span class="codex-src ${extraClass}" title="${label}" aria-label="${label}"><i class="src-l${l>0?' on':''}"></i><i class="src-s${st>0?' on':''}"></i></span>`;
+    }
+    window.usableCount=usableCount;window.steamOwnedCount=steamOwnedCount;
+    // STEAM 보유가 바뀌었을 때 (장터 판매·분해): 더 이상 못 쓰는 캐릭터는 편성·마이룸에서 자동 교체
+    window.reconcileSteamUsage=function(lostKeys){
+        if(!lostKeys?.length)return;
+        let changed=false;
+        const lostBattle=lostKeys.filter(k=>k.startsWith('battle_char::')).map(k=>Number(k.split('::')[1])).filter(id=>usableCount('battle_char',id)<=0);
+        if(lostBattle.length&&[...battleTeam,...activeBattleTeam].some(id=>id!==null&&lostBattle.includes(id))){
+            reconcileBattleTeamsAfterOwnershipChange();
+            if(battleTeam[0]===null){
+                const first=TIER_ORDER.flatMap(t=>BATTLE_CHARS_DB[t]||[]).find(id=>usableCount('battle_char',id)>0);
+                if(first!==undefined){battleTeam[0]=first;confirmedBattleTeam=[...battleTeam];activeBattleTeam=[...battleTeam];refreshActiveBattleTeamPresentation();updateBattleCharacterUI();}
+            }
+            changed=true;
+        }
+        const lostChar=lostKeys.filter(k=>k.startsWith('char::')).map(k=>Number(k.split('::')[1])).filter(id=>usableCount('char',id)<=0);
+        if(lostChar.length&&(charScene.characters||[]).some(c=>lostChar.includes(Number(c.id)))){
+            charScene.characters=(charScene.characters||[]).filter(c=>!lostChar.includes(Number(c.id)));
+            if(!charScene.characters.length){
+                const first=TIER_ORDER.flatMap(t=>CHARS_DB[t]||[]).find(id=>usableCount('char',id)>0)??0;
+                charScene.characters=[normalizeSceneCharacter({id:first},first,1)];
+            }
+            charConfig.body=charScene.characters[0].id;
+            saveCharScene();applySceneTransforms(false);try{renderCharItems?.();}catch(e){}
+            changed=true;
+        }
+        if(changed){saveEconomyState();showFloatingText(window.MRLocale?.k?.('steam.replaced')||'STEAM 캐릭터가 없어 교체했어요',210,220,'#8cc8ff');}
+    };
     function isItemEquipped(category,id){
         if(category==='skin')return equippedSkins.some(x=>sameItem(x,id));
         if(category==='battle_char')return [...battleTeam,...confirmedBattleTeam,...activeBattleTeam].some(x=>x!==null&&sameItem(x,id));
@@ -6127,7 +6174,7 @@ window.MRBattleFX=(()=>{
         // Battle formations release an item only after the actual final copy is consumed.
         if(category==='battle_char')return {ok:true,quantity:qty,removesLastCopy:last};
         const candidates=Object.keys(inv).filter(key=>!sameItem(key,id)&&inv[key].count>0);
-        if(last&&isItemEquipped(category,id))return {ok:false,reason:'replacement_required',candidates,quantity:qty};
+        if(last&&isItemEquipped(category,id)&&steamOwnedCount(category,id)<=0)return {ok:false,reason:'replacement_required',candidates,quantity:qty};
         return {ok:true,quantity:qty,removesLastCopy:last};
     }
     function ownershipFailure(result){
@@ -6292,7 +6339,7 @@ function createSocialDataFoundation(assets, emojis) {
     // Public data contains allowlisted asset IDs and transforms only; no URLs/HTML or economy.
     function exportRoom(scene,config) {
         const bg=requiredId('char_bg',config.bg);
-        return validateRoom({schema:'merge-run.room',version:1,coordinateSpace:'percent',background:{assetId:bg,...transform(scene.backgroundById?.[config.bg],'background')},characters:(scene.characters||[]).map((c,i)=>({instanceId:'character-'+String(c.uid??i+1),assetId:requiredId('char',c.id),...transform(c)})),emojis:(scene.emojis||[]).map((e,i)=>({instanceId:'emoji-'+String(e.uid??i+1),assetId:requiredId('item',e.symbol),...transform(e,'emoji')}))});
+        return validateRoom({schema:'merge-run.room',version:1,coordinateSpace:'percent',background:{assetId:bg,...transform(scene.backgroundById?.[config.bg],'background')},characters:(scene.characters||[]).map((c,i)=>({instanceId:'character-'+String(c.uid??i+1),assetId:requiredId('char',c.id),...transform(c),...(typeof steamOwnedCount==='function'&&steamOwnedCount('char',c.id)>0?{steam:true}:{})})),emojis:(scene.emojis||[]).map((e,i)=>({instanceId:'emoji-'+String(e.uid??i+1),assetId:requiredId('item',e.symbol),...transform(e,'emoji')}))});
     }
     function validateRoom(input) {
         let room=input;
@@ -6304,7 +6351,7 @@ function createSocialDataFoundation(assets, emojis) {
         function placement(x,cat,type) {
             if(!object(x)||typeof x.instanceId!=='string'||!/^[a-zA-Z0-9_-]{1,64}$/.test(x.instanceId)||ids.has(x.instanceId))fail('invalid instance ID');
             ids.add(x.instanceId);fromId(cat,x.assetId);
-            return {instanceId:x.instanceId,assetId:x.assetId,...transform(x,type)};
+            return {instanceId:x.instanceId,assetId:x.assetId,...transform(x,type),...(cat==='char'&&x.steam===true?{steam:true}:{})};
         }
         return {schema:'merge-run.room',version:1,coordinateSpace:'percent',background:{assetId:room.background.assetId,...transform(room.background,'background')},characters:room.characters.map(x=>placement(x,'char','character')),emojis:room.emojis.map(x=>placement(x,'item','emoji'))};
     }
@@ -6501,7 +6548,7 @@ function createSocialDataFoundation(assets, emojis) {
                 if(Array.isArray(saved.equippedSkins)) equippedSkins=equippedSkins.map((fallback,i)=>skinInventory[saved.equippedSkins[i]]?.count>0?saved.equippedSkins[i]:fallback);
                 if(bgInventory.bg_battle[saved.bgConfig?.battle]?.count>0) bgConfig.battle=saved.bgConfig.battle;
                 if(bgInventory.bg_merge[saved.bgConfig?.merge]?.count>0) bgConfig.merge=saved.bgConfig.merge;
-                if(battleCharInventory[saved.battleCharacter]?.count>0) battleCharacter=saved.battleCharacter;
+                if(usableCount('battle_char',saved.battleCharacter)>0) battleCharacter=saved.battleCharacter;
                 const savedTeam=saved.battleTeam??[battleCharacter,null,null];
                 confirmedBattleTeam=normalizeBattleTeam(saved.confirmedBattleTeam??savedTeam);
                 battleTeam=normalizeBattleTeam(savedTeam);ensureBattleTeam();
@@ -7862,7 +7909,7 @@ function createSocialDataFoundation(assets, emojis) {
             .map(Number)
             .filter(id => id >= 0 && id < 29)
             .filter(id => charBodyTierFilter === 'ALL' || CHARACTER_META[id]?.tier === charBodyTierFilter)
-            .filter(id => !charOwnedOnly.body || (charInventory[id]?.count||0) > 0)
+            .filter(id => !charOwnedOnly.body || usableCount('char',id) > 0)
             .sort((a,b) => compareCollectionItems(a,b,charInventory,CHARACTER_META));
     }
 
@@ -7991,7 +8038,7 @@ function createSocialDataFoundation(assets, emojis) {
             const ownershipRow=document.createElement('div');
             ownershipRow.className='char-bg-toolbar';
             const bodyAllIds=Object.keys(CHARACTER_META).map(Number).filter(id=>id>=0&&id<29);
-            const bodyOwned=bodyAllIds.filter(id=>(charInventory[id]?.count||0)>0).length;
+            const bodyOwned=bodyAllIds.filter(id=>usableCount('char',id)>0).length;
             tierTabs.insertBefore(makeOwnedOnlyButton('body',bodyOwned,bodyAllIds.length),tierTabs.children[1]||null);
             
 
@@ -8019,13 +8066,15 @@ function createSocialDataFoundation(assets, emojis) {
                 const div = document.createElement('div');
                 const placed=(charScene.characters||[]).some(c=>Number(c.id)===Number(id));
                 const selected=placed && Number(getSelectedSceneCharacter()?.id)===Number(id);
-                div.className = `char-item-btn ${selected ? 'selected' : ''} ${placed ? 'placed-character' : ''} ${data.count === 0 ? 'unowned' : ''} contain-mode`;
+                const use=usableCount('char',id);
+                div.className = `char-item-btn ${selected ? 'selected' : ''} ${placed ? 'placed-character' : ''} ${use === 0 ? 'unowned' : ''} contain-mode`;
                 div.dataset.characterId = String(id);
                 div.dataset.characterTier = tier;
                 const imgSrc = characterPath(id);
                 const placedBadge=placed ? `<div class="placed-character-badge">${selected?'선택됨':'배치됨'}</div>` : '';
                 div.innerHTML = `<div class="char-tier-badge">${tier}</div><img src="${imgSrc}" onerror="handleAssetImageError(this)" onload="handleAssetImageLoad(this)"><div class="bg-image-missing">이미지 없음<br>${String(id+1).padStart(4,'0')}</div>${data.count > 0 ? `<div class="count">${data.count}</div>` : '<div class="lock-mark">🔒</div>'}${placedBadge}`;
-                if (data.count > 0) {
+                div.insertAdjacentHTML('beforeend',sourceBarsHtml('char',id));
+                if (use > 0) {
                     div.onclick = () => addOrSelectSceneCharacter(id);
                 }
                 list.appendChild(div);
@@ -8253,7 +8302,7 @@ function createSocialDataFoundation(assets, emojis) {
 
     // Draft, explicitly confirmed formation and current presentation are independent.
     function getBattleCharacterOwnedCount(id){
-        const inventoryCount=Math.max(0,Number(battleCharInventory[id]?.count)||0);
+        const inventoryCount=Math.max(0,Number(battleCharInventory[id]?.count)||0)+steamOwnedCount('battle_char',id);
         return inventoryCount+globalCraftSlots.filter(x=>x.category==='battle_char'&&sameItem(x.id,id)).length;
     }
     function normalizeBattleTeam(input){
@@ -8464,7 +8513,7 @@ function createSocialDataFoundation(assets, emojis) {
         saveEconomyState();updateBattleCharacterUI();updateBgLivePreview();
     }
     function assignBattleTeamCharacter(id){
-        id=Number(id);if(!(battleCharInventory[id]?.count>0))return;
+        id=Number(id);if(!(usableCount('battle_char',id)>0))return;
         ensureBattleTeam();
         // Start an empty draft at the leader, even if an old companion slot was selected.
         const slot=battleTeamEntries(battleTeam).length?selectedBattleTeamSlot:0,other=battleTeam.indexOf(id);
@@ -8508,7 +8557,7 @@ function createSocialDataFoundation(assets, emojis) {
                 +(id===null?`<span class="bt-plus">${btIcon('plus')}</span>`:'<span class="bt-art"></span>')
                 +`<span class="bt-applied">${btIcon('check')}</span>`
                 +(selected?`<span class="bt-cursor">${btIcon('down')}</span>`:'');
-            if(id!==null){const img=document.createElement('img');img.alt='';img.draggable=false;setSmartImageSrc(img,battleCharacterPath(id));select.querySelector('.bt-art').appendChild(img);}
+            if(id!==null){const img=document.createElement('img');img.alt='';img.draggable=false;setSmartImageSrc(img,battleCharacterPath(id));select.querySelector('.bt-art').appendChild(img);select.insertAdjacentHTML('beforeend',sourceBarsHtml('battle_char',id,'is-slot'));}
             select.onclick=()=>selectBattleTeamSlot(slot);cell.appendChild(select);
             if(slot>0&&id!==null){const remove=document.createElement('button');remove.type='button';remove.className='bt-remove';remove.innerHTML=btIcon('close');remove.setAttribute('aria-label',`${labels[slot]} · ${tk('team.remove')}`);remove.title=tk('team.remove');remove.dataset.noI18n='';remove.onclick=e=>{e.stopPropagation();removeBattleTeamMember(slot);};cell.appendChild(remove);}
             row.appendChild(cell);
@@ -8696,10 +8745,10 @@ function createSocialDataFoundation(assets, emojis) {
         const grid=document.getElementById('battle-character-grid');if(!grid)return;grid.innerHTML='';
         const accepts=collectionTierBar(grid,'battle_char',BATTLE_CHARS_DB,updateBattleCharacterUI);
         TIER_ORDER.forEach(tier=>{if(!accepts(tier))return;(BATTLE_CHARS_DB[tier]||[]).forEach(id=>{
-            const data=battleCharInventory[id],owned=(data?.count||0)>0;if(!acceptsCollectionOwnership('battle_char',data?.count))return;
+            const data=battleCharInventory[id],use=usableCount('battle_char',id),owned=use>0;if(!acceptsCollectionOwnership('battle_char',use))return;
             const slot=battleTeam.indexOf(id),div=document.createElement('div');
             div.className=`inv-item tier-box-${tier} battle-char-card ${slot>=0?'selected':''} ${owned?'':'unowned'}`;
-            div.innerHTML=`<div class="tier-label tier-${tier}">${tier}</div><img src="${battleCharacterPath(id)}" class="skin-img-icon" onerror="handleAssetImageError(this)" onload="handleAssetImageLoad(this)">${owned?(slot>=0?`<div class="bt-card-badge ${slot===0?'is-leader':''}" title="${ownershipText(['주 캐릭터','동료 1','동료 2'][slot])}">${btIcon(slot===0?'crown':'user')}</div>`:''):'<div class="lock-mark">🔒</div>'}`;
+            div.innerHTML=`<div class="tier-label tier-${tier}">${tier}</div><img src="${battleCharacterPath(id)}" class="skin-img-icon" onerror="handleAssetImageError(this)" onload="handleAssetImageLoad(this)">${owned?(slot>=0?`<div class="bt-card-badge ${slot===0?'is-leader':''}" title="${ownershipText(['주 캐릭터','동료 1','동료 2'][slot])}">${btIcon(slot===0?'crown':'user')}</div>`:''):'<div class="lock-mark">🔒</div>'}`;div.insertAdjacentHTML('beforeend',sourceBarsHtml('battle_char',id));
             if(owned){div.setAttribute('role','button');div.tabIndex=0;div.setAttribute('aria-label',`${BATTLE_CHARACTER_META[id]?.name||'전투 캐릭터'} · ${ownershipText(slot>=0?['주 캐릭터','동료 1','동료 2'][slot]:'편성')}`);div.onclick=()=>assignBattleTeamCharacter(id);div.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();assignBattleTeamCharacter(id);}};}
             grid.appendChild(div);
         });});
@@ -10963,7 +11012,10 @@ function createSocialDataFoundation(assets, emojis) {
  "shop.state.noGold": {"ko": "골드 부족", "en": "Need gold", "ja": "ゴールド不足", "zh-CN": "金币不足", "zh-TW": "金幣不足", "es": "Falta oro", "pt-BR": "Falta ouro", "fr": "Or insuffisant", "ru": "Мало золота", "it": "Oro insufficiente", "pl": "Za mało złota", "de": "Zu wenig Gold"},
  "shop.state.noMerge": {"ko": "머지 부족", "en": "Need merges", "ja": "マージ不足", "zh-CN": "合成次数不足", "zh-TW": "合成次數不足", "es": "Faltan fusiones", "pt-BR": "Faltam fusões", "fr": "Fusions insuffisantes", "ru": "Мало слияний", "it": "Fusioni insufficienti", "pl": "Za mało łączeń", "de": "Zu wenig Fusionen"},
  "steam.claim": {"ko": "받기", "en": "Claim", "ja": "受け取る", "zh-CN": "领取", "zh-TW": "領取", "es": "Reclamar", "pt-BR": "Resgatar", "fr": "Récupérer", "ru": "Забрать", "it": "Riscatta", "pl": "Odbierz", "de": "Abholen"},
- "steam.claim.wait": {"ko": "STEAM 확인 중이에요\n잠시 후 다시 눌러 주세요", "en": "STEAM is still checking\nPlease try again shortly", "ja": "STEAMで確認中です\n少し後でもう一度押してください", "zh-CN": "STEAM 正在确认\n请稍后再试", "zh-TW": "STEAM 正在確認\n請稍後再試", "es": "STEAM aún está verificando\nInténtalo de nuevo en breve", "pt-BR": "O STEAM ainda está verificando\nTente novamente em breve", "fr": "STEAM vérifie encore\nRéessaie dans un instant", "ru": "STEAM ещё проверяет\nПопробуйте чуть позже", "it": "STEAM sta ancora verificando\nRiprova tra poco", "pl": "STEAM jeszcze sprawdza\nSpróbuj za chwilę", "de": "STEAM prüft noch\nBitte gleich erneut versuchen"}
+ "steam.claim.wait": {"ko": "STEAM 확인 중이에요\n잠시 후 다시 눌러 주세요", "en": "STEAM is still checking\nPlease try again shortly", "ja": "STEAMで確認中です\n少し後でもう一度押してください", "zh-CN": "STEAM 正在确认\n请稍后再试", "zh-TW": "STEAM 正在確認\n請稍後再試", "es": "STEAM aún está verificando\nInténtalo de nuevo en breve", "pt-BR": "O STEAM ainda está verificando\nTente novamente em breve", "fr": "STEAM vérifie encore\nRéessaie dans un instant", "ru": "STEAM ещё проверяет\nПопробуйте чуть позже", "it": "STEAM sta ancora verificando\nRiprova tra poco", "pl": "STEAM jeszcze sprawdza\nSpróbuj za chwilę", "de": "STEAM prüft noch\nBitte gleich erneut versuchen"},
+ "steam.equip": {"ko": "장착", "en": "Equip", "ja": "装備", "zh-CN": "装备", "zh-TW": "裝備", "es": "Equipar", "pt-BR": "Equipar", "fr": "Équiper", "ru": "Надеть", "it": "Equipaggia", "pl": "Załóż", "de": "Ausrüsten"},
+ "steam.replaced": {"ko": "STEAM 캐릭터가 없어 교체했어요", "en": "STEAM character gone, replaced", "ja": "STEAMキャラがないため交代しました", "zh-CN": "STEAM 角色已不在，已替换", "zh-TW": "STEAM 角色已不在，已替換", "es": "Personaje STEAM ausente, reemplazado", "pt-BR": "Personagem STEAM ausente, substituído", "fr": "Personnage STEAM absent, remplacé", "ru": "STEAM-персонажа нет, заменён", "it": "Personaggio STEAM assente, sostituito", "pl": "Brak postaci STEAM, zamieniono", "de": "STEAM-Figur fehlt, ersetzt"},
+ "steam.warn.equipped": {"ko": "장착 중 → 다른 캐릭터로 자동 교체", "en": "Equipped → auto-replaced", "ja": "装備中 → 他のキャラに自動交代", "zh-CN": "装备中 → 自动替换为其他角色", "zh-TW": "裝備中 → 自動替換為其他角色", "es": "Equipado → se reemplaza automáticamente", "pt-BR": "Equipado → substituído automaticamente", "fr": "Équipé → remplacé automatiquement", "ru": "Надет → будет заменён", "it": "Equipaggiato → sostituito automaticamente", "pl": "Założony → automatyczna zamiana", "de": "Ausgerüstet → wird automatisch ersetzt"}
 }
 </script>
 <script id="mr-localization">
@@ -12714,7 +12766,7 @@ html body #app #view-shop .gacha-btn-container > #btn-daily-free:disabled{backgr
       </div></div>
       <div class="panel" style="margin:0 15px 18px 15px;">
       <div class="panel-title"><span>${icon('layers')}${esc(k('shop.craftMaterials'))}</span></div>
-      <div class="craft-filter-row">${CRAFT_TIERS.map(t=>`<button type="button" class="craft-filter-btn${craftTier===t?' active':''}" data-craft-tier="${t}">${t} ${totals[t]}</button>`).join('')}</div>
+      <div class="craft-filter-row">${['N','R',...CRAFT_TIERS].map(t=>CRAFT_TIERS.includes(t)?`<button type="button" class="craft-filter-btn${craftTier===t?' active':''}" data-craft-tier="${t}">${t} ${totals[t]}</button>`:`<button type="button" class="craft-filter-btn" disabled aria-disabled="true" title="STEAM: SR+">${t} 0</button>`).join('')}</div>
       <div class="inventory-grid compact-collection-grid" id="steam-inventory-grid">${list.length?list.map(g=>`<div class="inv-item tier-box-${g.tier}" data-shop-category="${g.category}" data-craft-add="${esc(g.key)}" role="button" tabindex="0">${tierLabel(g.tier)}${art(g.category,g.localId)}<div class="count">${g.ids.length}</div></div>`).join(''):`<div class="empty-state" style="grid-column:1/-1;">${esc(k('steam.emptyTier'))}</div>`}</div>
       </div>`;
   }
@@ -12770,7 +12822,10 @@ html body #app #view-shop .gacha-btn-container > #btn-daily-free:disabled{backgr
       const over={};for(const id of ids){const x=inv.editions.find(e=>e.itemId===id);if(!x)continue;const key=x.category+'::'+x.localId;left.set(key,left.get(key)-1);over['steam_'+key]=left.get(key);}
       const lost=Object.values(over).filter(v=>v===0).length;if(!lost)return '';
       const a=calculateCollectionPower().multiplier,b=calculateCollectionPower(over).multiplier;
-      return '\n'+k('steam.warn.drop',{n:lost,a:a.toFixed(2),b:b.toFixed(2)});
+      // 장착 중인데 로컬 사본이 없으면 분해 후 자동 교체된다
+      const equipped=Object.entries(over).some(([key,v])=>{if(v!==0)return false;const [,cat,id]=key.match(/^steam_(char|battle_char)::(\d+)$/)||[];
+        return cat&&isItemEquipped(cat,Number(id))&&!(Number(getInventoryRef(cat)?.[id]?.count)>0);});
+      return '\n'+k('steam.warn.drop',{n:lost,a:a.toFixed(2),b:b.toFixed(2)})+(equipped?'\n'+k('steam.warn.equipped'):'');
     }catch(e){return '';}
   }
 
@@ -12861,6 +12916,19 @@ html body #app #view-shop .gacha-btn-container > #btn-daily-free:disabled{backgr
 #app #item-collection-grid .codex-src i.src-l.on{background:var(--local);border-color:var(--local);}
 #app #item-collection-grid .codex-src i.src-s.on{background:var(--steam);border-color:var(--steam);}
 #app #item-collection-grid .inv-item.unowned .codex-src{opacity:1;}
+/* 같은 막대를 전투 편성·마이룸 목록·편성 칸에도 */
+#app .battle-char-card,#app .char-item-btn{position:relative;}
+#app .battle-char-card .codex-src,#app .char-item-btn .codex-src,#app .bt-slot .codex-src{position:absolute;left:50%;bottom:3px;transform:translateX(-50%);display:flex;gap:3px;z-index:2;pointer-events:none;}
+#app .battle-char-card .codex-src i,#app .char-item-btn .codex-src i,#app .bt-slot .codex-src i{display:block;width:12px;height:4px;border-radius:2px;border:1px solid #3b5675;box-sizing:border-box;}
+#app .codex-src i.src-l.on{background:var(--local);border-color:var(--local);}
+#app .codex-src i.src-s.on{background:var(--steam);border-color:var(--steam);}
+#app .bt-slot .codex-src.is-slot{bottom:2px;}
+#app .bt-slot .codex-src.is-slot i{width:9px;height:3px;}
+#app #steam-shop .craft-filter-btn:disabled{opacity:.45;cursor:default;}
+/* 친구 방문: STEAM 에디션 표시 */
+.visit-char.is-steam{filter:drop-shadow(0 0 6px rgba(108,184,255,.75));}
+.visit-chip-steam{position:absolute;left:3px;bottom:3px;padding:1px 4px;border-radius:4px;background:#17324f;color:#8cc8ff;font-size:8px;font-weight:900;letter-spacing:.3px;}
+.visit-chip{position:relative;}
 .steam-sheet-shade{position:fixed;inset:0;z-index:10040;background:rgba(4,8,14,.6);display:flex;align-items:flex-end;justify-content:center;animation:steamFade .15s ease-out;}
 .steam-sheet{width:min(460px,100%);background:#15233a;border-top:2px solid var(--steam);border-radius:20px 20px 0 0;padding:18px 16px calc(22px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:14px;color:#e6eef5;animation:steamUp .22s ease-out;}
 .steam-sheet-top{display:flex;gap:14px;align-items:center;}
@@ -12877,7 +12945,7 @@ html body #app #view-shop .gacha-btn-container > #btn-daily-free:disabled{backgr
 .steam-sheet-sum [data-tier="SR"]{color:#b69afa}.steam-sheet-sum [data-tier="SSR"]{color:#ffd772}.steam-sheet-sum [data-tier="UR"]{color:#ff9ad5}
 .steam-sheet-warn{margin:0;padding:10px 14px;border-radius:12px;background:#2b1d22;color:#ffc7cf;font-size:13px;line-height:1.6;}
 .steam-sheet-warn span{display:block;}.steam-sheet-warn b{font-weight:900;}
-.steam-sheet-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.steam-sheet-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
 .steam-sheet-actions button{height:48px;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;font:inherit;font-size:15px;font-weight:900;cursor:pointer;}
 .steam-sheet-actions .ui-icon{width:18px;height:18px;}
 .steam-sheet-actions .primary{border:0;background:var(--steam);color:#0b1f33;}
@@ -12902,11 +12970,22 @@ html body #app #view-shop .gacha-btn-container > #btn-daily-free:disabled{backgr
   const eligible=(cat,id)=>!!CAT[cat]&&!!S.findEdition({category:cat,id});
   const count=(cat,id)=>counts.get(cat+'::'+id)||0;
   function apply(inv){
+    // 캐릭터 데이터(에셋 JSON)가 아직 안 왔으면 STEAM 에디션을 알아볼 수 없다 → 빈 값으로 판단하지 않고 잠시 뒤 다시
+    if(!S.editions().length){setTimeout(sync,500);return;}
     const next=new Map();
     for(const e of inv.editions){const key=e.category+'::'+e.localId;next.set(key,(next.get(key)||0)+1);}
+    // 이전 값(처음엔 마지막 캐시)과 비교해 사라진 STEAM 캐릭터를 찾는다 → 장착 중이면 자동 교체
+    let prev=counts;
+    if(!ready){try{prev=new Map(Object.entries(JSON.parse(localStorage.getItem('mrSteamOwnedCache.v1')||'{}')));}catch(e){prev=new Map();}}
+    const lost=[...prev.keys()].filter(k=>Number(prev.get(k))>0&&!(next.get(k)>0));
     counts=next;ready=true;
+    try{localStorage.setItem('mrSteamOwnedCache.v1',JSON.stringify(Object.fromEntries(next)));}catch(e){}
     try{refreshCollectionPowerUI();}catch(e){}
     try{if(document.getElementById('view-item')?.classList.contains('active'))updateItemUI();}catch(e){}
+    try{window.reconcileSteamUsage?.(lost);}catch(e){console.warn('[MRSteam codex] reconcile',e);}
+    // 전투 편성·마이룸 목록의 막대·사용 가능 여부 갱신
+    try{updateBattleCharacterUI();}catch(e){}
+    try{if(document.getElementById('char-item-list')?.offsetParent)renderCharItems();}catch(e){}
   }
   async function sync(){try{apply(await S.getInventory());}catch(e){console.warn('[MRSteam codex]',e);}}
   window.MRSteamCodex={entries,eligible,count,sync,get ready(){return ready;}};
@@ -12939,6 +13018,7 @@ html body #app #view-shop .gacha-btn-container > #btn-daily-free:disabled{backgr
         </div></div>
       ${warn}
       <div class="steam-sheet-actions">
+        <button type="button" class="ghost" data-act="equip" ${(local>0||copies.length)?'':'disabled'}>${icon('check')}${esc(k('steam.equip'))}</button>
         <button type="button" class="primary" data-act="market" ${copies.length?'':'disabled'}>${icon('trade')}${esc(k('steam.market'))}</button>
         <button type="button" class="ghost" data-act="${copies.length?'dismantle':'get'}">${copies.length?icon('shard')+esc(k('steam.dismantle'))+' ×'+copies.length:icon('tag')+esc(k('steam.select'))}</button>
       </div></section>`;
@@ -12952,6 +13032,14 @@ html body #app #view-shop .gacha-btn-container > #btn-daily-free:disabled{backgr
         // 스팀웍스 단계: ActivateGameOverlayToWebPage(장터 URL). 지금은 안내만.
         const bridge=window.mergeRollDesktop?.openSteamMarket;
         if(!S.CONFIG.MOCK&&typeof bridge==='function')bridge(d.defId);else await (window.gameAlert||alert)(k('steam.market.soon'));
+        return;
+      }
+      if(act==='equip'){
+        close(sh,prev);
+        try{
+          if(cat==='battle_char'){window.switchCollectionPage?.('bg');assignBattleTeamCharacter(Number(id));}
+          else{window.switchCollectionPage?.('character');window.addOrSelectSceneCharacter?.(Number(id));}
+        }catch(e){console.warn('[MRSteam codex] equip',e);}
         return;
       }
       if(act==='get'){close(sh,prev);window.switchMenu?.('shop');U.showShopTab?.('steam');return;}
@@ -14118,7 +14206,7 @@ html body #app #item-collection-grid .inv-item.codex-focus{outline:3px solid var
     e.bg.style.transform=`scale(${bgT.scale})`;
     const parts=[];
     room.characters.forEach((c,i)=>{
-      parts.push(`<img class="visit-char" data-i="${i}" alt="" draggable="false" src="${esc(assets.characters[i])}"
+      parts.push(`<img class="visit-char${c.steam?' is-steam':''}" data-i="${i}" alt="" draggable="false" src="${esc(assets.characters[i])}"
         style="left:${c.x}%;top:${c.y}%;transform:translate(-50%,-50%) scale(${c.scale}) rotate(${c.rotation}deg) scaleX(${c.flip});z-index:${2+i}">`);
     });
     room.emojis.forEach((m,i)=>{
@@ -14145,9 +14233,10 @@ html body #app #item-collection-grid .inv-item.codex-focus{outline:3px solid var
     push('char_bg',room.background.assetId);
     room.characters.forEach(c=>push('char',c.assetId));
     room.emojis.forEach(m=>push('item',m.assetId));
+    const steamIds=new Set(room.characters.filter(c=>c.steam).map(c=>c.assetId)); // 친구가 STEAM 에디션으로 가진 캐릭터
     el.innerHTML=`<div class="visit-items-title">${T('social.roomItems')} <b>${list.length}</b></div>
       <div class="visit-chips">${list.map(d=>`<button class="visit-chip${d.owned?'':' unowned'}" data-cat="${esc(d.category)}" data-id="${esc(d.assetId)}">
-        ${thumb(d,'visit-chip-img'+(d.category==='char_bg'?' bg':''))}<span class="visit-chip-tier tier-${esc(d.tier)}">${esc(d.tier)}</span>
+        ${thumb(d,'visit-chip-img'+(d.category==='char_bg'?' bg':''))}<span class="visit-chip-tier tier-${esc(d.tier)}">${esc(d.tier)}</span>${d.category==='char'&&steamIds.has(d.assetId)?'<span class="visit-chip-steam">STEAM</span>':''}
         ${d.owned?'':'<span class="visit-chip-new" aria-hidden="true">?</span>'}</button>`).join('')}</div>`;
   }
   function openDetail(cat,id){
