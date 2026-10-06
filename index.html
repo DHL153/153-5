@@ -6326,6 +6326,14 @@ function createSocialDataFoundation(assets, emojis) {
     assets.beads.items.forEach(x=>add('skin',x.id,x.path));
     assets.backgrounds.items.forEach(x=>{const cat={lobby:'char_bg',battle:'bg_battle',merge:'bg_merge'}[x.kind];if(cat)add(cat,x.id,x.index);});
     emojis.forEach(x=>add('item',x.id,x.symbol));
+    // 카탈로그에서 정식으로 은퇴시킨 ID. 기존 세이브에 남아 있어도 세이브 전체를 거부하지 않고 건너뛴다.
+    // (모르는 ID = 미래 버전/손상 세이브는 지금처럼 보호) — 아이템을 지울 때는 여기에 반드시 추가할 것.
+    const RETIRED_IDS=new Set([
+        // 2026-10-07 PR #49: 마이룸 배경을 캐릭터의 방 27종으로 교체하며 일상 배경 0028~0068 삭제
+        ...Array.from({length:41},(_,i)=>'bg_lobby_'+String(28+i).padStart(4,'0'))
+    ]);
+    const retired=id=>typeof id==='string'&&RETIRED_IDS.has(id);
+    function fromIdOrNull(cat,id){return retired(id)?null:fromId(cat,id);}
     function toId(cat,id){return byLegacy.get(key(cat,id))?.id||null;}
     function fromId(cat,id){const v=byId.get(id);if(!v||v.category!==cat)fail('unknown '+cat+' ID');return v.legacyId;}
     function requiredId(cat,id){return toId(cat,id)||fail('unmapped '+cat+' item');}
@@ -6372,18 +6380,19 @@ function createSocialDataFoundation(assets, emojis) {
         // Preserve obsolete local-only entries, but remap all recognized entries from stable IDs.
         for(const cat of categories)for(const [id,n] of Object.entries(s.inventory?.[cat]||{}))if(!toId(cat,id))inv[cat][id]=n;
         for(const [id,count] of Object.entries(stable.inventory)){
+            if(retired(id))continue;
             const r=byId.get(id);if(!r)fail('unknown saved asset: '+id);
             if(typeof count!=='number'||!Number.isFinite(count)||count<0)fail('invalid inventory count');
             inv[r.category][r.legacyId]=count;
         }
         s.inventory=inv;s.equippedSkins=stable.equippedSkins.map(id=>fromId('skin',id));
-        s.battleCharacter=fromId('battle_char',stable.battleCharacter);s.bgConfig={...s.bgConfig,battle:fromId('bg_battle',stable.battleBackground),merge:fromId('bg_merge',stable.mergeBackground)};s.lobby=fromId('char_bg',stable.lobby);
+        s.battleCharacter=fromId('battle_char',stable.battleCharacter);s.bgConfig={...s.bgConfig,battle:fromId('bg_battle',stable.battleBackground),merge:fromId('bg_merge',stable.mergeBackground)};s.lobby=fromIdOrNull('char_bg',stable.lobby);
         if(stable.battleTeam!==undefined&&(!Array.isArray(stable.battleTeam)||stable.battleTeam.length!==3))fail('invalid battle team');
         s.battleTeam=stable.battleTeam?stable.battleTeam.map(id=>id===null?null:fromId('battle_char',id)):[s.battleCharacter,null,null];
         if(stable.confirmedBattleTeam!==undefined&&(!Array.isArray(stable.confirmedBattleTeam)||stable.confirmedBattleTeam.length!==3))fail('invalid confirmed battle team');
         // Older saves contain only one formation; migrate it once as the initial confirmation.
         s.confirmedBattleTeam=stable.confirmedBattleTeam?stable.confirmedBattleTeam.map(id=>id===null?null:fromId('battle_char',id)):[...s.battleTeam];
-        if(s.starterSelection){s.starterSelection.choices={};for(const [cat,id] of Object.entries(stable.starterChoices||{}))s.starterSelection.choices[cat]=fromId(cat,id);}
+        if(s.starterSelection){s.starterSelection.choices={};for(const [cat,id] of Object.entries(stable.starterChoices||{})){if(retired(id))continue;s.starterSelection.choices[cat]=fromId(cat,id);}}
         return s;
     }
     function encodeScene(s) {
@@ -6391,7 +6400,7 @@ function createSocialDataFoundation(assets, emojis) {
     }
     function decodeScene(s,v) {
         if(!object(v)||!Array.isArray(v.characters)||!Array.isArray(v.emojis)||!object(v.backgroundById))fail('invalid scene schema');
-        s.characters=v.characters.map(c=>({...c,id:fromId('char',c.id)}));s.emojis=v.emojis.map(e=>({...e,symbol:fromId('item',e.symbol)}));s.backgroundById=Object.fromEntries(Object.entries(v.backgroundById).map(([id,value])=>[fromId('char_bg',id),value]));return s;
+        s.characters=v.characters.map(c=>({...c,id:fromId('char',c.id)}));s.emojis=v.emojis.map(e=>({...e,symbol:fromId('item',e.symbol)}));s.backgroundById=Object.fromEntries(Object.entries(v.backgroundById).filter(([id])=>!retired(id)).map(([id,value])=>[fromId('char_bg',id),value]));return s;
     }
     function readSave(kind,raw) {
         try {
@@ -6553,6 +6562,11 @@ function createSocialDataFoundation(assets, emojis) {
                 confirmedBattleTeam=normalizeBattleTeam(saved.confirmedBattleTeam??savedTeam);
                 battleTeam=normalizeBattleTeam(savedTeam);ensureBattleTeam();
                 if(charBgInventory[saved.lobby]?.count>0) charConfig.bg=saved.lobby;
+                else { // 쓰던 배경이 카탈로그에서 빠졌으면 보유한 배경(시작 선택 우선)으로
+                    const starterBg=saved.starterSelection?.choices?.char_bg;
+                    const ownedBg=charBgInventory[starterBg]?.count>0?starterBg:Object.keys(charBgInventory).map(Number).sort((a,b)=>a-b).find(id=>charBgInventory[id]?.count>0);
+                    if(ownedBg!==undefined) charConfig.bg=ownedBg;
+                }
                 if(saved.dailyFreeDate) dailyFreeState={date:String(saved.dailyFreeDate),claimed:!!saved.dailyFreeClaimed};
             }
 
@@ -8072,7 +8086,7 @@ function createSocialDataFoundation(assets, emojis) {
                 div.dataset.characterTier = tier;
                 const imgSrc = characterPath(id);
                 const placedBadge=placed ? `<div class="placed-character-badge">${selected?'선택됨':'배치됨'}</div>` : '';
-                div.innerHTML = `<div class="char-tier-badge">${tier}</div><img src="${imgSrc}" onerror="handleAssetImageError(this)" onload="handleAssetImageLoad(this)"><div class="bg-image-missing">이미지 없음<br>${String(id+1).padStart(4,'0')}</div>${data.count > 0 ? `<div class="count">${data.count}</div>` : '<div class="lock-mark">🔒</div>'}${placedBadge}`;
+                div.innerHTML = `<div class="char-tier-badge">${tier}</div><img src="${imgSrc}" onerror="handleAssetImageError(this)" onload="handleAssetImageLoad(this)"><div class="bg-image-missing">이미지 없음<br>${String(id+1).padStart(4,'0')}</div>${data.count > 0 ? `<div class="count">${data.count}</div>` : (use > 0 ? '' : '<div class="lock-mark">🔒</div>')}${placedBadge}`;
                 div.insertAdjacentHTML('beforeend',sourceBarsHtml('char',id));
                 if (use > 0) {
                     div.onclick = () => addOrSelectSceneCharacter(id);
@@ -9799,9 +9813,26 @@ function createSocialDataFoundation(assets, emojis) {
         saveEconomyState();
         return true;
     }
+    // 이미 시작 선택을 마친 세이브는 처음 화면으로 되돌리지 않는다.
+    // 선택했던 아이템이 카탈로그에서 빠졌으면, 같은 분류에서 이미 가진 것(없으면 첫 아이템)으로 바꿔 지급한다.
+    function repairStarterChoices(steps){
+        const choices={...(starterSelection.choices||{})};
+        for(const s of steps){
+            if(Number.isInteger(choices[s.key])&&s.items.some(i=>i.id===choices[s.key]))continue;
+            const inv=getInventoryRef(s.key)||{};
+            const pick=s.items.find(i=>(Number(inv[i.id]?.count)||0)>0)||s.items[0];
+            if(!pick)continue;
+            choices[s.key]=pick.id;
+            if(inv[pick.id])inv[pick.id].count=Math.max(1,inv[pick.id].count||0);
+            if(s.key==='char_bg'&&!((Number(inv[charConfig.bg]?.count)||0)>0)){charConfig.bg=pick.id;try{saveCharScene();}catch(e){}}
+        }
+        starterSelection={version:1,complete:true,step:3,choices};
+        saveEconomyState();
+    }
     function chooseStartingItems(){
         const steps=startingItemSteps();
         if(starterSelection.complete&&validStarterChoices(starterSelection.choices,steps))return Promise.resolve();
+        if(starterSelection.complete){repairStarterChoices(steps);return Promise.resolve();}
         const choices={};
         for(const s of steps){const id=starterSelection.choices?.[s.key];if(Number.isInteger(id)&&s.items.some(i=>i.id===id))choices[s.key]=id;}
         let step=Math.max(0,Math.min(3,Number(starterSelection.step)||0));
