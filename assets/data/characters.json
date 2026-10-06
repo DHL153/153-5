@@ -1,14 +1,14 @@
 {
-  "version": 2,
+  "version": 11,
   "items": [
     {
       "id": "char_0001",
       "index": 0,
       "name": "루미",
       "title": "별빛의 항해자",
-      "tier": "R",
+      "tier": "SR",
       "path": "assets/art/characters/char_0001.png",
-      "defaultOwned": true,
+      "defaultOwned": false,
       "gachaEnabled": true
     },
     {
@@ -16,7 +16,7 @@
       "index": 1,
       "name": "아린",
       "title": "붉은 새벽의 검사",
-      "tier": "R",
+      "tier": "SR",
       "path": "assets/art/characters/char_0002.png",
       "defaultOwned": false,
       "gachaEnabled": true
@@ -46,8 +46,233 @@
       "index": 4,
       "name": "엘리시아",
       "title": "태양의 수호자",
-      "tier": "UR",
+      "tier": "SSR",
       "path": "assets/art/characters/char_0005.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0006",
+      "index": 5,
+      "name": "캐릭터 0006",
+      "tier": "SR",
+      "path": "assets/art/characters/char_0006.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0007",
+      "index": 6,
+      "name": "캐릭터 0007",
+      "tier": "SR",
+      "path": "assets/art/characters/char_0007.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0008",
+      "index": 7,
+      "name": "캐릭터 0008",
+      "tier": "SR",
+      "path": "assets/art/characters/char_0008.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0009",
+      "index": 8,
+      "name": "캐릭터 0009",
+      "tier": "SR",
+      "path": "assets/art/characters/char_0009.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0010",
+      "index": 9,
+      "name": "캐릭터 0010",
+      "tier": "R",
+      "path": "assets/art/characters/char_0010.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0011",
+      "index": 10,
+      "name": "캐릭터 0011",
+      "tier": "SR",
+      "path": "assets/art/characters/char_0011.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0012",
+      "index": 11,
+      "name": "캐릭터 0012",
+      "tier": "SSR",
+      "path": "assets/art/characters/char_0012.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0013",
+      "index": 12,
+      "name": "캐릭터 0013",
+      "tier": "R",
+      "path": "assets/art/characters/char_0013.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0014",
+      "index": 13,
+      "name": "캐릭터 0014",
+      "tier": "SSR",
+      "path": "assets/art/characters/char_0014.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0015",
+      "index": 14,
+      "name": "캐릭터 0015",
+      "tier": "R",
+      "path": "assets/art/characters/char_0015.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0016",
+      "index": 15,
+      "name": "캐릭터 0016",
+      "tier": "R",
+      "path": "assets/art/characters/char_0016.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0017",
+      "index": 16,
+      "name": "캐릭터 0017",
+      "tier": "SR",
+      "path": "assets/art/characters/char_0017.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0018",
+      "index": 17,
+      "name": "캐릭터 0018",
+      "tier": "SSR",
+      "path": "assets/art/characters/char_0018.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0019",
+      "index": 18,
+      "name": "캐릭터 0019",
+      "tier": "SR",
+      "path": "assets/art/characters/char_0019.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0020",
+      "index": 19,
+      "name": "캐릭터 0020",
+      "tier": "SR",
+      "path": "assets/art/characters/char_0020.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0021",
+      "index": 20,
+      "name": "캐릭터 0021",
+      "tier": "SSR",
+      "path": "assets/art/characters/char_0021.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0022",
+      "index": 21,
+      "name": "캐릭터 0022",
+      "tier": "R",
+      "path": "assets/art/characters/char_0022.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0023",
+      "index": 22,
+      "name": "캐릭터 0023",
+      "tier": "R",
+      "path": "assets/art/characters/char_0023.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0024",
+      "index": 23,
+      "name": "캐릭터 0024",
+      "tier": "SSR",
+      "path": "assets/art/characters/char_0024.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0025",
+      "index": 24,
+      "name": "캐릭터 0025",
+      "tier": "R",
+      "path": "assets/art/characters/char_0025.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0026",
+      "index": 25,
+      "name": "캐릭터 0026",
+      "tier": "SSR",
+      "path": "assets/art/characters/char_0026.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0027",
+      "index": 26,
+      "name": "캐릭터 0027",
+      "tier": "R",
+      "path": "assets/art/characters/char_0027.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0028",
+      "index": 27,
+      "name": "캐릭터 0028",
+      "tier": "R",
+      "path": "assets/art/characters/char_0028.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0029",
+      "index": 28,
+      "name": "캐릭터 0029",
+      "tier": "R",
+      "path": "assets/art/characters/char_0029.png",
+      "defaultOwned": false,
+      "gachaEnabled": true
+    },
+    {
+      "id": "char_0030",
+      "index": 29,
+      "name": "캐릭터 0030",
+      "tier": "R",
+      "path": "assets/art/characters/char_0030.png",
       "defaultOwned": false,
       "gachaEnabled": true
     }
