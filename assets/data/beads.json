@@ -166,7 +166,7 @@
     {
       "id": "bead_0019",
       "name": "에메랄드",
-      "tier": "SSR",
+      "tier": "SR",
       "path": "assets/art/beads/bead_0019.png",
       "smile": "assets/art/beads/bead_0019_smile.png",
       "defaultOwned": false,
@@ -175,7 +175,7 @@
     {
       "id": "bead_0020",
       "name": "노아",
-      "tier": "SSR",
+      "tier": "R",
       "path": "assets/art/beads/bead_0020.png",
       "smile": "assets/art/beads/bead_0020_smile.png",
       "defaultOwned": false,
@@ -184,7 +184,7 @@
     {
       "id": "bead_0021",
       "name": "오팔",
-      "tier": "SSR",
+      "tier": "SR",
       "path": "assets/art/beads/bead_0021.png",
       "smile": "assets/art/beads/bead_0021_smile.png",
       "defaultOwned": false,
@@ -193,7 +193,7 @@
     {
       "id": "bead_0022",
       "name": "스칼렛",
-      "tier": "SSR",
+      "tier": "SR",
       "path": "assets/art/beads/bead_0022.png",
       "smile": "assets/art/beads/bead_0022_smile.png",
       "defaultOwned": false,
@@ -202,7 +202,7 @@
     {
       "id": "bead_0023",
       "name": "프로스트",
-      "tier": "UR",
+      "tier": "SR",
       "path": "assets/art/beads/bead_0023.png",
       "smile": "assets/art/beads/bead_0023_smile.png",
       "defaultOwned": false,
@@ -211,7 +211,7 @@
     {
       "id": "bead_0024",
       "name": "솔라",
-      "tier": "UR",
+      "tier": "SR",
       "path": "assets/art/beads/bead_0024.png",
       "smile": "assets/art/beads/bead_0024_smile.png",
       "defaultOwned": false,
@@ -256,7 +256,7 @@
     {
       "id": "bead_0029",
       "name": "오팔 드래곤 이리스",
-      "tier": "SSR",
+      "tier": "SR",
       "path": "assets/art/beads/bead_0029.png",
       "smile": "assets/art/beads/bead_0029_smile.png",
       "defaultOwned": false,
