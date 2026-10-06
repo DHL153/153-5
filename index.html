@@ -3581,6 +3581,7 @@ html body #game-startup-screen.is-leaving{opacity:0!important;transition:opacity
 <div class="panel">
 <div class="panel-title"><span>획득 가능 아이템 도감</span></div>
 <div class="collection-tabs" id="item-category-tabs"></div>
+<div class="codex-source-tabs" id="codex-source-tabs" style="display:none"></div>
 <div id="codex-tier-tabs"></div>
 <div class="collection-filter-row">
 <div class="collection-filter-hint">보유만</div>
@@ -6046,6 +6047,14 @@ window.MRBattleFX=(()=>{
             if(count>0)totalOwned++;
             if(count>0 && !isStarterCollectible(x)) counts[x.tier]++;
         }
+        // C안: STEAM 에디션은 같은 아이템이라도 별도 1종 (로컬 + STEAM = 2).
+        // 로컬 저장·분해·선택권 목록(getAllCollectibles)에는 절대 넣지 않는다 → 여기서만 더한다.
+        const steamAll=window.MRSteamCodex?.entries?.()||[];
+        for(const x of steamAll){
+            let count=Number(x.count||0);
+            if(overrides){const key=`${x.category}::${String(x.id)}`;if(Object.prototype.hasOwnProperty.call(overrides,key))count=Number(overrides[key]||0);}
+            if(count>0){totalOwned++;counts[x.tier]++;}
+        }
         let bonus=0;
         const tierDetails={};
         TIER_ORDER.forEach(t=>{
@@ -6055,7 +6064,7 @@ window.MRBattleFX=(()=>{
             bonus+=tierBonus;
             tierDetails[t]={owned:counts[t],levels,bonus:tierBonus,nextAt:(levels+1)*rule.step,step:rule.step,each:rule.bonus};
         });
-        return {multiplier:1+bonus,bonus,tierDetails,totalOwned,totalCollectibles:all.length,counts};
+        return {multiplier:1+bonus,bonus,tierDetails,totalOwned,totalCollectibles:all.length+steamAll.length,counts};
     }
 
     function refreshCollectionPowerUI() {
@@ -6078,6 +6087,11 @@ window.MRBattleFX=(()=>{
     }
 
     function collectionPowerAfterDelta(category,id,delta) {
+        if(String(category).startsWith('steam_')){
+            const e=(window.MRSteamCodex?.entries?.()||[]).find(x=>x.category===category&&String(x.id)===String(id));
+            if(!e) return refreshCollectionPowerUI();
+            return calculateCollectionPower({[`${category}::${String(id)}`]:Math.max(0,Number(e.count||0)+Number(delta||0))});
+        }
         const inv=getInventoryRef(category);
         if(!inv?.[id]) return refreshCollectionPowerUI();
         const next=Math.max(0,Number(inv[id].count||0)+Number(delta||0));
@@ -8712,6 +8726,7 @@ function createSocialDataFoundation(assets, emojis) {
     let codexEmojiCategoryFilter = 'ALL';
     let codexTierFilter = 'ALL';
     let codexPage = 0;
+    let codexSourceFilter = 'all'; // C안: all | local | steam
     const CODEX_PAGE_SIZE = 104;
 
     window.toggleCodexOwnedOnly=function(){
@@ -8733,6 +8748,11 @@ function createSocialDataFoundation(assets, emojis) {
         codexTierFilter=tier==='ALL'||TIER_ORDER.includes(tier)?tier:'ALL';
         if(codexTierFilter==='ALL')codexOwnedOnly=false;
         codexPage=0;
+        updateItemUI();
+    };
+    window.setCodexSourceFilter=function(source){
+        codexSourceFilter=['all','local','steam'].includes(source)?source:'all';
+        codexTierFilter='ALL';codexPage=0;
         updateItemUI();
     };
     window.setCodexOwnedFromCheckbox=function(checked){
@@ -8773,6 +8793,20 @@ function createSocialDataFoundation(assets, emojis) {
         const tierTabs=document.getElementById('codex-tier-tabs');
         if (!tabs || !grid) return;
         grid.classList.toggle('emoji-picker-grid',activeItemCategory==='item');
+        // C안: 보유 = 로컬 또는 STEAM 중 선택한 출처 기준. STEAM은 거래 대상(캐릭터·전투 캐릭터)만 해당.
+        const steamCodex=window.MRSteamCodex;
+        const steamOf=e=>steamCodex?.count?.(e.cat,e.id)||0;
+        const steamable=e=>!!steamCodex?.eligible?.(e.cat,e.id);
+        const bySource=list=>codexSourceFilter==='steam'?list.filter(steamable):list;
+        const isOwned=e=>codexSourceFilter==='local'?e.count>0:codexSourceFilter==='steam'?steamOf(e)>0:(e.count>0||steamOf(e)>0);
+        const sourceTabs=document.getElementById('codex-source-tabs');
+        if(sourceTabs){
+            const base=getCollectionEntries(activeItemCategory).filter(e=>e.cat!=='item'||!EMOJI_META_BY_SYMBOL[e.id]?.legacy);
+            const n={all:base.filter(e=>e.count>0).length+base.filter(e=>steamOf(e)>0).length,local:base.filter(e=>e.count>0).length,steam:base.filter(e=>steamOf(e)>0).length};
+            const kk=(id,f)=>window.MRLocale?.k?.(id)||f;const label={all:kk('steam.all','전체'),local:kk('steam.tab.local','로컬'),steam:'STEAM'};
+            sourceTabs.style.display=steamCodex&&['all','char','battle_char'].includes(activeItemCategory)?'':'none';
+            setUiHTML(sourceTabs,['all','local','steam'].map(k=>`<button type="button" class="codex-source-btn src-${k}${codexSourceFilter===k?' active':''}" aria-pressed="${codexSourceFilter===k}" onclick="setCodexSourceFilter('${k}')"><span>${label[k]}</span><b>${n[k]}</b></button>`).join(''));
+        }
 
         tabs.innerHTML='';
         ITEM_COLLECTION_CATEGORIES.forEach(c=>{
@@ -8783,9 +8817,9 @@ function createSocialDataFoundation(assets, emojis) {
         if(tierTabs){
             tierTabs.innerHTML='';
             ['ALL',...TIER_ORDER.filter(t=>getCollectionEntries(activeItemCategory).some(e=>e.tier===t))].forEach(tier=>{
-                const raw=getCollectionEntries(activeItemCategory).filter(e=>e.cat!=='item'||!EMOJI_META_BY_SYMBOL[e.id]?.legacy);
+                const raw=bySource(getCollectionEntries(activeItemCategory).filter(e=>e.cat!=='item'||!EMOJI_META_BY_SYMBOL[e.id]?.legacy));
                 const total=raw.filter(e=>tier==='ALL'||e.tier===tier).length;
-                const owned=raw.filter(e=>(tier==='ALL'||e.tier===tier) && e.count>0).length;
+                const owned=raw.filter(e=>(tier==='ALL'||e.tier===tier) && isOwned(e)).length;
                 const b=document.createElement('button');
                 b.className=`codex-tier-btn ${codexTierFilter===tier&&(tier!=='ALL'||!codexOwnedOnly)?'active':''}`;
                 tierButtonLabel(b,tier,`${owned}/${total}`);
@@ -8813,9 +8847,10 @@ function createSocialDataFoundation(assets, emojis) {
         if(activeItemCategory==='item' && codexEmojiCategoryFilter!=='ALL'){
             allEntries=allEntries.filter(e=>EMOJI_META_BY_SYMBOL[e.id]?.category===codexEmojiCategoryFilter);
         }
+        allEntries=bySource(allEntries);
         if(codexTierFilter!=='ALL') allEntries=allEntries.filter(e=>e.tier===codexTierFilter);
-        const uniqueOwned=allEntries.filter(e=>e.count>0).length;
-        const filteredEntries=codexOwnedOnly ? allEntries.filter(e=>e.count>0) : allEntries;
+        const uniqueOwned=allEntries.filter(isOwned).length;
+        const filteredEntries=codexOwnedOnly ? allEntries.filter(isOwned) : allEntries;
 
         const ownedBtn=document.getElementById('codex-owned-only-btn');
         if(ownedBtn){
@@ -8852,16 +8887,18 @@ function createSocialDataFoundation(assets, emojis) {
             const fullTier=filteredEntries.filter(e=>e.tier===tier);
             const sep=document.createElement('div');
             sep.className=`tier-separator sep-${tier}`;
-            sep.innerText=`${tier} 등급 · ${fullTier.filter(e=>e.count>0).length}/${fullTier.length} 보유`;
+            sep.innerText=`${tier} 등급 · ${fullTier.filter(isOwned).length}/${fullTier.length} 보유`;
             grid.appendChild(sep);
             tierEntries.forEach(e=>{
-                const owned=e.count>0;
-                const div=document.createElement('div'); div.className=`inv-item tier-box-${tier} ${owned?'':'unowned'}`;
+                const owned=isOwned(e),steamCount=steamOf(e),canSteam=steamable(e);
+                const div=document.createElement('div'); div.className=`inv-item tier-box-${tier} ${owned?'':'unowned'}${canSteam?' steam-able':''}`;
+                div.dataset.cat=e.cat;div.dataset.id=String(e.id);
                 const visual=getHtmlForCategoryAndId(e.cat,e.id);
                 const emojiMeta=e.cat==='item'?EMOJI_META_BY_SYMBOL[e.id]:null;
                 const imageOnly=['char','battle_char','char_bg','bg_battle'].includes(e.cat);
                 const subLabel=imageOnly ? '' : (emojiMeta ? `${emojiMeta.id}<br>${EMOJI_CATEGORY_LABELS[emojiMeta.category]||'이모지'}` : e.label);
-                div.innerHTML=`<div class="tier-label tier-${tier}">${tier}</div>${visual}${subLabel?`<div style="font-size:8px; margin-top:3px; text-align:center; line-height:1.05;">${subLabel}</div>`:''}${owned?`<div class="count">${e.count}</div>`:'<div class="lock-mark">🔒</div>'}`;
+                div.innerHTML=`<div class="tier-label tier-${tier}">${tier}</div>${visual}${subLabel?`<div style="font-size:8px; margin-top:3px; text-align:center; line-height:1.05;">${subLabel}</div>`:''}${owned?(e.count>0&&codexSourceFilter!=='steam'?`<div class="count">${e.count}</div>`:''):'<div class="lock-mark">🔒</div>'}${canSteam?`<span class="codex-src" aria-label="${(window.MRLocale?.k?.('steam.tab.local')||'로컬')+' '+(e.count>0?'✓':'–')+' · STEAM '+(steamCount>0?'✓':'–')}"><i class="src-l${e.count>0?' on':''}"></i><i class="src-s${steamCount>0?' on':''}"></i></span>`:''}`;
+                if(canSteam){div.tabIndex=0;div.setAttribute('role','button');}
                 grid.appendChild(div);
             });
         });
@@ -10889,7 +10926,13 @@ function createSocialDataFoundation(assets, emojis) {
  "steam.confirm.craft": {"ko": "{from} {count}개 → 랜덤 {to} 1개\n되돌릴 수 없어요", "en": "{count} {from} → 1 random {to}\nThis can’t be undone", "ja": "{from} {count}個 → ランダム{to} 1個\n元に戻せません", "zh-CN": "{count}个{from} → 随机{to} 1个\n无法撤销", "zh-TW": "{count}個{from} → 隨機{to} 1個\n無法復原", "es": "{count} {from} → 1 {to} al azar\nNo se puede deshacer", "pt-BR": "{count} {from} → 1 {to} aleatório\nNão pode ser desfeito", "fr": "{count} {from} → 1 {to} aléatoire\nIrréversible", "ru": "{count} {from} → 1 случайный {to}\nОтменить нельзя", "it": "{count} {from} → 1 {to} casuale\nIrreversibile", "pl": "{count} {from} → 1 losowy {to}\nNie można cofnąć", "de": "{count} {from} → 1 zufälliges {to}\nNicht umkehrbar"},
  "steam.confirm.dismantle": {"ko": "{count}개 분해\nSTEAM 조각 +{shards}\n되돌릴 수 없어요", "en": "Dismantle {count}\nSTEAM Shards +{shards}\nThis can’t be undone", "ja": "{count}個を分解\nSTEAMかけら +{shards}\n元に戻せません", "zh-CN": "分解 {count} 个\nSTEAM 碎片 +{shards}\n无法撤销", "zh-TW": "分解 {count} 個\nSTEAM 碎片 +{shards}\n無法復原", "es": "Desmontar {count}\nFragmentos STEAM +{shards}\nNo se puede deshacer", "pt-BR": "Desmontar {count}\nFragmentos STEAM +{shards}\nNão pode ser desfeito", "fr": "Démonter {count}\nFragments STEAM +{shards}\nIrréversible", "ru": "Разобрать {count}\nSTEAM-осколки +{shards}\nОтменить нельзя", "it": "Smonta {count}\nFrammenti STEAM +{shards}\nIrreversibile", "pl": "Rozłóż {count}\nOdłamki STEAM +{shards}\nNie można cofnąć", "de": "{count} zerlegen\nSTEAM-Splitter +{shards}\nNicht umkehrbar"},
  "steam.got": {"ko": "획득!", "en": "Obtained!", "ja": "獲得！", "zh-CN": "获得！", "zh-TW": "獲得！", "es": "¡Conseguido!", "pt-BR": "Obtido!", "fr": "Obtenu !", "ru": "Получено!", "it": "Ottenuto!", "pl": "Zdobyto!", "de": "Erhalten!"},
- "steam.fail": {"ko": "STEAM 응답 실패\n잠시 후 다시 시도해 주세요", "en": "STEAM didn’t respond\nPlease try again shortly", "ja": "STEAMの応答に失敗\n少し後でもう一度お試しください", "zh-CN": "STEAM 响应失败\n请稍后再试", "zh-TW": "STEAM 回應失敗\n請稍後再試", "es": "STEAM no respondió\nInténtalo de nuevo en breve", "pt-BR": "O STEAM não respondeu\nTente novamente em breve", "fr": "STEAM n’a pas répondu\nRéessaie dans un instant", "ru": "STEAM не ответил\nПопробуйте чуть позже", "it": "STEAM non ha risposto\nRiprova tra poco", "pl": "STEAM nie odpowiada\nSpróbuj za chwilę", "de": "STEAM antwortet nicht\nBitte gleich erneut versuchen"}
+ "steam.fail": {"ko": "STEAM 응답 실패\n잠시 후 다시 시도해 주세요", "en": "STEAM didn’t respond\nPlease try again shortly", "ja": "STEAMの応答に失敗\n少し後でもう一度お試しください", "zh-CN": "STEAM 响应失败\n请稍后再试", "zh-TW": "STEAM 回應失敗\n請稍後再試", "es": "STEAM no respondió\nInténtalo de nuevo en breve", "pt-BR": "O STEAM não respondeu\nTente novamente em breve", "fr": "STEAM n’a pas répondu\nRéessaie dans un instant", "ru": "STEAM не ответил\nПопробуйте чуть позже", "it": "STEAM non ha risposto\nRiprova tra poco", "pl": "STEAM nie odpowiada\nSpróbuj za chwilę", "de": "STEAM antwortet nicht\nBitte gleich erneut versuchen"},
+ "steam.warn.line": {"ko": "팔거나 분해하면", "en": "If sold or dismantled", "ja": "売却・分解すると", "zh-CN": "出售或分解后", "zh-TW": "出售或分解後", "es": "Si lo vendes o desmontas", "pt-BR": "Se vender ou desmontar", "fr": "Si vendu ou démonté", "ru": "При продаже или разборе", "it": "Se venduto o smontato", "pl": "Po sprzedaży lub rozłożeniu", "de": "Bei Verkauf oder Zerlegen"},
+ "steam.warn.count": {"ko": "강화 {a} → {b}", "en": "Bonus {a} → {b}", "ja": "強化 {a} → {b}", "zh-CN": "加成 {a} → {b}", "zh-TW": "加成 {a} → {b}", "es": "Bono {a} → {b}", "pt-BR": "Bônus {a} → {b}", "fr": "Bonus {a} → {b}", "ru": "Бонус {a} → {b}", "it": "Bonus {a} → {b}", "pl": "Bonus {a} → {b}", "de": "Bonus {a} → {b}"},
+ "steam.warn.drop": {"ko": "도감 −{n} · ×{a} → ×{b}", "en": "Catalog −{n} · ×{a} → ×{b}", "ja": "図鑑 −{n} · ×{a} → ×{b}", "zh-CN": "图鉴 −{n} · ×{a} → ×{b}", "zh-TW": "圖鑑 −{n} · ×{a} → ×{b}", "es": "Catálogo −{n} · ×{a} → ×{b}", "pt-BR": "Catálogo −{n} · ×{a} → ×{b}", "fr": "Catalogue −{n} · ×{a} → ×{b}", "ru": "Каталог −{n} · ×{a} → ×{b}", "it": "Catalogo −{n} · ×{a} → ×{b}", "pl": "Katalog −{n} · ×{a} → ×{b}", "de": "Katalog −{n} · ×{a} → ×{b}"},
+ "steam.power.count": {"ko": "강화 {n}개 계산", "en": "Counts {n} for bonus", "ja": "強化に{n}個カウント", "zh-CN": "计入加成 {n} 个", "zh-TW": "計入加成 {n} 個", "es": "Cuenta {n} para el bono", "pt-BR": "Conta {n} no bônus", "fr": "Compte {n} pour le bonus", "ru": "Учитывается: {n}", "it": "Conta {n} per il bonus", "pl": "Liczy się {n} do bonusu", "de": "Zählt {n} für Bonus"},
+ "steam.market": {"ko": "장터", "en": "Market", "ja": "マーケット", "zh-CN": "市场", "zh-TW": "市場", "es": "Mercado", "pt-BR": "Mercado", "fr": "Marché", "ru": "Площадка", "it": "Mercato", "pl": "Rynek", "de": "Markt"},
+ "steam.market.soon": {"ko": "STEAM 연결 후 열려요", "en": "Opens after STEAM is connected", "ja": "STEAM接続後に開きます", "zh-CN": "连接 STEAM 后开放", "zh-TW": "連接 STEAM 後開放", "es": "Se abre al conectar STEAM", "pt-BR": "Abre após conectar ao STEAM", "fr": "Disponible après connexion à STEAM", "ru": "Откроется после подключения STEAM", "it": "Si apre dopo il collegamento a STEAM", "pl": "Otworzy się po połączeniu ze STEAM", "de": "Öffnet nach STEAM-Verbindung"}
 }
 </script>
 <script id="mr-localization">
@@ -12101,7 +12144,7 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
   });
   const MIN=60, now=()=>Date.now();
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-  const listeners={change:new Set(),grant:new Set()};
+  const listeners={change:new Set(),grant:new Set(),inventory:new Set()};
   function emit(type,payload){for(const fn of listeners[type]||[]){try{fn(payload);}catch(e){console.warn('[MRSteam] listener',e);}}}
   function readJSON(key,fallback){try{const v=JSON.parse(localStorage.getItem(key)||'null');return v&&typeof v==='object'?v:fallback;}catch(e){return fallback;}}
   function writeJSON(key,v){try{localStorage.setItem(key,JSON.stringify(v));}catch(e){console.warn('[MRSteam] save failed',e);}}
@@ -12231,7 +12274,7 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
       if(items.length){
         clock.playSec=0;clock.windowCount++;if(!clock.windowStart)clock.windowStart=now();clock.retryAt=0;
         const shown=items.map(decorate);clock.pending.push(...shown.map(x=>x.itemId));saveClock();
-        emit('grant',{items:shown,status:getStatus()});
+        emit('grant',{items:shown,status:getStatus()});getInventory().then(inv=>emit('inventory',inv)).catch(()=>{});
       }else{clock.retryAt=now()+CONFIG.RETRY_SEC*1000;saveClock();}
     }catch(e){console.warn('[MRSteam] drop failed',e);clock.retryAt=now()+CONFIG.RETRY_SEC*1000;saveClock();}
     finally{busy=false;emit('change',getStatus());}
@@ -12260,7 +12303,7 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
     const shards=items.filter(x=>x.kind==='shard').reduce((a,x)=>a+x.quantity,0);
     return {editions,shards,owned:new Set(editions.map(x=>x.category+'::'+x.localId))};
   }
-  async function afterChange(result){const inv=await getInventory();emit('change',getStatus());return {...result,inventory:inv};}
+  async function afterChange(result){const inv=await getInventory();emit('inventory',inv);emit('change',getStatus());return {...result,inventory:inv};}
 
   async function dismantle(itemId){
     const inv=await getInventory(),it=inv.editions.find(x=>x.itemId===String(itemId));
@@ -12310,7 +12353,7 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
     dev:CONFIG.DEV_TOOLS?{
       addPlaytime(min=CONFIG.DROP_INTERVAL_MIN){const sec=min*MIN;clock.playSec=Math.min(clock.playSec+sec,CONFIG.DROP_INTERVAL_MIN*MIN);clock.retryAt=0;saveClock();backend._debug?.addPlaySec(sec);tick();return getStatus();},
       resetWindow(){clock.windowStart=0;clock.windowCount=0;saveClock();backend._debug?.resetWindow();tick();return getStatus();},
-      wipe(){backend._debug?.wipe();clock={v:1,playSec:0,windowStart:0,windowCount:0,retryAt:0,pending:[]};saveClock();tick();return getStatus();},
+      wipe(){backend._debug?.wipe();clock={v:1,playSec:0,windowStart:0,windowCount:0,retryAt:0,pending:[]};saveClock();tick();getInventory().then(inv=>emit('inventory',inv));return getStatus();},
       backendState:()=>backend._debug?.state(),
       itemdefs
     }:undefined
@@ -12530,7 +12573,7 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
 
   // 탭 + STEAM 패널을 상점 맨 위에 붙인다 (로컬 상점 HTML은 그대로)
   const tabs=document.createElement('div');tabs.className='shop-mode-tabs';tabs.setAttribute('role','tablist');
-  tabs.innerHTML=`<button type="button" role="tab" data-mode="local" aria-selected="true">${esc(k('steam.tab.local'))}</button><button type="button" role="tab" data-mode="steam" aria-selected="false">STEAM</button>`;
+  tabs.innerHTML=`<button type="button" role="tab" data-mode="local" aria-selected="true" data-i18n="steam.tab.local">${esc(k('steam.tab.local'))}</button><button type="button" role="tab" data-mode="steam" aria-selected="false">STEAM</button>`;
   const panel=document.createElement('div');panel.id='steam-shop';panel.setAttribute('role','tabpanel');
   view.prepend(tabs,panel);
 
@@ -12577,8 +12620,10 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
       <div class="ss-actions"><button type="button" class="ss-btn" data-act="cancel">${esc(k('steam.cancel'))}</button>
       <button type="button" class="ss-btn primary" data-act="${craft?'do-craft':'do-dismantle'}" ${ok&&!busy?'':'disabled'}>${icon(craft?'up':'shard')}${esc(craft?k('steam.craft'):k('steam.dismantle'))}${craft?'':` <small>+${gain}</small>`}</button></div></section>`;
   }
+  let renderedLang='';
   function render(){
     if(mode!=='steam')return;
+    renderedLang=window.MRLocale?.language||'';
     const keep=document.activeElement&&panel.contains(document.activeElement)?(document.activeElement.dataset.select||document.activeElement.dataset.pick||document.activeElement.dataset.act||document.activeElement.dataset.filter):null;
     panel.innerHTML=`<div class="ss-top"><span class="ss-chip" aria-label="${esc(k('steam.shards'))} ${inv.shards}">${icon('shard')}${inv.shards}</span></div>
       ${drawCard()}${probs()}
@@ -12590,6 +12635,7 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
   // 1초마다 타이머 부분만 갱신 (그리드는 그대로 → 스크롤·포커스 유지)
   function tickCard(){
     if(mode!=='steam'||!view.classList.contains('active')&&view.offsetParent===null)return;
+    if((window.MRLocale?.language||'')!==renderedLang){render();return;}
     const card=panel.querySelector('.ss-card');if(card)card.outerHTML=drawCard();
   }
   setInterval(tickCard,1000);
@@ -12624,7 +12670,15 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
     });
     if(act==='do-dismantle')return run(async()=>{
       const ids=[...pick.ids],gain=ids.reduce((a,id)=>a+(C.DISMANTLE_SHARDS[inv.editions.find(x=>x.itemId===id)?.tier]||0),0);
-      if(!await confirmBox(k('steam.confirm.dismantle',{count:ids.length,shards:gain})))return;
+      // 마지막 STEAM 사본이 빠지면 도감·강화가 내려간다 → 확인창에 미리 보여준다
+      let warn='';
+      try{
+        const left=new Map();for(const x of inv.editions){const key=x.category+'::'+x.localId;left.set(key,(left.get(key)||0)+1);}
+        const over={};for(const id of ids){const x=inv.editions.find(e=>e.itemId===id);const key=x.category+'::'+x.localId;left.set(key,left.get(key)-1);over['steam_'+key]=left.get(key);}
+        const lost=Object.values(over).filter(v=>v===0).length;
+        if(lost){const a=calculateCollectionPower().multiplier,b=calculateCollectionPower(over).multiplier;warn='\n'+k('steam.warn.drop',{n:lost,a:a.toFixed(2),b:b.toFixed(2)});}
+      }catch(e){}
+      if(!await confirmBox(k('steam.confirm.dismantle',{count:ids.length,shards:gain})+warn))return;
       let got=0;for(const id of ids){const r=await S.dismantle(id);if(r.ok)got+=r.shards;}
       pick=null;try{window.playSfx?.('dismantle');}catch(e){}
       if(got!==gain)await alertBox(k('steam.fail'));
@@ -12632,6 +12686,151 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
   });
 
   window.MRSteamUI.showShopTab=m=>setMode(m);
+})();
+</script>
+<style id="mr-steam-codex-style">
+#app .codex-source-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:6px 0 8px;}
+#app .codex-source-btn{min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border-radius:12px;border:1px solid #2f4560;background:#15233a!important;color:#9fb1c4;font:inherit;cursor:pointer;box-shadow:none!important;}
+#app .codex-source-btn span{font-size:12px;font-weight:700;}
+#app .codex-source-btn b{font-size:17px;font-weight:900;color:#e6eef5;}
+#app .codex-source-btn.src-local b{color:var(--local);}
+#app .codex-source-btn.src-steam{border-color:var(--steam-line);}
+#app .codex-source-btn.src-steam span,#app .codex-source-btn.src-steam b{color:var(--steam-text);letter-spacing:.3px;}
+#app .codex-source-btn.active{outline:2px solid #e6eef5;outline-offset:-2px;}
+#app .codex-source-btn.src-steam.active{outline-color:var(--steam);}
+#app #item-collection-grid .inv-item.steam-able{position:relative;cursor:pointer;padding-bottom:12px;}
+#app #item-collection-grid .inv-item.steam-able:focus-visible{outline:2px solid var(--steam);outline-offset:1px;}
+#app #item-collection-grid .codex-src{position:absolute;left:50%;bottom:3px;transform:translateX(-50%);display:flex;gap:3px;}
+#app #item-collection-grid .codex-src i{display:block;width:12px;height:4px;border-radius:2px;border:1px solid #3b5675;box-sizing:border-box;}
+#app #item-collection-grid .codex-src i.src-l.on{background:var(--local);border-color:var(--local);}
+#app #item-collection-grid .codex-src i.src-s.on{background:var(--steam);border-color:var(--steam);}
+#app #item-collection-grid .inv-item.unowned .codex-src{opacity:1;}
+.steam-sheet-shade{position:fixed;inset:0;z-index:10040;background:rgba(4,8,14,.6);display:flex;align-items:flex-end;justify-content:center;animation:steamFade .15s ease-out;}
+.steam-sheet{width:min(460px,100%);background:#15233a;border-top:2px solid var(--steam);border-radius:20px 20px 0 0;padding:18px 16px calc(22px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:14px;color:#e6eef5;animation:steamUp .22s ease-out;}
+.steam-sheet-top{display:flex;gap:14px;align-items:center;}
+.steam-sheet-art{width:96px;height:96px;border-radius:14px;background:#0f1824;border:2px solid var(--steam);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.steam-sheet-art img{width:86px;height:86px;object-fit:contain;}
+.steam-sheet-grid{flex:1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;}
+.steam-sheet-cell{padding:10px 0;border-radius:12px;background:#0f1824;display:flex;flex-direction:column;align-items:center;gap:2px;}
+.steam-sheet-cell span{font-size:12px;font-weight:700;}
+.steam-sheet-cell b{font-size:18px;font-weight:900;}
+.steam-sheet-cell.is-local{color:var(--local);}
+.steam-sheet-cell.is-steam{color:var(--steam-text);border:1px solid var(--steam-line);}
+.steam-sheet-cell.is-off b{color:#4f647c;}
+.steam-sheet-sum{grid-column:span 2;text-align:center;font-size:14px;font-weight:900;}
+.steam-sheet-sum [data-tier="SR"]{color:#b69afa}.steam-sheet-sum [data-tier="SSR"]{color:#ffd772}.steam-sheet-sum [data-tier="UR"]{color:#ff9ad5}
+.steam-sheet-warn{margin:0;padding:10px 14px;border-radius:12px;background:#2b1d22;color:#ffc7cf;font-size:13px;line-height:1.6;}
+.steam-sheet-warn span{display:block;}.steam-sheet-warn b{font-weight:900;}
+.steam-sheet-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.steam-sheet-actions button{height:48px;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;font:inherit;font-size:15px;font-weight:900;cursor:pointer;}
+.steam-sheet-actions .ui-icon{width:18px;height:18px;}
+.steam-sheet-actions .primary{border:0;background:var(--steam);color:#0b1f33;}
+.steam-sheet-actions .ghost{border:1px solid var(--steam-line);background:transparent;color:var(--steam-text);}
+.steam-sheet-actions button:disabled{opacity:.4;cursor:default;}
+.steam-sheet-actions button:focus-visible{outline:2px solid #fff;outline-offset:2px;}
+@keyframes steamUp{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.steam-sheet-shade,.steam-sheet{animation:none}}
+</style>
+<script id="mr-steam-codex">
+/* ④ 도감: STEAM 에디션 표시·컬렉션 강화(로컬+STEAM=2)·판매/분해 경고. 로컬 인벤토리는 건드리지 않는다. */
+(function(){
+  'use strict';
+  const S=window.MRSteam,U=window.MRSteamUI;if(!S||!U)return;
+  const {icon,esc,k,artPath}=U;
+  const CAT={char:'steam_char',battle_char:'steam_battle_char'};
+  let counts=new Map(),ready=false; // 'char::3' → STEAM 사본 수
+
+  function entries(){
+    return S.editions().map(d=>({category:CAT[d.category],baseCategory:d.category,id:d.localId,tier:d.tier,count:counts.get(d.category+'::'+d.localId)||0}));
+  }
+  const eligible=(cat,id)=>!!CAT[cat]&&!!S.findEdition({category:cat,id});
+  const count=(cat,id)=>counts.get(cat+'::'+id)||0;
+  function apply(inv){
+    const next=new Map();
+    for(const e of inv.editions){const key=e.category+'::'+e.localId;next.set(key,(next.get(key)||0)+1);}
+    counts=next;ready=true;
+    try{refreshCollectionPowerUI();}catch(e){}
+    try{if(document.getElementById('view-item')?.classList.contains('active'))updateItemUI();}catch(e){}
+  }
+  async function sync(){try{apply(await S.getInventory());}catch(e){console.warn('[MRSteam codex]',e);}}
+  window.MRSteamCodex={entries,eligible,count,sync,get ready(){return ready;}};
+  S.on('inventory',apply);
+  sync();setTimeout(sync,2500); // 에셋 JSON이 늦게 와도 한 번 더
+
+  // ---------- 상세 시트 (캔버스 Collection 시안) ----------
+  function close(sh,prev){sh.remove();prev?.focus?.({preventScroll:true});}
+  async function openSheet(cat,id){
+    const d=S.findEdition({category:cat,id});if(!d)return;
+    const inv=await S.getInventory();
+    const copies=inv.editions.filter(x=>x.category===cat&&String(x.localId)===String(id));
+    const local=Number(getInventoryRef(cat)?.[id]?.count||0);
+    const n=(local>0?1:0)+(copies.length?1:0);
+    let warn='';
+    if(copies.length===1){
+      const before=calculateCollectionPower().multiplier;
+      const after=collectionPowerAfterDelta(CAT[cat],id,-1).multiplier;
+      warn=`<p class="steam-sheet-warn"><span>${esc(k('steam.warn.line'))}</span><b>${esc(k('steam.warn.count',{a:n,b:n-1}))} · ×${before.toFixed(2)} → ×${after.toFixed(2)}</b></p>`;
+    }
+    document.dispatchEvent(new Event('mr-inspection-hide'));
+    const prev=document.activeElement;
+    const sh=document.createElement('div');sh.className='steam-sheet-shade';
+    sh.innerHTML=`<section class="steam-sheet" role="dialog" aria-modal="true" aria-label="${esc(d.name)}">
+      <div class="steam-sheet-top"><div class="steam-sheet-art"><img src="${esc(artPath(d))}" alt="${esc(d.name)}"></div>
+        <div class="steam-sheet-grid">
+          <div class="steam-sheet-cell is-local${local>0?'':' is-off'}"><span>${esc(k('steam.tab.local'))}</span><b>${local>0?'✓':'–'}</b></div>
+          <div class="steam-sheet-cell is-steam${copies.length?'':' is-off'}"><span>STEAM</span><b>${copies.length?'×'+copies.length:'–'}</b></div>
+          <div class="steam-sheet-sum">${esc(k('steam.power.count',{n}))} · <span data-tier="${d.tier}">${d.tier}</span></div>
+        </div></div>
+      ${warn}
+      <div class="steam-sheet-actions">
+        <button type="button" class="primary" data-act="market" ${copies.length?'':'disabled'}>${icon('trade')}${esc(k('steam.market'))}</button>
+        <button type="button" class="ghost" data-act="${copies.length?'dismantle':'get'}">${copies.length?icon('shard')+esc(k('steam.dismantle'))+' ×'+copies.length:icon('tag')+esc(k('steam.select'))}</button>
+      </div></section>`;
+    document.body.append(sh);
+    sh.querySelector('button:not([disabled])')?.focus({preventScroll:true});
+    sh.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();close(sh,prev);}});
+    sh.addEventListener('click',async e=>{
+      if(e.target===sh){close(sh,prev);return;}
+      const act=e.target.closest('[data-act]')?.dataset.act;if(!act)return;
+      if(act==='market'){
+        // 스팀웍스 단계: ActivateGameOverlayToWebPage(장터 URL). 지금은 안내만.
+        const bridge=window.mergeRollDesktop?.openSteamMarket;
+        if(!S.CONFIG.MOCK&&typeof bridge==='function')bridge(d.defId);else await (window.gameAlert||alert)(k('steam.market.soon'));
+        return;
+      }
+      if(act==='get'){close(sh,prev);window.switchMenu?.('shop');U.showShopTab?.('steam');return;}
+      if(act==='dismantle'){
+        const it=copies[0],gain=S.CONFIG.DISMANTLE_SHARDS[d.tier];
+        const text=k('steam.confirm.dismantle',{count:1,shards:gain})+(copies.length===1?'\n'+k('steam.warn.line')+' '+k('steam.warn.count',{a:n,b:n-1}):'');
+        if(!await (window.gameConfirm||(t=>Promise.resolve(confirm(t))))(text))return;
+        const r=await S.dismantle(it.itemId);
+        try{window.playSfx?.('dismantle');}catch(e){}
+        close(sh,prev);
+        if(!r.ok)await (window.gameAlert||alert)(k('steam.fail'));
+      }
+    });
+  }
+  // 도감 카드 클릭 (캐릭터·전투 캐릭터 중 STEAM 에디션이 있는 등급만)
+  document.addEventListener('click',e=>{
+    const card=e.target.closest?.('#item-collection-grid .inv-item.steam-able');if(!card)return;
+    openSheet(card.dataset.cat,Number(card.dataset.id));
+  });
+  document.addEventListener('keydown',e=>{
+    if(e.key!=='Enter'&&e.key!==' ')return;
+    const card=e.target.closest?.('#item-collection-grid .inv-item.steam-able');if(!card)return;
+    e.preventDefault();openSheet(card.dataset.cat,Number(card.dataset.id));
+  });
+
+  // 선물 창의 [도감] → 도감 > 해당 분류 > STEAM 보기 → 상세 시트
+  U.showCodex=function(it){
+    try{
+      window.switchCollectionPage?.('item');
+      window.setItemCategory?.(it.category);
+      window.setCodexSourceFilter?.('steam');
+      setTimeout(()=>openSheet(it.category,it.localId),120);
+    }catch(e){console.warn('[MRSteam codex]',e);}
+  };
+  U.openCodexSheet=openSheet;
 })();
 </script>
 <script id="mr-social-core">
