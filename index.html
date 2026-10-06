@@ -3380,6 +3380,7 @@ html body #game-startup-screen.is-leaving{opacity:0!important;transition:opacity
   <div class="mini-stat mini-fragment-stat" title="컬렉션 조각">🧩 <span id="mini-fragments">0</span></div>
   <div class="mini-stat mini-merge-stat">🔄 <span id="mini-merge">0</span></div>
   <div class="mini-stat mini-gold-stat">🪙 <span id="mini-gold">1K</span></div>
+  <div class="mini-stat mini-steam-stat" id="mini-steam" role="button" tabindex="0" aria-live="polite"></div>
   <div class="mini-spacer"></div>
   <div class="mini-stat" id="mini-gacha">🎁 😊10:00 · ✨20:00</div>
   <button class="mini-pause-btn" id="mini-pause-btn" onclick="toggleMiniPause()" aria-label="일시정지" title="일시정지">⏸</button>
@@ -4693,7 +4694,7 @@ window.MRBattleFX=(()=>{
     function updateMiniHud() {
         const ids=[['mini-score',runScore],['mini-fragments',fragments],['mini-merge',mergeCount],['mini-gold',gold]];
         ids.forEach(([id,v])=>{const el=document.getElementById(id); if(el)setUiText(el,formatCompactNumber(v));});
-        const mg=document.getElementById('mini-gacha'); if(mg){ const e=isEmojiGachaReady?'😊✅':`😊${formatTimerMMSS(emojiGachaTimer)}`; const p=isPremiumGachaReady?'✨✅':`✨${formatTimerMMSS(premiumGachaTimer)}`; setUiText(mg,`🎁 ${e} · ${p}${window.MRSteamUI?.miniText?.()||''}`); }
+        const mg=document.getElementById('mini-gacha'); if(mg){ const e=isEmojiGachaReady?'😊✅':`😊${formatTimerMMSS(emojiGachaTimer)}`; const p=isPremiumGachaReady?'✨✅':`✨${formatTimerMMSS(premiumGachaTimer)}`; setUiText(mg,`🎁 ${e} · ${p}`); }
         const multValue=`x${typeof multiplier!=='undefined'?multiplier:1}`;
         const mm=document.getElementById('mini-multiplier'); if(mm) setUiText(mm,multValue);
         const mml=document.getElementById('merge-mini-mult-label'); if(mml) setUiText(mml,multValue);
@@ -11268,9 +11269,9 @@ html body #app.mini-mode.mini-battle-mode #battle-stage[data-team-size] .charact
 <style id="mr-mini-battle-simple">
 /* 미니모드(전투·머지 공통): 상단 1줄(스코어·조각·머지·골드·일시정지·복귀) */
 html body #app.mini-mode #mini-play-header{
- grid-template-columns:repeat(4,minmax(0,1fr)) 30px 30px!important;
+ grid-template-columns:repeat(4,minmax(0,1fr)) auto 30px 30px!important;
  grid-template-rows:28px!important;
- grid-template-areas:"score fragments merge gold pause exit"!important;
+ grid-template-areas:"score fragments merge gold steam pause exit"!important;
  height:38px!important;min-height:38px!important;max-height:38px!important;flex:0 0 38px!important;
  padding:5px 8px!important;row-gap:0!important;
 }
@@ -11284,6 +11285,16 @@ html body #app.mini-mode .mini-score-stat{grid-area:score!important;}
 html body #app.mini-mode .mini-fragment-stat{grid-area:fragments!important;}
 html body #app.mini-mode .mini-merge-stat{grid-area:merge!important;}
 html body #app.mini-mode .mini-gold-stat{grid-area:gold!important;}
+/* STEAM 칸: 남은 시간만 (n/6·리셋은 마우스 올리면), 선물이 오면 '🎁 STEAM'으로 반짝 */
+#mini-steam{display:none;}
+html body #app.mini-mode #mini-steam{grid-area:steam!important;display:inline-flex!important;align-items:center;gap:4px;padding:0 8px;border-radius:8px;color:var(--steam-text)!important;font-variant-numeric:tabular-nums;white-space:nowrap;cursor:default;}
+html body #app.mini-mode #mini-steam .ui-icon{width:14px;height:14px;color:var(--steam);}
+html body #app.mini-mode #mini-steam.is-full{color:#7d8a99!important;}
+html body #app.mini-mode #mini-steam.is-full .ui-icon{color:#7d8a99;}
+html body #app.mini-mode #mini-steam.has-gift{cursor:pointer;background:var(--steam-deep);border:1px solid var(--steam);font-weight:900;animation:miniSteamPulse 1.2s ease-in-out infinite;}
+html body #app.mini-mode #mini-steam:focus-visible{outline:2px solid var(--steam);outline-offset:1px;}
+@keyframes miniSteamPulse{0%,100%{box-shadow:0 0 0 0 rgba(108,184,255,.0)}50%{box-shadow:0 0 0 4px rgba(108,184,255,.35)}}
+@media (prefers-reduced-motion:reduce){html body #app.mini-mode #mini-steam.has-gift{animation:none}}
 @media (min-width:601px){
  html body.mini-window #app.mini-battle-mode{height:152px!important;min-height:0!important;}
 }
@@ -12456,8 +12467,6 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
     return `<span class="steam-divider" aria-hidden="true"></span><span class="draw-countdown steam-countdown${st.limit?' is-full':''}" role="button" tabindex="0" data-steam-open="shop" title="${esc(title)}" aria-label="${esc(title+' · '+time+' · '+st.count+'/'+st.max)}">${icon('tag')}${esc(time)}<span class="steam-count">${st.count}/${st.max}</span></span>`+
       `<span class="draw-countdown steam-shards" role="button" tabindex="0" data-steam-open="shop" title="${esc(k('steam.shards'))}" aria-label="${esc(k('steam.shards')+' '+shards)}">${icon('shard')}${esc(num(shards))}</span>`;
   }
-  // 미니 모드 상단 한 줄
-  function miniText(){const st=S.getStatus();return ` · STEAM ${st.limit?k('steam.reset')+' '+fmt(st.resetInSec):fmt(st.remainingSec)} ${st.count}/${st.max}`;}
   function openSteamShop(){
     if(typeof window.switchMenu==='function')window.switchMenu('shop');
     window.MRSteamUI?.showShopTab?.('steam');
@@ -12474,8 +12483,10 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
     return {category:it.category,id:it.localId,tier:it.tier,type,name:type,artHtml,cover:false,isNew:copies<=1};
   }
   let showing=false;
+  const isMini=()=>!!document.getElementById('app')?.classList.contains('mini-mode');
   function blocked(){
     if(showing||dialogPause)return true;
+    if(isMini())return true; // 작은 창을 덮지 않도록: 큰 화면으로 돌아오거나 STEAM 칸을 누르면 보여준다
     const starter=document.getElementById('mr-starter');
     if(starter&&starter.offsetParent!==null)return true;
     return !!document.querySelector('.mr-dialog-shade,.mrfx-reveal:not(.mrfx-fly-card)');
@@ -12503,10 +12514,31 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
     showing=true;try{for(const it of items)await play([it],inv,{source:'gacha'});}finally{showing=false;}
     flush();
   }
+  // ---------- 미니 모드 STEAM 칸 ----------
+  function updateMini(){
+    const el=document.getElementById('mini-steam');if(!el||!isMini())return;
+    const st=S.getStatus(),gift=st.pending>0;
+    const tip=gift?k('steam.gift.title'):st.limit?`STEAM ${st.count}/${st.max} · ${k('steam.reset')} ${fmt(st.resetInSec)}`:`STEAM ${st.count}/${st.max} · ${k('steam.next')} ${fmt(st.remainingSec)}`;
+    const html=gift?`${icon('tag')}STEAM`:st.limit?`${icon('tag')}${st.count}/${st.max}`:`${icon('tag')}${esc(fmt(st.remainingSec))}`;
+    if(el.dataset.html!==html){el.innerHTML=html;el.dataset.html=html;}
+    el.classList.toggle('has-gift',gift);el.classList.toggle('is-full',!gift&&st.limit);
+    if(el.title!==tip){el.title=tip;el.setAttribute('aria-label',tip);}
+  }
+  function openMiniGift(){
+    if(!(S.getStatus().pending>0))return;
+    window.setMiniMode?.(false); // 큰 화면으로 돌아오면 flush가 연출을 띄운다
+    setTimeout(flush,300);
+  }
+  document.addEventListener('click',e=>{if(e.target.closest?.('#mini-steam'))openMiniGift();});
+  document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.closest?.('#mini-steam')){e.preventDefault();openMiniGift();}});
+  S.on('change',updateMini); // tick이 매초 change를 보낸다
+  // 미니 모드로 들어가는 순간 바로 채운다 (1초 기다리지 않게)
+  {const orig=window.setMiniMode;if(typeof orig==='function')window.setMiniMode=function(){const r=orig.apply(this,arguments);try{updateMini();}catch(e){}return r;};}
+
   S.on('grant',()=>setTimeout(flush,0));
   setInterval(flush,2000); // 놓친 선물(창 닫힘·다른 창 열림)도 다시 보여준다
 
-  window.MRSteamUI=Object.assign(window.MRSteamUI||{},{topTimerHtml,miniText,icon,fmt,artPath,flush,reveal,esc,k,num,get shards(){return shards;}});
+  window.MRSteamUI=Object.assign(window.MRSteamUI||{},{topTimerHtml,updateMini,icon,fmt,artPath,flush,reveal,esc,k,num,get shards(){return shards;}});
 })();
 </script>
 <style id="mr-ui-unify">
