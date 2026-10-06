@@ -12020,6 +12020,273 @@ html body #app #view-battle #ui-section .btn-item>*,html body #app #merge-mini-i
 html body #app #view-battle #ui-section .btn-item .control-name{margin-top:3px!important;line-height:14px!important;height:14px!important;overflow:visible!important;}
 html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!important;}
 </style>
+<script id="mr-steam">
+/* =====================================================================
+ * Merge & Run — STEAM 장터 계층 (C안, 2026-10-06 팀 확정)
+ *
+ * 원칙
+ *  - 로컬 경제(머지·골드·로컬 조각·지금 뽑기)는 읽거나 쓰지 않는다. 완전 분리.
+ *  - STEAM 쪽은 오직 "플레이 시간"으로만 얻는다. (30분마다, 하루 최대 6번)
+ *  - 대상: 캐릭터, 전투 캐릭터만. 결과물 = 같은 아이템의 "STEAM 에디션"(거래 가능)
+ *  - STEAM 순환: STEAM 에디션 → 분해 → STEAM 조각(거래 불가) → 원하는 에디션 선택 / SR 합성 → 랜덤 SSR
+ *  - 백엔드만 갈아끼우면 된다.
+ *      지금(웹·개발): MockBackend — Steam Inventory Service 규칙을 흉내내 실제로 동작
+ *      스팀웍스 단계: NativeBackend — exe 브리지(window.mergeRollDesktop.steamInventory)로 교체
+ *  - 숫자(간격·확률·분해량·비용)는 전부 아래 CONFIG 한 곳에만. 지금 값은 모두 임시값.
+ *
+ * 콘솔 테스트
+ *  MRSteam.getStatus()                 → 다음 지급까지 남은 시간, n/6
+ *  MRSteam.dev.addPlaytime(30)         → 플레이 시간 30분 추가 (곧 자동 지급)
+ *  await MRSteam.getInventory()        → STEAM 에디션·STEAM 조각 목록
+ *  await MRSteam.dismantle(itemId)     → 분해 → STEAM 조각
+ *  await MRSteam.select('char_0001')   → STEAM 조각으로 원하는 에디션
+ *  await MRSteam.craft([id1,…])        → SR N개 → 랜덤 SSR
+ *  MRSteam.dev.itemdefs()              → 스팀웍스 업로드용 itemdef JSON 초안
+ *  MRSteam.dev.wipe()                  → 가짜 스팀 인벤토리 초기화
+ * ===================================================================== */
+(function(){
+  'use strict';
+
+  // ---------- 설정 (임시값 · 여기만 고치면 됨) ----------
+  const CONFIG=Object.freeze({
+    MOCK:true,                       // true=가짜 스팀. 스팀웍스 연결 후 false
+    DEV_TOOLS:true,                  // 콘솔 테스트 도구. 출시 전 false
+    DROP_INTERVAL_MIN:30,            // itemdef drop_interval
+    DROP_WINDOW_MIN:1200,            // itemdef drop_window (20시간)
+    DROP_MAX_PER_WINDOW:6,           // itemdef drop_max_per_window
+    RETRY_SEC:60,                    // 시간이 됐는데 스팀이 빈 결과를 주면 재시도 간격
+    CATEGORIES:['char','battle_char'],
+    TIERS:['SR','SSR','UR'],         // STEAM 에디션이 존재하는 등급 (N·R은 로컬 전용) [가정]
+    DROP_WEIGHTS:{SR:80,SSR:18,UR:2},// 공개 확률 (%)
+    DISMANTLE_SHARDS:{SR:5,SSR:30,UR:200},   // 분해 1개 → STEAM 조각 수
+    SELECT_COST:{SR:25,SSR:150,UR:1000},     // 원하는 에디션 1개 = STEAM 조각 수
+    CRAFT:{from:'SR',count:5,to:'SSR'},      // 합성: SR 5개 → 랜덤 SSR 1개
+    DEF_BASE:{char:10000,battle_char:20000}, // itemdefid = 기준 + 번호(char_0001 → 10001)
+    DEF:Object.freeze({DROP_GEN:100,CRAFT_GEN:101,SHARD:900,SHARD_BUNDLE:{SR:910,SSR:911,UR:912}}),
+    MOCK_KEY:'mrSteamMock.v1',       // 'mergeRoll.' 접두사 금지: 로컬 세이브 초기화로 지워지면 안 됨(실제 스팀처럼)
+    CLOCK_KEY:'mergeRoll.steamClock.v1',
+    MAX_TICK_SEC:120                 // 절전·탭 정지 후 한 번에 몰아서 쌓이는 시간 상한
+  });
+  const MIN=60, now=()=>Date.now();
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const listeners={change:new Set(),grant:new Set()};
+  function emit(type,payload){for(const fn of listeners[type]||[]){try{fn(payload);}catch(e){console.warn('[MRSteam] listener',e);}}}
+  function readJSON(key,fallback){try{const v=JSON.parse(localStorage.getItem(key)||'null');return v&&typeof v==='object'?v:fallback;}catch(e){return fallback;}}
+  function writeJSON(key,v){try{localStorage.setItem(key,JSON.stringify(v));}catch(e){console.warn('[MRSteam] save failed',e);}}
+
+  // ---------- 카탈로그: 로컬 DB에서 STEAM 에디션 정의를 만든다 ----------
+  // 아트 확정 전이라 캐릭터 수가 바뀌어도 자동 반영. ID는 에셋 ID(char_0001)에 고정.
+  function catalog(){
+    const defs=new Map();
+    const sources={
+      char:{db:typeof CHARS_DB!=='undefined'?CHARS_DB:{},meta:typeof CHARACTER_META!=='undefined'?CHARACTER_META:{}},
+      battle_char:{db:typeof BATTLE_CHARS_DB!=='undefined'?BATTLE_CHARS_DB:{},meta:typeof BATTLE_CHARACTER_META!=='undefined'?BATTLE_CHARACTER_META:{}}
+    };
+    for(const category of CONFIG.CATEGORIES){
+      const {db,meta}=sources[category];
+      for(const tier of CONFIG.TIERS){
+        for(const index of db[tier]||[]){
+          const m=meta[index]||{};
+          const assetId=m.id||`${category}_${String(index+1).padStart(4,'0')}`;
+          const num=Number(String(assetId).match(/(\d+)$/)?.[1]||index+1);
+          const defId=CONFIG.DEF_BASE[category]+num;
+          defs.set(defId,{defId,kind:'edition',category,localId:index,assetId,tier,name:m.name||assetId,tradable:true,marketable:true,tags:['steamtier:'+tier,'cat:'+category]});
+        }
+      }
+    }
+    defs.set(CONFIG.DEF.SHARD,{defId:CONFIG.DEF.SHARD,kind:'shard',name:'STEAM 조각',tradable:false,marketable:false,stack:true});
+    for(const tier of CONFIG.TIERS){
+      const id=CONFIG.DEF.SHARD_BUNDLE[tier];
+      defs.set(id,{defId:id,kind:'bundle',name:`STEAM 조각 ×${CONFIG.DISMANTLE_SHARDS[tier]}`,bundle:[{defId:CONFIG.DEF.SHARD,qty:CONFIG.DISMANTLE_SHARDS[tier]}],recipes:[[{tag:'steamtier:'+tier,qty:1}]]});
+    }
+    defs.set(CONFIG.DEF.DROP_GEN,{defId:CONFIG.DEF.DROP_GEN,kind:'playtimegenerator',name:'STEAM 뽑기',weights:CONFIG.DROP_WEIGHTS});
+    defs.set(CONFIG.DEF.CRAFT_GEN,{defId:CONFIG.DEF.CRAFT_GEN,kind:'generator',name:`STEAM 합성 (${CONFIG.CRAFT.to})`,weights:{[CONFIG.CRAFT.to]:1},recipes:[[{tag:'steamtier:'+CONFIG.CRAFT.from,qty:CONFIG.CRAFT.count}]]});
+    for(const d of defs.values())if(d.kind==='edition')d.recipes=[[{defId:CONFIG.DEF.SHARD,qty:CONFIG.SELECT_COST[d.tier]}]];
+    return defs;
+  }
+  const editionDefs=()=>[...catalog().values()].filter(d=>d.kind==='edition');
+  function findEdition(ref){
+    // ref: itemdefid(숫자) | 에셋 ID('char_0001') | {category,id(로컬 번호)}
+    return editionDefs().find(d=>d.defId===Number(ref)||d.assetId===ref||(ref&&typeof ref==='object'&&d.category===ref.category&&String(d.localId)===String(ref.id)))||null;
+  }
+
+  // ---------- MockBackend: ISteamInventory 흉내 ----------
+  // 실제 스팀과 같은 규칙: 클라이언트는 "특정 아이템 지급"을 못 하고, 정의된 generator·교환식으로만 받는다.
+  function createMockBackend(){
+    let s=readJSON(CONFIG.MOCK_KEY,null);
+    if(!s||s.v!==1)s={v:1,nextItemId:1,items:[],playSec:0,windowStart:0,windowCount:0};
+    const save=()=>writeJSON(CONFIG.MOCK_KEY,s);
+    const view=it=>({itemId:it.itemId,defId:it.defId,quantity:it.quantity,acquired:it.acquired,tradable:!!catalog().get(it.defId)?.tradable});
+    function pickWeighted(weights){
+      const entries=Object.entries(weights).filter(([,w])=>w>0),total=entries.reduce((a,[,w])=>a+w,0);
+      let r=Math.random()*total;for(const [k,w] of entries){r-=w;if(r<0)return k;}return entries[entries.length-1]?.[0];
+    }
+    function grantDef(defId,qty,out){
+      const defs=catalog(),d=defs.get(defId);if(!d)throw new Error('unknown itemdef '+defId);
+      if(d.kind==='bundle'){for(const b of d.bundle)grantDef(b.defId,b.qty*qty,out);return;}
+      if(d.kind==='generator'||d.kind==='playtimegenerator'){
+        for(let i=0;i<qty;i++){
+          const tier=pickWeighted(d.weights);
+          const pool=[...defs.values()].filter(x=>x.kind==='edition'&&x.tier===tier);
+          if(!pool.length)throw new Error('empty pool '+tier);
+          grantDef(pool[Math.floor(Math.random()*pool.length)].defId,1,out);
+        }return;
+      }
+      if(d.stack){let it=s.items.find(x=>x.defId===defId);if(!it){it={itemId:String(s.nextItemId++),defId,quantity:0,acquired:now()};s.items.push(it);}it.quantity+=qty;out.push({...view(it),quantity:qty});return;}
+      for(let i=0;i<qty;i++){const it={itemId:String(s.nextItemId++),defId,quantity:1,acquired:now()};s.items.push(it);out.push(view(it));}
+    }
+    const matches=(it,m)=>m.defId!=null?it.defId===m.defId:(catalog().get(it.defId)?.tags||[]).includes(m.tag);
+    return {
+      name:'mock',
+      async getAllItems(){return s.items.filter(x=>x.quantity>0).map(view);},
+      // 스팀 내부 플레이 시간 (실제 스팀은 게임 실행 시간을 직접 셈 → 웹에선 페이지가 열린 시간)
+      _tick(sec){s.playSec=Math.min(s.playSec+sec,CONFIG.DROP_INTERVAL_MIN*MIN);save();},
+      async triggerItemDrop(defId){
+        if(defId!==CONFIG.DEF.DROP_GEN)return [];
+        const t=now();
+        if(s.windowStart&&t-s.windowStart>=CONFIG.DROP_WINDOW_MIN*MIN*1000){s.windowStart=0;s.windowCount=0;}
+        if(s.windowCount>=CONFIG.DROP_MAX_PER_WINDOW||s.playSec<CONFIG.DROP_INTERVAL_MIN*MIN)return []; // 스팀도 조건 미달이면 빈 결과
+        const out=[];grantDef(defId,1,out);
+        s.playSec=0;s.windowCount++;if(!s.windowStart)s.windowStart=t;save();return out;
+      },
+      async exchangeItems(targetDefId,inputs){
+        const d=catalog().get(targetDefId);if(!d?.recipes)throw new Error('no recipe');
+        const used=inputs.map(x=>({it:s.items.find(i=>i.itemId===String(x.itemId)),qty:Math.max(1,Math.floor(x.quantity||1))}));
+        if(used.some(u=>!u.it||u.it.quantity<u.qty))throw new Error('missing input item');
+        // 재료가 교환식과 정확히 일치해야 함 (스팀이 검증하는 부분)
+        const ok=d.recipes.some(recipe=>recipe.every(m=>used.filter(u=>matches(u.it,m)).reduce((a,u)=>a+u.qty,0)===m.qty)&&used.every(u=>recipe.some(m=>matches(u.it,m))));
+        if(!ok)throw new Error('recipe mismatch');
+        for(const u of used)u.it.quantity-=u.qty;
+        s.items=s.items.filter(x=>x.quantity>0);
+        const out=[];grantDef(targetDefId,1,out);save();return out;
+      },
+      async consumeItem(itemId,qty=1){const it=s.items.find(i=>i.itemId===String(itemId));if(!it||it.quantity<qty)throw new Error('missing item');it.quantity-=qty;s.items=s.items.filter(x=>x.quantity>0);save();return true;},
+      _debug:{state:()=>JSON.parse(JSON.stringify(s)),addPlaySec(sec){s.playSec=Math.min(s.playSec+sec,CONFIG.DROP_INTERVAL_MIN*MIN);save();},resetWindow(){s.windowStart=0;s.windowCount=0;save();},wipe(){s={v:1,nextItemId:1,items:[],playSec:0,windowStart:0,windowCount:0};save();}}
+    };
+  }
+  // 스팀웍스 단계: exe가 같은 함수 이름으로 ISteamInventory를 감싸서 넘겨주면 된다.
+  function createNativeBackend(bridge){
+    return {name:'native',getAllItems:()=>bridge.getAllItems(),triggerItemDrop:id=>bridge.triggerItemDrop(id),exchangeItems:(id,inputs)=>bridge.exchangeItems(id,inputs),consumeItem:(id,q)=>bridge.consumeItem(id,q)};
+  }
+  const nativeBridge=window.mergeRollDesktop?.steamInventory;
+  const backend=(!CONFIG.MOCK&&nativeBridge)?createNativeBackend(nativeBridge):createMockBackend();
+
+  // ---------- 게임 쪽 시계: 화면 표시용 추정치 ----------
+  // 실제 스팀 타이머는 게임이 볼 수 없으므로, 게임이 따로 세고 때가 되면 TriggerItemDrop을 부른다.
+  let clock=readJSON(CONFIG.CLOCK_KEY,null);
+  if(!clock||clock.v!==1)clock={v:1,playSec:0,windowStart:0,windowCount:0,retryAt:0,pending:[]};
+  const saveClock=()=>writeJSON(CONFIG.CLOCK_KEY,clock);
+  function rollWindow(){
+    if(clock.windowStart&&now()-clock.windowStart>=CONFIG.DROP_WINDOW_MIN*MIN*1000){clock.windowStart=0;clock.windowCount=0;saveClock();}
+  }
+  function getStatus(){
+    rollWindow();
+    const interval=CONFIG.DROP_INTERVAL_MIN*MIN,limit=clock.windowCount>=CONFIG.DROP_MAX_PER_WINDOW;
+    const resetIn=clock.windowStart?Math.max(0,Math.ceil((clock.windowStart+CONFIG.DROP_WINDOW_MIN*MIN*1000-now())/1000)):0;
+    return {
+      remainingSec:limit?0:Math.max(0,Math.ceil(interval-clock.playSec)),
+      intervalSec:interval,progress:limit?1:clamp(clock.playSec/interval,0,1),
+      count:clock.windowCount,max:CONFIG.DROP_MAX_PER_WINDOW,limit,resetInSec:limit?resetIn:0,
+      pending:clock.pending.length,backend:backend.name
+    };
+  }
+
+  let busy=false,lastTick=now();
+  async function tryDrop(){
+    if(busy)return;busy=true;
+    try{
+      const items=await backend.triggerItemDrop(CONFIG.DEF.DROP_GEN);
+      if(items.length){
+        clock.playSec=0;clock.windowCount++;if(!clock.windowStart)clock.windowStart=now();clock.retryAt=0;
+        const shown=items.map(decorate);clock.pending.push(...shown.map(x=>x.itemId));saveClock();
+        emit('grant',{items:shown,status:getStatus()});
+      }else{clock.retryAt=now()+CONFIG.RETRY_SEC*1000;saveClock();}
+    }catch(e){console.warn('[MRSteam] drop failed',e);clock.retryAt=now()+CONFIG.RETRY_SEC*1000;saveClock();}
+    finally{busy=false;emit('change',getStatus());}
+  }
+  function tick(){
+    const t=now(),sec=clamp((t-lastTick)/1000,0,CONFIG.MAX_TICK_SEC);lastTick=t;
+    rollWindow();
+    if(clock.windowCount<CONFIG.DROP_MAX_PER_WINDOW){
+      clock.playSec=Math.min(clock.playSec+sec,CONFIG.DROP_INTERVAL_MIN*MIN);
+      if(sec>=1)saveClock();
+    }
+    backend._tick?.(sec);
+    const st=getStatus();
+    if(!st.limit&&st.remainingSec<=0&&now()>=(clock.retryAt||0))tryDrop();
+    emit('change',st);
+  }
+
+  // ---------- 화면에서 쓰는 형태 ----------
+  function decorate(it){
+    const d=catalog().get(it.defId)||{};
+    return {...it,kind:d.kind,category:d.category,localId:d.localId,assetId:d.assetId,tier:d.tier,name:d.name,edition:'STEAM'};
+  }
+  async function getInventory(){
+    const items=(await backend.getAllItems()).map(decorate);
+    const editions=items.filter(x=>x.kind==='edition');
+    const shards=items.filter(x=>x.kind==='shard').reduce((a,x)=>a+x.quantity,0);
+    return {editions,shards,owned:new Set(editions.map(x=>x.category+'::'+x.localId))};
+  }
+  async function afterChange(result){const inv=await getInventory();emit('change',getStatus());return {...result,inventory:inv};}
+
+  async function dismantle(itemId){
+    const inv=await getInventory(),it=inv.editions.find(x=>x.itemId===String(itemId));
+    if(!it)return {ok:false,reason:'not_found'};
+    try{const got=await backend.exchangeItems(CONFIG.DEF.SHARD_BUNDLE[it.tier],[{itemId:it.itemId,quantity:1}]);
+      return afterChange({ok:true,shards:got.reduce((a,x)=>a+x.quantity,0),granted:got.map(decorate)});}
+    catch(e){return {ok:false,reason:e.message};}
+  }
+  async function select(ref){
+    const d=findEdition(ref);if(!d)return {ok:false,reason:'not_steam_item'};
+    const cost=CONFIG.SELECT_COST[d.tier],inv=await getInventory();
+    if(inv.shards<cost)return {ok:false,reason:'not_enough_shards',need:cost,have:inv.shards};
+    const stack=(await backend.getAllItems()).find(x=>x.defId===CONFIG.DEF.SHARD);
+    try{const got=await backend.exchangeItems(d.defId,[{itemId:stack.itemId,quantity:cost}]);return afterChange({ok:true,granted:got.map(decorate),cost});}
+    catch(e){return {ok:false,reason:e.message};}
+  }
+  async function craft(itemIds){
+    const inv=await getInventory(),ids=[...new Set((itemIds||[]).map(String))];
+    const picked=ids.map(id=>inv.editions.find(x=>x.itemId===id)).filter(Boolean);
+    if(picked.length!==CONFIG.CRAFT.count||picked.some(x=>x.tier!==CONFIG.CRAFT.from))return {ok:false,reason:'need_'+CONFIG.CRAFT.count+'_'+CONFIG.CRAFT.from};
+    try{const got=await backend.exchangeItems(CONFIG.DEF.CRAFT_GEN,picked.map(x=>({itemId:x.itemId,quantity:1})));return afterChange({ok:true,granted:got.map(decorate)});}
+    catch(e){return {ok:false,reason:e.message};}
+  }
+  // 선물 연출을 본 뒤 호출 (연출 전에 창을 닫아도 다음 실행에서 다시 보여줄 수 있게)
+  function takePending(){const ids=clock.pending.slice();clock.pending=[];saveClock();return ids;}
+
+  // ---------- 스팀웍스 업로드용 itemdef 초안 ----------
+  function itemdefs(){
+    const defs=[...catalog().values()],tagStr=r=>r.map(m=>(m.defId!=null?m.defId:m.tag)+'x'+m.qty).join(',');
+    return defs.map(d=>{
+      const base={itemdefid:d.defId,name:d.name,tradable:!!d.tradable,marketable:!!d.marketable};
+      if(d.kind==='edition')return {...base,type:'item',tags:d.tags.join(';'),exchange:d.recipes.map(tagStr).join(';'),name:`${d.name} (STEAM)`};
+      if(d.kind==='shard')return {...base,type:'item'};
+      if(d.kind==='bundle')return {...base,type:'bundle',bundle:d.bundle.map(b=>b.defId+'x'+b.qty).join(';'),exchange:d.recipes.map(tagStr).join(';')};
+      const bundle=Object.entries(d.weights).map(([t,w])=>`tag:steamtier:${t}x${w}`).join(';');
+      if(d.kind==='playtimegenerator')return {...base,type:'playtimegenerator',bundle,drop_interval:CONFIG.DROP_INTERVAL_MIN,use_drop_window:true,drop_window:CONFIG.DROP_WINDOW_MIN,drop_max_per_window:CONFIG.DROP_MAX_PER_WINDOW};
+      return {...base,type:'generator',bundle,exchange:d.recipes.map(tagStr).join(';')};
+    });
+  }
+
+  window.MRSteam=Object.freeze({
+    CONFIG,
+    on(type,fn){listeners[type]?.add(fn);return ()=>listeners[type]?.delete(fn);},
+    getStatus,getInventory,dismantle,select,craft,takePending,findEdition,
+    editions:editionDefs,
+    probabilities:()=>({...CONFIG.DROP_WEIGHTS}),
+    dev:CONFIG.DEV_TOOLS?{
+      addPlaytime(min=CONFIG.DROP_INTERVAL_MIN){const sec=min*MIN;clock.playSec=Math.min(clock.playSec+sec,CONFIG.DROP_INTERVAL_MIN*MIN);clock.retryAt=0;saveClock();backend._debug?.addPlaySec(sec);tick();return getStatus();},
+      resetWindow(){clock.windowStart=0;clock.windowCount=0;saveClock();backend._debug?.resetWindow();tick();return getStatus();},
+      wipe(){backend._debug?.wipe();clock={v:1,playSec:0,windowStart:0,windowCount:0,retryAt:0,pending:[]};saveClock();tick();return getStatus();},
+      backendState:()=>backend._debug?.state(),
+      itemdefs
+    }:undefined
+  });
+  setInterval(tick,1000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick();});
+})();
+</script>
 <script id="mr-social-core">
 /* =====================================================================
  * Merge & Run — 소셜 연결 기반 (스팀웍스 연동 전 단계)
