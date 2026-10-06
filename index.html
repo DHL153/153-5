@@ -4693,7 +4693,7 @@ window.MRBattleFX=(()=>{
     function updateMiniHud() {
         const ids=[['mini-score',runScore],['mini-fragments',fragments],['mini-merge',mergeCount],['mini-gold',gold]];
         ids.forEach(([id,v])=>{const el=document.getElementById(id); if(el)setUiText(el,formatCompactNumber(v));});
-        const mg=document.getElementById('mini-gacha'); if(mg){ const e=isEmojiGachaReady?'😊✅':`😊${formatTimerMMSS(emojiGachaTimer)}`; const p=isPremiumGachaReady?'✨✅':`✨${formatTimerMMSS(premiumGachaTimer)}`; setUiText(mg,`🎁 ${e} · ${p}`); }
+        const mg=document.getElementById('mini-gacha'); if(mg){ const e=isEmojiGachaReady?'😊✅':`😊${formatTimerMMSS(emojiGachaTimer)}`; const p=isPremiumGachaReady?'✨✅':`✨${formatTimerMMSS(premiumGachaTimer)}`; setUiText(mg,`🎁 ${e} · ${p}${window.MRSteamUI?.miniText?.()||''}`); }
         const multValue=`x${typeof multiplier!=='undefined'?multiplier:1}`;
         const mm=document.getElementById('mini-multiplier'); if(mm) setUiText(mm,multValue);
         const mml=document.getElementById('merge-mini-mult-label'); if(mml) setUiText(mml,multValue);
@@ -8805,7 +8805,7 @@ function createSocialDataFoundation(assets, emojis) {
             const n={all:base.filter(e=>e.count>0).length+base.filter(e=>steamOf(e)>0).length,local:base.filter(e=>e.count>0).length,steam:base.filter(e=>steamOf(e)>0).length};
             const kk=(id,f)=>window.MRLocale?.k?.(id)||f;const label={all:kk('steam.all','전체'),local:kk('steam.tab.local','로컬'),steam:'STEAM'};
             sourceTabs.style.display=steamCodex&&['all','char','battle_char'].includes(activeItemCategory)?'':'none';
-            setUiHTML(sourceTabs,['all','local','steam'].map(k=>`<button type="button" class="codex-source-btn src-${k}${codexSourceFilter===k?' active':''}" aria-pressed="${codexSourceFilter===k}" onclick="setCodexSourceFilter('${k}')"><span>${label[k]}</span><b>${n[k]}</b></button>`).join(''));
+            setUiHTML(sourceTabs,['all','local','steam'].map(k=>`<button type="button" class="codex-source-btn src-${k}${codexSourceFilter===k?' active':''}" aria-pressed="${codexSourceFilter===k}" onclick="setCodexSourceFilter('${k}')" aria-label="${label[k]} ${n[k]}"><span>${k==='all'?menuIcon('all'):label[k]}</span><b>${n[k]}</b></button>`).join(''));
         }
 
         tabs.innerHTML='';
@@ -9830,7 +9830,7 @@ function createSocialDataFoundation(assets, emojis) {
     }
     function installItemInspection(){
         if(document.getElementById('mr-item-inspect'))return;
-        const selector='#mr-starter .mr-starter-card, #view-collection .inv-item, #view-collection .char-item-btn, #view-item .inv-item';
+        const selector='#mr-starter .mr-starter-card, #view-collection .inv-item, #view-collection .char-item-btn, #view-item .inv-item, #view-shop .inv-item, #view-shop .economy-item, #view-shop .craft-slot.filled';
         const tip=document.createElement('aside');tip.id='mr-item-inspect';tip.hidden=true;tip.setAttribute('role','tooltip');
         const image=new Image();image.alt='';tip.append(image);document.body.append(tip);
         let active=null;
@@ -10932,7 +10932,15 @@ function createSocialDataFoundation(assets, emojis) {
  "steam.warn.drop": {"ko": "도감 −{n} · ×{a} → ×{b}", "en": "Catalog −{n} · ×{a} → ×{b}", "ja": "図鑑 −{n} · ×{a} → ×{b}", "zh-CN": "图鉴 −{n} · ×{a} → ×{b}", "zh-TW": "圖鑑 −{n} · ×{a} → ×{b}", "es": "Catálogo −{n} · ×{a} → ×{b}", "pt-BR": "Catálogo −{n} · ×{a} → ×{b}", "fr": "Catalogue −{n} · ×{a} → ×{b}", "ru": "Каталог −{n} · ×{a} → ×{b}", "it": "Catalogo −{n} · ×{a} → ×{b}", "pl": "Katalog −{n} · ×{a} → ×{b}", "de": "Katalog −{n} · ×{a} → ×{b}"},
  "steam.power.count": {"ko": "강화 {n}개 계산", "en": "Counts {n} for bonus", "ja": "強化に{n}個カウント", "zh-CN": "计入加成 {n} 个", "zh-TW": "計入加成 {n} 個", "es": "Cuenta {n} para el bono", "pt-BR": "Conta {n} no bônus", "fr": "Compte {n} pour le bonus", "ru": "Учитывается: {n}", "it": "Conta {n} per il bonus", "pl": "Liczy się {n} do bonusu", "de": "Zählt {n} für Bonus"},
  "steam.market": {"ko": "장터", "en": "Market", "ja": "マーケット", "zh-CN": "市场", "zh-TW": "市場", "es": "Mercado", "pt-BR": "Mercado", "fr": "Marché", "ru": "Площадка", "it": "Mercato", "pl": "Rynek", "de": "Markt"},
- "steam.market.soon": {"ko": "STEAM 연결 후 열려요", "en": "Opens after STEAM is connected", "ja": "STEAM接続後に開きます", "zh-CN": "连接 STEAM 后开放", "zh-TW": "連接 STEAM 後開放", "es": "Se abre al conectar STEAM", "pt-BR": "Abre após conectar ao STEAM", "fr": "Disponible après connexion à STEAM", "ru": "Откроется после подключения STEAM", "it": "Si apre dopo il collegamento a STEAM", "pl": "Otworzy się po połączeniu ze STEAM", "de": "Öffnet nach STEAM-Verbindung"}
+ "steam.market.soon": {"ko": "STEAM 연결 후 열려요", "en": "Opens after STEAM is connected", "ja": "STEAM接続後に開きます", "zh-CN": "连接 STEAM 后开放", "zh-TW": "連接 STEAM 後開放", "es": "Se abre al conectar STEAM", "pt-BR": "Abre após conectar ao STEAM", "fr": "Disponible après connexion à STEAM", "ru": "Откроется после подключения STEAM", "it": "Si apre dopo il collegamento a STEAM", "pl": "Otworzy się po połączeniu ze STEAM", "de": "Öffnet nach STEAM-Verbindung"},
+ "steam.autofill": {"ko": "자동 채우기", "en": "Auto-fill", "ja": "自動選択", "zh-CN": "自动填充", "zh-TW": "自動填入", "es": "Autorrellenar", "pt-BR": "Preencher", "fr": "Remplir", "ru": "Автозаполнение", "it": "Riempi", "pl": "Autouzupełnij", "de": "Automatisch füllen"},
+ "steam.clear": {"ko": "비우기", "en": "Clear", "ja": "クリア", "zh-CN": "清空", "zh-TW": "清空", "es": "Vaciar", "pt-BR": "Limpar", "fr": "Vider", "ru": "Очистить", "it": "Svuota", "pl": "Wyczyść", "de": "Leeren"},
+ "steam.selector": {"ko": "선택권", "en": "Selector", "ja": "選択券", "zh-CN": "自选券", "zh-TW": "自選券", "es": "Selector", "pt-BR": "Seletor", "fr": "Sélecteur", "ru": "Выбор", "it": "Selettore", "pl": "Wybór", "de": "Auswahl"},
+ "steam.notOwned": {"ko": "미보유", "en": "Locked", "ja": "未所持", "zh-CN": "未拥有", "zh-TW": "未擁有", "es": "Bloqueado", "pt-BR": "Bloqueado", "fr": "Verrouillé", "ru": "Не получено", "it": "Bloccato", "pl": "Zablokowane", "de": "Gesperrt"},
+ "steam.emptyTier": {"ko": "이 등급의 보유 아이템이 없습니다.", "en": "No owned items of this rarity.", "fr": "Aucun objet possédé de cette rareté.", "it": "Nessun oggetto posseduto di questa rarità.", "de": "Keine Gegenstände dieser Seltenheit vorhanden.", "es": "No tienes objetos de esta rareza.", "ru": "Нет предметов этой редкости.", "pt-BR": "Você não possui itens desta raridade.", "zh-CN": "尚未拥有此稀有度的物品。", "zh-TW": "尚未擁有此稀有度的物品。", "ja": "このレアリティのアイテムは未所持です。", "pl": "Nie posiadasz przedmiotów tej rzadkości."},
+ "steam.item": {"ko": "아이템", "en": "Item", "ja": "アイテム", "zh-CN": "物品", "zh-TW": "物品", "es": "Objeto", "pt-BR": "Item", "fr": "Objet", "ru": "Предмет", "it": "Oggetto", "pl": "Przedmiot", "de": "Gegenstand"},
+ "steam.help.dismantle": {"ko": "STEAM 에디션을 분해해 STEAM 조각을 얻어요.", "en": "Dismantle STEAM Editions to earn STEAM Shards.", "ja": "STEAMエディションを分解してSTEAMかけらを入手。", "zh-CN": "分解 STEAM 版获得 STEAM 碎片。", "zh-TW": "分解 STEAM 版獲得 STEAM 碎片。", "es": "Desmonta ediciones STEAM para obtener fragmentos STEAM.", "pt-BR": "Desmonte edições STEAM para ganhar fragmentos STEAM.", "fr": "Démontez des éditions STEAM pour obtenir des fragments STEAM.", "ru": "Разбирайте STEAM-издания, чтобы получить STEAM-осколки.", "it": "Smonta le edizioni STEAM per ottenere frammenti STEAM.", "pl": "Rozkładaj edycje STEAM, by zdobyć odłamki STEAM.", "de": "Zerlege STEAM-Editionen für STEAM-Splitter."},
+ "steam.help.selector": {"ko": "원하는 STEAM 에디션을 STEAM 조각으로 교환하세요.", "en": "Exchange STEAM Shards for the STEAM Edition you want.", "ja": "欲しいSTEAMエディションをSTEAMかけらで交換。", "zh-CN": "用 STEAM 碎片兑换想要的 STEAM 版。", "zh-TW": "用 STEAM 碎片兌換想要的 STEAM 版。", "es": "Canjea fragmentos STEAM por la edición STEAM que quieras.", "pt-BR": "Troque fragmentos STEAM pela edição STEAM que quiser.", "fr": "Échangez des fragments STEAM contre l’édition STEAM voulue.", "ru": "Обменяйте STEAM-осколки на нужное STEAM-издание.", "it": "Scambia frammenti STEAM con l’edizione STEAM che vuoi.", "pl": "Wymień odłamki STEAM na wybraną edycję STEAM.", "de": "Tausche STEAM-Splitter gegen die gewünschte STEAM-Edition."}
 }
 </script>
 <script id="mr-localization">
@@ -11890,6 +11898,11 @@ html body #battle-chain-pop[data-tier="max"].bump{animation:fxMaxPulse .5s ease-
    '<div class="rv-ring"></div><div class="rv-ring r2"></div>'+
    '<div class="rv-rare"></div><div class="rv-actions"><button type="button" class="rv-ok"></button></div><button type="button" class="rv-skip"></button><div class="rv-hint"></div>';
   const q=s=>root.querySelector(s);
+  // STEAM 에디션: 같은 카드 연출 + 파란 테두리·STEAM 배지 + 전용 카드 뒷면 (없으면 기본 뒷면)
+  if(opts.edition){root.dataset.edition=opts.edition;const b=document.createElement('div');b.className='rv-edition';b.textContent=opts.edition==='steam'?'STEAM':String(opts.edition);q('.rv-front').appendChild(b);}
+  if(opts.cardBack){const im=q('.rv-back img');im.onerror=()=>{im.onerror=null;im.src='assets/art/cards/card_back_0001.png';};im.src=opts.cardBack;}
+  if(opts.subtitle){const sub=document.createElement('div');sub.className='rv-sub';sub.textContent=opts.subtitle;q('.rv-actions').before(sub);}
+  if(opts.chip)root.dataset.chip=opts.chip;
   q('.rv-title').textContent=opts.title||'';
   q('.rv-tier').textContent=tier;
   // Reveal card shows only the category label (e.g. 마이룸 배경), never the item's own name or number.
@@ -11962,7 +11975,7 @@ html body #battle-chain-pop[data-tier="max"].bump{animation:fxMaxPulse .5s ease-
    const cons=opts.consumed||[];const col={N:'#b3d8e7',R:'#7ce3d1',SR:'#b69afa',SSR:'#ffd772',UR:'#ff9ad5'};
    for(let i=0;i<n;i++){
     const c=document.createElement('div');c.className='rv-chip '+(kind==='craft'?'card':'frag');
-    if(kind==='craft')c.style.setProperty('--cc',col[cons[i]]||'#7ce3d1');else c.textContent='🧩';
+    if(kind==='craft')c.style.setProperty('--cc',col[cons[i]]||'#7ce3d1');else c.textContent=opts.chip||'🧩';
     root.appendChild(c);
     const a=Math.PI*2*i/n,r=Math.min(140,(root.clientWidth||300)*.36);
     if(!lite)c.animate([{transform:`translate(${Math.cos(a)*r}px,${Math.sin(a)*r}px) rotate(${i*36}deg)`,opacity:0},{opacity:1,offset:.25},{transform:'translate(0,0) rotate(0deg) scale(.6)',opacity:1}],{duration:650,delay:i*25,easing:'cubic-bezier(.6,0,.4,1)',fill:'both'}).onfinish=()=>c.remove();
@@ -12103,7 +12116,7 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
  *  - 로컬 경제(머지·골드·로컬 조각·지금 뽑기)는 읽거나 쓰지 않는다. 완전 분리.
  *  - STEAM 쪽은 오직 "플레이 시간"으로만 얻는다. (30분마다, 하루 최대 6번)
  *  - 대상: 캐릭터, 전투 캐릭터만. 결과물 = 같은 아이템의 "STEAM 에디션"(거래 가능)
- *  - STEAM 순환: STEAM 에디션 → 분해 → STEAM 조각(거래 불가) → 원하는 에디션 선택 / SR 합성 → 랜덤 SSR
+ *  - STEAM 순환: STEAM 에디션 → 분해 → STEAM 조각(거래 불가) → 원하는 에디션 선택 / 같은 등급 10개 합성 → 윗등급 랜덤
  *  - 백엔드만 갈아끼우면 된다.
  *      지금(웹·개발): MockBackend — Steam Inventory Service 규칙을 흉내내 실제로 동작
  *      스팀웍스 단계: NativeBackend — exe 브리지(window.mergeRollDesktop.steamInventory)로 교체
@@ -12115,7 +12128,7 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
  *  await MRSteam.getInventory()        → STEAM 에디션·STEAM 조각 목록
  *  await MRSteam.dismantle(itemId)     → 분해 → STEAM 조각
  *  await MRSteam.select('char_0001')   → STEAM 조각으로 원하는 에디션
- *  await MRSteam.craft([id1,…])        → SR N개 → 랜덤 SSR
+ *  await MRSteam.craft([id1,…])        → 같은 등급 10개 → 윗등급 랜덤 1개
  *  MRSteam.dev.itemdefs()              → 스팀웍스 업로드용 itemdef JSON 초안
  *  MRSteam.dev.wipe()                  → 가짜 스팀 인벤토리 초기화
  * ===================================================================== */
@@ -12133,11 +12146,14 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
     CATEGORIES:['char','battle_char'],
     TIERS:['SR','SSR','UR'],         // STEAM 에디션이 존재하는 등급 (N·R은 로컬 전용) [가정]
     DROP_WEIGHTS:{SR:80,SSR:18,UR:2},// 공개 확률 (%)
-    DISMANTLE_SHARDS:{SR:5,SSR:30,UR:200},   // 분해 1개 → STEAM 조각 수
-    SELECT_COST:{SR:25,SSR:150,UR:1000},     // 원하는 에디션 1개 = STEAM 조각 수
-    CRAFT:{from:'SR',count:5,to:'SSR'},      // 합성: SR 5개 → 랜덤 SSR 1개
+    // 수량 규칙 (2026-10-06 확정): 100 단위, UR 선택 = 1만
+    //  선택 = 합성 재료 가치의 2배 (SSR 2,000 > SR 10개 분해 1,000) · 분해 = 선택가의 1/4
+    DISMANTLE_SHARDS:{SR:100,SSR:500,UR:2500},   // 분해 1개 → STEAM 조각 수
+    SELECT_COST:{SR:400,SSR:2000,UR:10000},      // 원하는 에디션 1개 = STEAM 조각 수
+    CRAFT_COUNT:10,                              // 합성: 같은 등급 10개 → 윗등급 랜덤 1개 (로컬과 동일)
+    CRAFT_NEXT:{SR:'SSR',SSR:'UR'},
     DEF_BASE:{char:10000,battle_char:20000}, // itemdefid = 기준 + 번호(char_0001 → 10001)
-    DEF:Object.freeze({DROP_GEN:100,CRAFT_GEN:101,SHARD:900,SHARD_BUNDLE:{SR:910,SSR:911,UR:912}}),
+    DEF:Object.freeze({DROP_GEN:100,CRAFT_GEN:{SR:101,SSR:102},SHARD:900,SHARD_BUNDLE:{SR:910,SSR:911,UR:912}}),
     MOCK_KEY:'mrSteamMock.v1',       // 'mergeRoll.' 접두사 금지: 로컬 세이브 초기화로 지워지면 안 됨(실제 스팀처럼)
     CLOCK_KEY:'mergeRoll.steamClock.v1',
     MAX_TICK_SEC:120                 // 절전·탭 정지 후 한 번에 몰아서 쌓이는 시간 상한
@@ -12175,7 +12191,7 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
       defs.set(id,{defId:id,kind:'bundle',name:`STEAM 조각 ×${CONFIG.DISMANTLE_SHARDS[tier]}`,bundle:[{defId:CONFIG.DEF.SHARD,qty:CONFIG.DISMANTLE_SHARDS[tier]}],recipes:[[{tag:'steamtier:'+tier,qty:1}]]});
     }
     defs.set(CONFIG.DEF.DROP_GEN,{defId:CONFIG.DEF.DROP_GEN,kind:'playtimegenerator',name:'STEAM 뽑기',weights:CONFIG.DROP_WEIGHTS});
-    defs.set(CONFIG.DEF.CRAFT_GEN,{defId:CONFIG.DEF.CRAFT_GEN,kind:'generator',name:`STEAM 합성 (${CONFIG.CRAFT.to})`,weights:{[CONFIG.CRAFT.to]:1},recipes:[[{tag:'steamtier:'+CONFIG.CRAFT.from,qty:CONFIG.CRAFT.count}]]});
+    for(const [from,to] of Object.entries(CONFIG.CRAFT_NEXT)){const id=CONFIG.DEF.CRAFT_GEN[from];defs.set(id,{defId:id,kind:'generator',name:`STEAM 합성 (${from}→${to})`,weights:{[to]:1},recipes:[[{tag:'steamtier:'+from,qty:CONFIG.CRAFT_COUNT}]]});}
     for(const d of defs.values())if(d.kind==='edition')d.recipes=[[{defId:CONFIG.DEF.SHARD,qty:CONFIG.SELECT_COST[d.tier]}]];
     return defs;
   }
@@ -12323,8 +12339,9 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
   async function craft(itemIds){
     const inv=await getInventory(),ids=[...new Set((itemIds||[]).map(String))];
     const picked=ids.map(id=>inv.editions.find(x=>x.itemId===id)).filter(Boolean);
-    if(picked.length!==CONFIG.CRAFT.count||picked.some(x=>x.tier!==CONFIG.CRAFT.from))return {ok:false,reason:'need_'+CONFIG.CRAFT.count+'_'+CONFIG.CRAFT.from};
-    try{const got=await backend.exchangeItems(CONFIG.DEF.CRAFT_GEN,picked.map(x=>({itemId:x.itemId,quantity:1})));return afterChange({ok:true,granted:got.map(decorate)});}
+    const from=picked[0]?.tier;
+    if(picked.length!==CONFIG.CRAFT_COUNT||!CONFIG.CRAFT_NEXT[from]||picked.some(x=>x.tier!==from))return {ok:false,reason:'need_'+CONFIG.CRAFT_COUNT+'_same_tier'};
+    try{const got=await backend.exchangeItems(CONFIG.DEF.CRAFT_GEN[from],picked.map(x=>({itemId:x.itemId,quantity:1})));return afterChange({ok:true,granted:got.map(decorate)});}
     catch(e){return {ok:false,reason:e.message};}
   }
   // 선물 연출을 본 뒤 호출 (연출 전에 창을 닫아도 다음 실행에서 다시 보여줄 수 있게)
@@ -12363,88 +12380,98 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
 })();
 </script>
 <style id="mr-steam-style">
-/* STEAM = 파랑(#6cb8ff), 로컬 = 민트(#7ce3d1). 문구는 단어 단위, 문장은 줄바꿈. */
+/* STEAM = 파랑(#6cb8ff), 로컬 = 민트(#7ce3d1). 화면 구조·연출은 로컬과 같게, 색과 STEAM 배지로만 구분. */
 :root{--steam:#6cb8ff;--steam-text:#8cc8ff;--steam-deep:#17324f;--steam-line:#2b5a86;--local:#7ce3d1;}
 #app #top-bar #top-gacha-timer .steam-divider{width:1px;height:16px;background:currentColor;opacity:.3;flex:0 0 1px;}
-#app #top-bar #top-gacha-timer .steam-countdown{color:var(--steam-text)!important;cursor:pointer;border-radius:6px;}
-#app #top-bar #top-gacha-timer .steam-countdown:focus-visible{outline:2px solid var(--steam);outline-offset:2px;}
-#app #top-bar #top-gacha-timer .steam-countdown .ui-icon{color:var(--steam);}
+#app #top-bar #top-gacha-timer .steam-countdown,#app #top-bar #top-gacha-timer .steam-shards{color:var(--steam-text)!important;cursor:pointer;border-radius:6px;}
+#app #top-bar #top-gacha-timer .steam-countdown:focus-visible,#app #top-bar #top-gacha-timer .steam-shards:focus-visible{outline:2px solid var(--steam);outline-offset:2px;}
+#app #top-bar #top-gacha-timer .steam-countdown .ui-icon,#app #top-bar #top-gacha-timer .steam-shards .ui-icon{color:var(--steam);}
 .steam-count{display:inline-block;padding:0 5px;border-radius:5px;background:var(--steam-deep);color:var(--steam-text);font-size:.85em;font-weight:900;line-height:1.5;}
 .steam-countdown.is-full .steam-count{opacity:.65;}
-.steam-gift-shade{position:fixed;inset:0;z-index:10050;background:rgba(4,8,14,.78);display:flex;align-items:center;justify-content:center;padding:16px;animation:steamFade .18s ease-out;}
-.steam-gift{width:min(330px,100%);background:#15233a;border:2px solid var(--steam);border-radius:20px;padding:22px 18px 18px;display:flex;flex-direction:column;align-items:center;gap:14px;color:#e6eef5;box-shadow:0 18px 60px rgba(0,0,0,.5);animation:steamPop .32s cubic-bezier(.2,1.4,.4,1);}
-.steam-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;background:var(--steam-deep);color:var(--steam-text);font-size:13px;font-weight:900;letter-spacing:.5px;}
-.steam-gift h2{margin:0;font-size:26px;font-weight:900;}
-.steam-gift-art{position:relative;width:180px;height:180px;border-radius:18px;background:#0f1824;border:2px solid var(--steam);display:flex;align-items:center;justify-content:center;}
-.steam-gift-art img{width:160px;height:160px;object-fit:contain;}
-.steam-badge,.steam-tier{position:absolute;top:8px;padding:2px 7px;border-radius:6px;font-size:11px;font-weight:900;letter-spacing:.4px;}
-.steam-badge{left:8px;background:var(--steam-deep);color:var(--steam-text);}
-.steam-tier{right:8px;font-size:12px;background:#22263a;}
-.steam-tier[data-tier="SR"]{color:#b69afa}.steam-tier[data-tier="SSR"]{color:#ffd772;background:#3d3218}.steam-tier[data-tier="UR"]{color:#ff9ad5;background:#3a1d31}
-.steam-gift-name{margin:-6px 0 0;font-size:14px;font-weight:700;color:#b9c7d6;text-align:center;}
-.steam-gift-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%;}
-.steam-gift-tile{padding:10px 0;border-radius:12px;background:#0f1824;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:13px;font-weight:700;}
-.steam-gift-tile .ui-icon{width:22px;height:22px;}
-.steam-gift-tile.is-steam{color:var(--steam-text)}.steam-gift-tile.is-local{color:var(--local)}
-.steam-gift-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%;}
-.steam-gift-actions button{height:48px;border-radius:12px;font:inherit;font-size:15px;font-weight:900;cursor:pointer;}
-.steam-gift-actions .ghost{border:1px solid #2f4560;background:transparent;color:#e6eef5;}
-.steam-gift-actions .primary{border:0;background:var(--steam);color:#0b1f33;}
-.steam-gift-actions button:focus-visible{outline:2px solid #fff;outline-offset:2px;}
-.steam-gift-next{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#9fb1c4;}
-.steam-gift-next .ui-icon{width:14px;height:14px;}
-.steam-gift-more{font-size:12px;color:#9fb1c4;margin-top:-6px;}
-@keyframes steamFade{from{opacity:0}to{opacity:1}}
-@keyframes steamPop{from{transform:scale(.85);opacity:0}to{transform:none;opacity:1}}
-@media (prefers-reduced-motion:reduce){.steam-gift-shade,.steam-gift{animation:none}}
+/* 공용 카드 연출(MRFX)의 STEAM 에디션 표시 */
+.mrfx-reveal[data-edition="steam"] .rv-front{border-color:var(--steam)!important;box-shadow:0 0 26px rgba(108,184,255,.55),inset 0 0 30px rgba(108,184,255,.18)!important;}
+.mrfx-reveal .rv-edition{position:absolute;left:50%;top:10px;transform:translateX(-50%);padding:3px 9px;border-radius:999px;background:var(--steam-deep);color:var(--steam-text);border:1px solid var(--steam);font-size:11px;font-weight:1000;letter-spacing:.8px;z-index:2;}
+.mrfx-reveal .rv-sub{position:relative;z-index:2;font-size:13px;font-weight:800;color:var(--steam-text);opacity:0;transition:opacity .25s;white-space:pre-line;text-align:center;line-height:1.5;}
+.mrfx-reveal.p-show .rv-sub{opacity:1;}
+.mrfx-reveal[data-edition="steam"] .rv-title{color:var(--steam-text);}
+.mrfx-reveal[data-edition="steam"] .rv-ok{background:var(--steam)!important;border-color:#a9d6ff!important;color:#0b1f33!important;box-shadow:0 0 0 3px rgba(108,184,255,.35)!important;}
 </style>
 <script id="mr-steam-ui">
-/* STEAM 화면 연결: ② 상단 타이머 + 선물 연출. (데이터·규칙은 mr-steam, 여기는 화면만) */
+/* STEAM 화면 연결: 상단 타이머·STEAM 조각, 선물은 로컬 뽑기와 같은 카드 연출(STEAM 뒷면). */
 (function(){
   'use strict';
   const S=window.MRSteam;if(!S)return;
   const k=(id,v)=>window.MRLocale?.k?.(id,v)??id;
+  const CARD_BACK='assets/art/cards/card_back_0002.png'; // STEAM 전용 뒷면 (파일 없으면 기본 뒷면으로 대체)
   const ICON={
     tag:'<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="7.5" r="1.3"/>',
     trade:'<path d="M7 7h11l-3-3M17 17H6l3 3"/>',
-    codex:'<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><path d="M16.5 14v5M14 16.5h5"/>',
     clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     shard:'<path d="M12 3l7 9-7 9-7-9z"/>',
     check:'<path d="M5 12l5 5L20 7"/>',
-    up:'<path d="M12 19V5M5 12l7-7 7 7"/>'
+    up:'<path d="M12 19V5M5 12l7-7 7 7"/>',
+    wand:'<path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8 19 13M15 9h.01M17.8 6.2 19 5M3 21l9-9M12.2 6.2 11 5"/>',
+    trash:'<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+    zap:'<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>'
   };
   const icon=(name,cls='')=>`<svg class="ui-icon ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[name]||''}</svg>`;
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const num=n=>{try{return formatCompactNumber(n);}catch(e){return String(n);}};
   function fmt(sec){
     sec=Math.max(0,Math.ceil(sec));const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60,p=n=>String(n).padStart(2,'0');
     return h?`${h}:${p(m)}:${p(s)}`:`${p(m)}:${p(s)}`;
   }
-  function artPath(it){
-    try{return it.category==='char'?characterPath(it.localId):battleCharacterPath(it.localId);}catch(e){return '';}
-  }
+  function artPath(it){try{return it.category==='char'?characterPath(it.localId):battleCharacterPath(it.localId);}catch(e){return '';}}
 
-  // ---------- ② 상단 타이머 ----------
-  // updateGachaUI가 매초 이 HTML을 붙인다 (같으면 다시 그리지 않음).
+  // STEAM 조각 수 (상단 표시용 캐시)
+  let shards=0;
+  S.on('inventory',inv=>{shards=inv.shards;});
+  S.getInventory().then(inv=>{shards=inv.shards;}).catch(()=>{});
+
+  // ---------- 상단 타이머: 🏷 남은 시간 n/6 · ◇ STEAM 조각 ----------
   function topTimerHtml(){
     const st=S.getStatus(),title=k('steam.timer.title',{min:S.CONFIG.DROP_INTERVAL_MIN,max:st.max});
     const time=st.limit?`${k('steam.reset')} ${fmt(st.resetInSec)}`:fmt(st.remainingSec);
-    return `<span class="steam-divider" aria-hidden="true"></span><span class="draw-countdown steam-countdown${st.limit?' is-full':''}" role="button" tabindex="0" data-steam-open="shop" title="${esc(title)}" aria-label="${esc(title+' · '+time+' · '+st.count+'/'+st.max)}">${icon('tag')}${esc(time)}<span class="steam-count">${st.count}/${st.max}</span></span>`;
+    return `<span class="steam-divider" aria-hidden="true"></span><span class="draw-countdown steam-countdown${st.limit?' is-full':''}" role="button" tabindex="0" data-steam-open="shop" title="${esc(title)}" aria-label="${esc(title+' · '+time+' · '+st.count+'/'+st.max)}">${icon('tag')}${esc(time)}<span class="steam-count">${st.count}/${st.max}</span></span>`+
+      `<span class="draw-countdown steam-shards" role="button" tabindex="0" data-steam-open="shop" title="${esc(k('steam.shards'))}" aria-label="${esc(k('steam.shards')+' '+shards)}">${icon('shard')}${esc(num(shards))}</span>`;
   }
+  // 미니 모드 상단 한 줄
+  function miniText(){const st=S.getStatus();return ` · STEAM ${st.limit?k('steam.reset')+' '+fmt(st.resetInSec):fmt(st.remainingSec)} ${st.count}/${st.max}`;}
   function openSteamShop(){
     if(typeof window.switchMenu==='function')window.switchMenu('shop');
-    window.MRSteamUI?.showShopTab?.('steam'); // ③에서 연결
+    window.MRSteamUI?.showShopTab?.('steam');
   }
   document.addEventListener('click',e=>{if(e.target.closest?.('[data-steam-open="shop"]'))openSteamShop();});
   document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.closest?.('[data-steam-open="shop"]')){e.preventDefault();openSteamShop();}});
 
-  // ---------- ② 선물 연출 ----------
+  // ---------- 획득 연출: 로컬과 같은 MRFX 카드 연출 ----------
+  // source: 'gacha'(선물=카드 뒤집기) | 'craft' | 'selector'
+  function revealItem(it,inv){
+    const copies=inv.editions.filter(x=>x.category===it.category&&x.localId===it.localId).length;
+    let type='';try{type=COLLECTIBLE_LABELS[it.category]||'';}catch(e){}
+    let artHtml='';try{artHtml=getHtmlForCategoryAndId(it.category,it.localId);}catch(e){}
+    return {category:it.category,id:it.localId,tier:it.tier,type,name:type,artHtml,cover:false,isNew:copies<=1};
+  }
   let showing=false;
   function blocked(){
-    // 다른 창(확인창·시작 캐릭터 선택·뽑기 연출)이 열려 있으면 끝난 뒤 보여준다
     if(showing||dialogPause)return true;
     const starter=document.getElementById('mr-starter');
     if(starter&&starter.offsetParent!==null)return true;
-    return !!document.querySelector('.mr-dialog-shade,.mrfx-reveal,.mrfx-overlay');
+    return !!document.querySelector('.mr-dialog-shade,.mrfx-reveal:not(.mrfx-fly-card)');
+  }
+  function play(items,inv,opt){return new Promise(resolve=>{
+    const st=S.getStatus();
+    const opts={source:opt.source||'gacha',edition:'steam',cardBack:CARD_BACK,chip:'◇',
+      title:opt.title||`STEAM ${st.count}/${st.max}`,
+      subtitle:opt.subtitle??[k('steam.tradable'),st.limit?k('steam.reset')+' '+fmt(st.resetInSec):k('steam.next')+' '+fmt(st.remainingSec)].join('\n'),
+      consumed:opt.consumed,items:items.map(it=>revealItem(it,inv)),
+      lite:typeof gameSettings!=='undefined'&&!gameSettings.ssEffect,onClose:()=>resolve()};
+    if(window.MRFX?.reveal)window.MRFX.reveal(opts);else resolve();
+  });}
+  async function reveal(items,opt={}){
+    if(!items?.length)return;
+    while(showing)await new Promise(r=>setTimeout(r,200));
+    showing=true;try{await play(items,await S.getInventory(),opt);}finally{showing=false;}
   }
   async function flush(){
     if(blocked())return;
@@ -12452,60 +12479,17 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
     const inv=await S.getInventory();
     const items=ids.map(id=>inv.editions.find(x=>x.itemId===id)).filter(Boolean);
     if(!items.length)return;
-    showing=true;
-    try{await showGift(items,inv);}finally{showing=false;}
+    showing=true;try{for(const it of items)await play([it],inv,{source:'gacha'});}finally{showing=false;}
     flush();
   }
-  function showGift(items,inv,opt={}){return new Promise(resolve=>{
-    const it=items[0],st=S.getStatus();
-    const copies=inv.editions.filter(x=>x.category===it.category&&x.localId===it.localId).length;
-    const isNew=copies<=1;
-    const previousFocus=document.activeElement;
-    const wasPaused={dialog:dialogPause};
-    dialogPause=true;globalPause=true;if(window.gameRunner)window.gameRunner.enabled=false;
-    const siblings=[...document.body.children].filter(el=>el.tagName!=='SCRIPT');
-    const inert=siblings.map(el=>el.inert);siblings.forEach(el=>el.inert=true);
-    const shade=document.createElement('div');shade.className='steam-gift-shade';
-    shade.innerHTML=`<div class="steam-gift" role="dialog" aria-modal="true" aria-labelledby="steam-gift-title">
-      <span class="steam-pill">${icon('tag')}${esc(opt.pill||`STEAM ${st.count}/${st.max}`)}</span>
-      <h2 id="steam-gift-title">${esc(opt.title||k('steam.gift.title'))}</h2>
-      <div class="steam-gift-art"><img src="${esc(artPath(it))}" alt="${esc(it.name)}"><span class="steam-badge">STEAM</span><span class="steam-tier" data-tier="${esc(it.tier)}">${esc(it.tier)}</span></div>
-      <p class="steam-gift-name">${esc(it.name)}</p>
-      <div class="steam-gift-grid">
-        <div class="steam-gift-tile is-steam">${icon('trade')}<span>${esc(k('steam.tradable'))}</span></div>
-        <div class="steam-gift-tile is-local">${icon('codex')}<span>${esc(isNew?k('steam.codexNew'):k('steam.owned')+' ×'+copies)}</span></div>
-      </div>
-      ${items.length>1?`<span class="steam-gift-more">+${items.length-1}</span>`:''}
-      <div class="steam-gift-actions"><button type="button" class="ghost" data-act="codex">${esc(k('steam.codex'))}</button><button type="button" class="primary" data-act="ok">${esc(k('steam.confirm'))}</button></div>
-      <span class="steam-gift-next">${icon('clock')}${esc(st.limit?k('steam.reset')+' '+fmt(st.resetInSec):k('steam.next')+' '+fmt(st.remainingSec))}</span>
-    </div>`;
-    document.body.append(shade);
-    let done=false;
-    function close(act){
-      if(done)return;done=true;
-      shade.remove();siblings.forEach((el,i)=>el.inert=inert[i]);
-      dialogPause=wasPaused.dialog;globalPause=!!(manualPause||navigationPause||systemPause||dialogPause);
-      if(window.gameRunner)window.gameRunner.enabled=!globalPause;
-      previousFocus?.focus?.({preventScroll:true});
-      if(act==='codex'){window.switchMenu?.('collection');window.MRSteamUI?.showCodex?.(it);} // ④에서 연결
-      resolve(act);
-    }
-    shade.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(b)close(b.dataset.act);});
-    shade.addEventListener('keydown',e=>{
-      if(e.key==='Escape'){e.preventDefault();close('ok');}
-      if(e.key==='Tab'){const f=[...shade.querySelectorAll('button')],i=f.indexOf(document.activeElement);e.preventDefault();f[(i+(e.shiftKey?-1:1)+f.length)%f.length].focus();}
-    });
-    shade.querySelector('[data-act="ok"]').focus({preventScroll:true});
-    try{window.playSfx?.('newRecord');}catch(e){}
-  });}
-  async function reveal(items,opt){if(!items?.length)return;while(showing)await new Promise(r=>setTimeout(r,200));showing=true;try{await showGift(items,await S.getInventory(),opt);}finally{showing=false;}}
   S.on('grant',()=>setTimeout(flush,0));
   setInterval(flush,2000); // 놓친 선물(창 닫힘·다른 창 열림)도 다시 보여준다
 
-  window.MRSteamUI=Object.assign(window.MRSteamUI||{},{topTimerHtml,icon,fmt,artPath,flush,reveal,esc,k});
+  window.MRSteamUI=Object.assign(window.MRSteamUI||{},{topTimerHtml,miniText,icon,fmt,artPath,flush,reveal,esc,k,num,get shards(){return shards;}});
 })();
 </script>
 <style id="mr-steam-shop-style">
+/* 상점 로컬 | STEAM 탭. STEAM 탭은 로컬과 같은 패널·카드 구조를 쓰고, 파랑 포인트만 다르다. */
 #view-shop .shop-mode-tabs{position:sticky;top:0;z-index:5;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:10px 15px 12px;padding:4px;border-radius:12px;background:#131f2e;}
 #view-shop .shop-mode-tabs button{height:44px;border:1px solid transparent;border-radius:9px;background:transparent!important;box-shadow:none!important;color:#9fb1c4;font:inherit;font-size:15px;font-weight:700;cursor:pointer;}
 #view-shop .shop-mode-tabs button[data-mode="local"][aria-selected="true"]{background:#173a37!important;border-color:#2f6d64;color:var(--local);font-weight:900;}
@@ -12514,176 +12498,234 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
 #view-shop .shop-mode-tabs button:focus-visible{outline:2px solid #fff;outline-offset:2px;}
 #view-shop[data-shop-mode="steam"] > :not(.shop-mode-tabs):not(#steam-shop){display:none!important;}
 #view-shop:not([data-shop-mode="steam"]) > #steam-shop{display:none!important;}
-#steam-shop{margin:0 15px 24px;display:flex;flex-direction:column;gap:14px;color:#e6eef5;}
-#steam-shop .ss-top{display:flex;justify-content:flex-end;}
-#steam-shop .ss-chip{display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 10px;border-radius:10px;background:#12263d;border:1px solid var(--steam-line);font-size:15px;font-weight:900;color:var(--steam-text);}
-#steam-shop .ss-chip .ui-icon{width:16px;height:16px;color:var(--steam);}
-#steam-shop .ss-card{background:#15233a;border:1.5px solid var(--steam-line);border-radius:16px;padding:16px;display:flex;align-items:center;gap:16px;}
-#steam-shop .ss-ring{position:relative;width:104px;height:104px;flex-shrink:0;}
-#steam-shop .ss-ring svg{display:block;}
-#steam-shop .ss-ring-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;}
-#steam-shop .ss-ring-text b{font-size:20px;font-weight:900;}
-#steam-shop .ss-ring-text b.is-long{font-size:15px;}
-#steam-shop .ss-ring-text small{font-size:11.5px;color:#9fb1c4;}
-#steam-shop .ss-card h2{margin:0;font-size:18px;font-weight:900;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-#steam-shop .ss-lines{margin:8px 0 0;font-size:13px;color:#b9c7d6;line-height:1.55;}
-#steam-shop .ss-lines span{display:block;}
-#steam-shop .ss-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:#15233a;border-radius:12px;}
-#steam-shop .ss-row > span{font-size:13px;font-weight:700;color:#9fb1c4;}
-#steam-shop .ss-probs{display:flex;gap:14px;font-size:14px;font-weight:900;flex-wrap:wrap;justify-content:flex-end;}
-#steam-shop [data-tier="SR"]{color:#b69afa}#steam-shop [data-tier="SSR"]{color:#ffd772}#steam-shop [data-tier="UR"]{color:#ff9ad5}
-#steam-shop .ss-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
-#steam-shop .ss-head h3{margin:0;font-size:16px;font-weight:900;display:flex;align-items:center;gap:8px;}
-#steam-shop .ss-head h3 .ui-icon{width:18px;height:18px;color:var(--steam-text);}
-#steam-shop .ss-filter{display:flex;gap:4px;}
-#steam-shop .ss-filter button{height:30px;padding:0 10px;border-radius:999px;border:1px solid #2f4560;background:transparent;color:#9fb1c4;font:inherit;font-size:12px;font-weight:900;cursor:pointer;}
-#steam-shop .ss-filter button[aria-pressed="true"]{background:#e6eef5;color:#0f1824;border-color:#e6eef5;}
-#steam-shop .ss-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
-#steam-shop .ss-item{position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 6px 10px;background:#15233a;border:2px solid #2f4560;border-radius:14px;color:#e6eef5;font:inherit;cursor:pointer;min-width:0;}
-#steam-shop .ss-item img{width:72px;height:72px;object-fit:contain;}
-#steam-shop .ss-item .ss-tier{font-size:12px;font-weight:900;}
-#steam-shop .ss-item .ss-cost{display:flex;align-items:center;gap:4px;font-size:13px;font-weight:900;color:var(--steam-text);}
-#steam-shop .ss-item .ss-cost .ui-icon{width:13px;height:13px;}
-#steam-shop .ss-item .ss-qty{position:absolute;right:6px;top:6px;padding:1px 6px;border-radius:6px;background:var(--steam-deep);color:var(--steam-text);font-size:11px;font-weight:900;}
-#steam-shop .ss-item.is-short{opacity:.5;}
-#steam-shop .ss-item.is-short .ss-cost{color:#9fb1c4;}
-#steam-shop .ss-item[aria-pressed="true"]{border-color:var(--steam);background:#1a3352;}
-#steam-shop .ss-item[aria-pressed="true"]::after{content:'✓';position:absolute;left:6px;top:4px;color:var(--steam);font-weight:900;}
-#steam-shop .ss-item:focus-visible{outline:2px solid #fff;outline-offset:2px;}
-#steam-shop .ss-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
-#steam-shop .ss-btn{height:56px;display:flex;align-items:center;justify-content:center;gap:8px;background:#15233a;border:1px solid var(--steam-line);border-radius:14px;color:#e6eef5;font:inherit;font-size:15px;font-weight:900;cursor:pointer;}
-#steam-shop .ss-btn .ui-icon{width:22px;height:22px;color:var(--steam-text);}
-#steam-shop .ss-btn.primary{background:var(--steam);border-color:var(--steam);color:#0b1f33;}
-#steam-shop .ss-btn.primary .ui-icon{color:#0b1f33;}
-#steam-shop .ss-btn:disabled{opacity:.45;cursor:default;}
-#steam-shop .ss-btn small{font-size:12px;font-weight:700;opacity:.8;}
-#steam-shop .ss-empty{padding:18px;border-radius:12px;background:#15233a;text-align:center;font-size:13px;color:#9fb1c4;}
-#steam-shop .ss-note{margin:0;padding:12px 14px;border:1px dashed var(--steam-line);border-radius:12px;font-size:13px;color:#9fb1c4;line-height:1.6;}
-#steam-shop .ss-note span{display:block;}
-#steam-shop .ss-mock{font-size:11px;color:#6f8399;text-align:center;}
+/* STEAM 뽑기 카드 = 로컬 '오늘의 뽑기' 카드와 같은 틀 */
+#steam-shop .gacha-btn-container{display:block!important;}
+#steam-shop .steam-draw{position:relative;width:100%!important;max-width:none!important;cursor:default;border-color:var(--steam)!important;background:#12263d!important;}
+#steam-shop .steam-draw .title{color:#e6eef5;display:flex;align-items:center;justify-content:center;gap:6px;}
+#steam-shop .steam-draw .title .ui-icon{width:22px;height:22px;color:var(--steam);}
+#steam-shop .steam-draw .free-badge{background:var(--steam)!important;color:#0b1f33!important;}
+#steam-shop .steam-draw .cost .ui-icon{width:14px;height:14px;}
+#steam-shop .steam-draw .cost span{color:var(--steam-text)!important;display:inline-flex;align-items:center;gap:4px;font-variant-numeric:tabular-nums;}
+#steam-shop .steam-draw .steam-lines{font-size:12px;color:#b9c7d6;line-height:1.55;}
+#steam-shop .steam-draw .steam-lines span{display:block;}
+#steam-shop .steam-draw .steam-odds{font-size:10px;color:#9fb1c4;}
+/* 패널 제목·잔액 줄의 STEAM 포인트 */
+#steam-shop .panel{border-color:var(--steam-line)!important;}
+#steam-shop .panel-title .ui-icon{width:16px;height:16px;color:var(--steam);vertical-align:-3px;margin-right:4px;}
+#steam-shop .steam-shard-amount{color:var(--steam-text)!important;display:inline-flex;align-items:center;gap:4px;}
+#steam-shop .steam-shard-amount .ui-icon{width:14px;height:14px;}
+#steam-shop .economy-tab .ui-icon{width:11px;height:11px;vertical-align:-1px;}
+/* 로컬 합성소와 같은 크기 */
+#app #steam-craft-slots{grid-template-columns:repeat(5,minmax(0,1fr))!important;}
+#app #steam-craft-slots .craft-slot{min-height:62px;}
+#app #steam-craft-slots img{width:52px!important;height:54px!important;max-width:100%!important;object-fit:contain!important;}
+#app #view-shop #steam-inventory-grid{grid-template-columns:repeat(auto-fill,minmax(82px,1fr))!important;gap:8px!important;}
+#app #steam-inventory-grid .inv-item{min-height:96px!important;position:relative;}
+#app #steam-inventory-grid img{width:72px!important;height:72px!important;max-width:100%!important;object-fit:contain!important;}
+/* 수량 = 오른쪽 위 빨간 원 (로컬 합성 목록과 동일) */
+#steam-shop .economy-item .count{position:absolute;top:4px;right:4px;min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;border-radius:999px;background:#ff477e;color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;z-index:2;}
+#steam-shop .economy-item .small-count.is-owned{color:var(--steam-text);}
+#steam-shop .action-btn-sub .ui-icon,#steam-shop .action-btn-main .ui-icon{width:16px;height:16px;vertical-align:-3px;margin-right:3px;}
+#steam-shop .steam-note{margin:0 15px 28px;padding:12px 14px;border:1px dashed var(--steam-line);border-radius:12px;font-size:12px;color:#9fb1c4;line-height:1.6;}
+#steam-shop .steam-note span{display:block;}
+#steam-shop .ss-mock{font-size:11px;color:#6f8399;text-align:center;margin:-16px 0 24px;}
 </style>
 <script id="mr-steam-shop">
-/* ③ 상점 로컬/STEAM 탭: STEAM 뽑기 상태·확률·선택(조각→에디션)·합성·분해. */
+/* ③ 상점 STEAM 탭: 뽑기 상태 · 합성(10→1) · 분해 · 선택권. 로컬 상점과 같은 패널 구조. */
 (function(){
   'use strict';
   const S=window.MRSteam,U=window.MRSteamUI;if(!S||!U)return;
-  const {icon,esc,k,fmt,artPath}=U;
-  const C=S.CONFIG,ORDER=['UR','SSR','SR'];
+  const {icon,esc,k,fmt,num}=U;
+  const C=S.CONFIG,TIERS=['SR','SSR','UR'],CRAFT_TIERS=Object.keys(C.CRAFT_NEXT);
   const view=document.getElementById('view-shop');if(!view)return;
 
-  // 탭 + STEAM 패널을 상점 맨 위에 붙인다 (로컬 상점 HTML은 그대로)
   const tabs=document.createElement('div');tabs.className='shop-mode-tabs';tabs.setAttribute('role','tablist');
   tabs.innerHTML=`<button type="button" role="tab" data-mode="local" aria-selected="true" data-i18n="steam.tab.local">${esc(k('steam.tab.local'))}</button><button type="button" role="tab" data-mode="steam" aria-selected="false">STEAM</button>`;
   const panel=document.createElement('div');panel.id='steam-shop';panel.setAttribute('role','tabpanel');
   view.prepend(tabs,panel);
 
-  let mode='local',filter='ALL',pick=null,inv={editions:[],shards:0},busy=false;
-  // pick: null | {type:'craft'|'dismantle', ids:Set}
+  let mode='local',inv={editions:[],shards:0},busy=false,renderedLang='';
+  let craftTier='SR',disTier='SR',selTier='SR',slots=[]; // slots: STEAM itemId 목록 (합성 전까지 소모되지 않음)
+
   function setMode(m){
     mode=m==='steam'?'steam':'local';view.dataset.shopMode=mode;
     tabs.querySelectorAll('button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.mode===mode)));
-    if(mode==='steam')refresh();else pick=null;
+    if(mode==='steam')refresh();
   }
   tabs.addEventListener('click',e=>{const b=e.target.closest('button[data-mode]');if(b)setMode(b.dataset.mode);});
 
-  async function refresh(){inv=await S.getInventory();render();}
-  function ring(st){
-    const r=44,len=2*Math.PI*r,on=Math.round(len*st.progress);
-    return `<svg width="104" height="104" viewBox="0 0 104 104" aria-hidden="true"><circle cx="52" cy="52" r="${r}" fill="none" stroke="#0f1824" stroke-width="10"/><circle cx="52" cy="52" r="${r}" fill="none" stroke="var(--steam)" stroke-width="10" stroke-linecap="round" stroke-dasharray="${on} ${Math.ceil(len)}" transform="rotate(-90 52 52)"/></svg>`;
+  async function refresh(){
+    inv=await S.getInventory();
+    const live=new Set(inv.editions.map(x=>x.itemId));slots=slots.filter(id=>live.has(id));
+    render();
   }
+  // 같은 아이템(분류+번호)끼리 묶기. exclude: 합성 칸에 올린 itemId
+  function groups(tier,exclude=new Set()){
+    const m=new Map();
+    for(const x of inv.editions){
+      if(tier&&x.tier!==tier||exclude.has(x.itemId))continue;
+      const key=x.category+'::'+x.localId;
+      if(!m.has(key))m.set(key,{key,category:x.category,localId:x.localId,tier:x.tier,ids:[]});
+      m.get(key).ids.push(x.itemId);
+    }
+    return [...m.values()].sort((a,b)=>a.category.localeCompare(b.category)||a.localId-b.localId);
+  }
+  const art=(cat,id)=>{try{return getHtmlForCategoryAndId(cat,id);}catch(e){return '';}};
+  const tierLabel=t=>`<div class="tier-label tier-${t}">${t}</div>`;
+  const shardAmt=n=>`<span class="steam-shard-amount">${icon('shard')}${esc(num(n))}</span>`;
+
   function drawCard(){
     const st=S.getStatus();
-    const center=st.limit?`<b class="${st.resetInSec>=3600?'is-long':''}">${esc(fmt(st.resetInSec))}</b><small>${esc(k('steam.reset'))}</small>`:`<b>${esc(fmt(st.remainingSec))}</b><small>/ ${esc(fmt(st.intervalSec))}</small>`;
-    return `<section class="ss-card" aria-label="${esc(k('steam.draw'))}"><div class="ss-ring">${ring(st)}<div class="ss-ring-text">${center}</div></div>
-      <div style="min-width:0"><h2>${esc(k('steam.draw'))}<span class="steam-count">${st.count}/${st.max}</span></h2>
-      <p class="ss-lines"><span>${esc(k('steam.line.auto',{min:C.DROP_INTERVAL_MIN}))}</span><span>${esc(k('steam.line.daily',{max:st.max}))}</span><span>${esc(k('steam.line.market'))}</span></p></div></section>`;
+    const time=st.limit?`${k('steam.reset')} ${fmt(st.resetInSec)}`:fmt(st.remainingSec);
+    const odds=TIERS.filter(t=>C.DROP_WEIGHTS[t]).map(t=>`${t} ${C.DROP_WEIGHTS[t]}%`).join(' · ');
+    return `<div class="gacha-btn-container"><div class="btn-gacha steam-draw" role="group" aria-label="${esc(k('steam.draw'))}">
+      <div class="free-badge">STEAM</div>
+      <div class="title">${icon('tag')}${esc(k('steam.draw'))}</div>
+      <div class="cost-row"><div class="cost"><span>${icon('clock')}${esc(time)}</span></div><div class="cost"><span>${st.count}/${st.max}</span></div></div>
+      <div class="steam-lines"><span>${esc(k('steam.line.auto',{min:C.DROP_INTERVAL_MIN}))}</span><span>${esc(k('steam.line.daily',{max:st.max}))}</span><span>${esc(k('steam.line.market'))}</span></div>
+      <div class="steam-odds">${esc(odds)}</div>
+    </div></div>`;
   }
-  const probs=()=>`<div class="ss-row"><span>${esc(k('steam.prob'))}</span><div class="ss-probs">${ORDER.slice().reverse().filter(t=>C.DROP_WEIGHTS[t]).map(t=>`<span data-tier="${t}">${t} ${C.DROP_WEIGHTS[t]}%</span>`).join('')}</div></div>`;
-  const filterBar=()=>`<div class="ss-filter">${['ALL',...ORDER].map(t=>`<button type="button" data-filter="${t}" aria-pressed="${filter===t}">${t==='ALL'?esc(k('steam.all')):t}</button>`).join('')}</div>`;
-  const byTier=(a,b)=>ORDER.indexOf(a.tier)-ORDER.indexOf(b.tier)||a.category.localeCompare(b.category)||a.localId-b.localId;
-
-  function selectGrid(){
-    const defs=S.editions().filter(d=>filter==='ALL'||d.tier===filter).sort(byTier);
-    return `<section style="display:flex;flex-direction:column;gap:10px"><div class="ss-head"><h3>${icon('check')}${esc(k('steam.select'))}</h3>${filterBar()}</div>
-      <div class="ss-grid">${defs.map(d=>{const cost=C.SELECT_COST[d.tier],short=inv.shards<cost;
-        const own=inv.editions.filter(x=>x.category===d.category&&x.localId===d.localId).length;
-        return `<button type="button" class="ss-item${short?' is-short':''}" data-select="${d.defId}" aria-label="${esc(d.name+' '+d.tier+' · '+cost)}">${own?`<span class="ss-qty">×${own}</span>`:''}<img src="${esc(artPath(d))}" alt="" loading="lazy"><span class="ss-tier" data-tier="${d.tier}">${d.tier}</span><span class="ss-cost">${icon('shard')}${cost}</span></button>`;}).join('')}</div></section>`;
+  function craftPanels(){
+    const slotted=new Set(slots),byId=new Map(inv.editions.map(x=>[x.itemId,x]));
+    const slotHtml=Array.from({length:C.CRAFT_COUNT},(_,i)=>{const x=byId.get(slots[i]);
+      return x?`<div class="craft-slot filled" data-slot="${i}" role="button" tabindex="0" title="${esc(x.tier)}">${art(x.category,x.localId)}</div>`:`<div class="craft-slot"></div>`;}).join('');
+    const totals=Object.fromEntries(CRAFT_TIERS.map(t=>[t,inv.editions.filter(x=>x.tier===t&&!slotted.has(x.itemId)).length]));
+    const list=groups(craftTier,slotted);
+    const next=C.CRAFT_NEXT[craftTier];
+    return `<div class="panel" style="margin:0 15px 20px 15px;">
+      <div class="panel-title" style="font-size:15px;"><span>${icon('wand')}${esc(k('steam.craft'))} ${C.CRAFT_COUNT} → 1</span><span style="font-size:11px;color:#8d9fb2;font-weight:normal;">${esc(craftTier)} ×${C.CRAFT_COUNT} → ${esc(next)}</span></div>
+      <div class="craft-slots-container" id="steam-craft-slots">${slotHtml}</div>
+      <div style="display:flex;gap:10px;">
+        <button type="button" class="action-btn-sub" data-act="autofill">${icon('zap')}${esc(k('steam.autofill'))}</button>
+        <button type="button" class="action-btn-sub" data-act="clear">${icon('trash')}${esc(k('steam.clear'))}</button>
+        <button type="button" class="action-btn-main" data-act="craft" style="margin-bottom:0;flex:1.5;">${esc(k('steam.craft'))}</button>
+      </div></div>
+      <div class="panel" style="margin:0 15px 18px 15px;">
+      <div class="panel-title">${esc(k('steam.select'))}</div>
+      <div class="craft-filter-row">${CRAFT_TIERS.map(t=>`<button type="button" class="craft-filter-btn${craftTier===t?' active':''}" data-craft-tier="${t}">${t} ${totals[t]}</button>`).join('')}</div>
+      <div class="inventory-grid compact-collection-grid" id="steam-inventory-grid">${list.length?list.map(g=>`<div class="inv-item tier-box-${g.tier}" data-shop-category="${g.category}" data-craft-add="${esc(g.key)}" role="button" tabindex="0">${tierLabel(g.tier)}${art(g.category,g.localId)}<div class="count">${g.ids.length}</div></div>`).join(''):`<div class="empty-state" style="grid-column:1/-1;">${esc(k('steam.emptyTier'))}</div>`}</div>
+      </div>`;
   }
-  function pickGrid(){
-    const craft=pick.type==='craft';
-    const list=inv.editions.filter(x=>craft?x.tier===C.CRAFT.from:true).sort(byTier);
-    const n=pick.ids.size,gain=[...pick.ids].reduce((a,id)=>a+(C.DISMANTLE_SHARDS[inv.editions.find(x=>x.itemId===id)?.tier]||0),0);
-    const title=craft?k('steam.pick.craft',{from:C.CRAFT.from,count:C.CRAFT.count})+` (${n}/${C.CRAFT.count})`:k('steam.pick.dismantle')+` (${n})`;
-    const ok=craft?n===C.CRAFT.count:n>0;
-    return `<section style="display:flex;flex-direction:column;gap:10px"><div class="ss-head"><h3>${icon(craft?'up':'shard')}${esc(title)}</h3></div>
-      ${list.length?`<div class="ss-grid">${list.map(x=>`<button type="button" class="ss-item" data-pick="${esc(x.itemId)}" aria-pressed="${pick.ids.has(x.itemId)}"><img src="${esc(artPath(x))}" alt="${esc(x.name)}" loading="lazy"><span class="ss-tier" data-tier="${x.tier}">${x.tier}</span>${craft?'':`<span class="ss-cost">${icon('shard')}+${C.DISMANTLE_SHARDS[x.tier]}</span>`}</button>`).join('')}</div>`:`<div class="ss-empty">${esc(k('steam.empty'))}</div>`}
-      <div class="ss-actions"><button type="button" class="ss-btn" data-act="cancel">${esc(k('steam.cancel'))}</button>
-      <button type="button" class="ss-btn primary" data-act="${craft?'do-craft':'do-dismantle'}" ${ok&&!busy?'':'disabled'}>${icon(craft?'up':'shard')}${esc(craft?k('steam.craft'):k('steam.dismantle'))}${craft?'':` <small>+${gain}</small>`}</button></div></section>`;
+  function dismantlePanel(){
+    const slotted=new Set(slots),list=groups(disTier,slotted);
+    return `<div class="panel" style="margin:0 15px 18px 15px;">
+      <div class="panel-title"><span>${icon('shard')}${esc(k('steam.dismantle'))}</span><span style="font-size:10px;color:#8d9fb2;font-weight:normal;">${esc(k('steam.dismantle'))} → ${esc(k('steam.shards'))}</span></div>
+      <div class="economy-balance"><span>${esc(k('steam.shards'))}</span><strong>${shardAmt(inv.shards)}</strong></div>
+      <div class="economy-tabs">${TIERS.map(t=>`<button type="button" class="economy-tab${disTier===t?' active':''}" data-dis-tier="${t}">${t} · ${icon('shard')}${esc(num(C.DISMANTLE_SHARDS[t]))}</button>`).join('')}</div>
+      <div class="economy-grid">${list.length?list.map(g=>`<div class="economy-item" data-shop-category="${g.category}" data-dis="${esc(g.key)}" role="button" tabindex="0">${tierLabel(g.tier)}${art(g.category,g.localId)}<div class="count">${g.ids.length}</div><div class="small-count is-owned">+${esc(num(C.DISMANTLE_SHARDS[g.tier]))}</div></div>`).join(''):`<div class="empty-state" style="grid-column:1/-1;">${esc(k('steam.emptyTier'))}</div>`}</div>
+      <div class="shop-help-note">${esc(k('steam.help.dismantle'))}</div>
+      </div>`;
   }
-  let renderedLang='';
+  function selectorPanel(){
+    const cost=C.SELECT_COST[selTier];
+    const defs=S.editions().filter(d=>d.tier===selTier).sort((a,b)=>a.category.localeCompare(b.category)||a.localId-b.localId);
+    return `<div class="panel" style="margin:0 15px 24px 15px;">
+      <div class="panel-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;"><span>${icon('check')}${esc(k('steam.selector'))}</span><span style="font-size:10px;color:#8d9fb2;font-weight:normal;text-align:right;">${esc(k('steam.shards'))} → ${esc(k('steam.item'))}</span></div>
+      <div class="selector-wallet"><span class="selector-wallet-label">${esc(k('steam.shards'))}</span><strong>${shardAmt(inv.shards)}</strong></div>
+      <div class="economy-tabs">${TIERS.map(t=>`<button type="button" class="economy-tab${selTier===t?' active':''}" data-sel-tier="${t}">${t}</button>`).join('')}</div>
+      <div class="economy-balance"><span>${esc(selTier)} · ${esc(k('steam.shards'))} → ${esc(k('steam.item'))}</span><strong>${shardAmt(cost)}</strong></div>
+      <div class="economy-grid">${defs.map(d=>{const own=inv.editions.filter(x=>x.category===d.category&&x.localId===d.localId).length;
+        return `<div class="economy-item" data-shop-category="${d.category}" data-sel="${d.defId}" role="button" tabindex="0">${tierLabel(d.tier)}${art(d.category,d.localId)}${own?`<div class="count">${own}</div>`:''}<div class="small-count${own?' is-owned':''}">${esc(own?k('steam.owned'):k('steam.notOwned'))}</div></div>`;}).join('')}</div>
+      <div class="shop-help-note">${esc(k('steam.help.selector'))}</div>
+      </div>`;
+  }
   function render(){
     if(mode!=='steam')return;
     renderedLang=window.MRLocale?.language||'';
-    const keep=document.activeElement&&panel.contains(document.activeElement)?(document.activeElement.dataset.select||document.activeElement.dataset.pick||document.activeElement.dataset.act||document.activeElement.dataset.filter):null;
-    panel.innerHTML=`<div class="ss-top"><span class="ss-chip" aria-label="${esc(k('steam.shards'))} ${inv.shards}">${icon('shard')}${inv.shards}</span></div>
-      ${drawCard()}${probs()}
-      ${pick?pickGrid():selectGrid()+`<section class="ss-actions"><button type="button" class="ss-btn" data-act="craft">${icon('up')}${esc(k('steam.craft'))}</button><button type="button" class="ss-btn" data-act="dismantle">${icon('shard')}${esc(k('steam.dismantle'))}</button></section>`}
-      <p class="ss-note"><span>${esc(k('steam.note1'))}</span><span>${esc(k('steam.note2'))}</span></p>
-      ${S.CONFIG.MOCK?`<div class="ss-mock">TEST · STEAM mock</div>`:''}`;
-    if(keep){const el=panel.querySelector(`[data-select="${keep}"],[data-pick="${keep}"],[data-act="${keep}"],[data-filter="${keep}"]`);el?.focus({preventScroll:true});}
+    const focus=document.activeElement&&panel.contains(document.activeElement)?[...document.activeElement.attributes].find(a=>/^data-(craft-add|dis|sel|slot|act|craft-tier|dis-tier|sel-tier)$/.test(a.name)):null;
+    panel.innerHTML=drawCard()+craftPanels()+dismantlePanel()+selectorPanel()+
+      `<p class="steam-note"><span>${esc(k('steam.note1'))}</span><span>${esc(k('steam.note2'))}</span></p>`+
+      (C.MOCK?`<div class="ss-mock">TEST · STEAM mock</div>`:'');
+    if(focus)panel.querySelector(`[${focus.name}="${CSS.escape(focus.value)}"]`)?.focus({preventScroll:true});
   }
-  // 1초마다 타이머 부분만 갱신 (그리드는 그대로 → 스크롤·포커스 유지)
-  function tickCard(){
-    if(mode!=='steam'||!view.classList.contains('active')&&view.offsetParent===null)return;
+  // 1초마다 뽑기 카드만 갱신 (아래 패널은 그대로 → 스크롤·포커스·호버 유지)
+  setInterval(()=>{
+    if(mode!=='steam'||view.offsetParent===null)return;
     if((window.MRLocale?.language||'')!==renderedLang){render();return;}
-    const card=panel.querySelector('.ss-card');if(card)card.outerHTML=drawCard();
-  }
-  setInterval(tickCard,1000);
-  S.on('grant',()=>{if(mode==='steam')setTimeout(refresh,300);});
+    const card=panel.querySelector('.gacha-btn-container');if(card)card.outerHTML=drawCard();
+  },1000);
+  S.on('inventory',()=>{if(mode==='steam')refresh();});
 
+  const float=(t,color='#ff7675')=>{try{showFloatingText(t,210,300,color);}catch(e){}};
   const confirmBox=t=>typeof window.gameConfirm==='function'?window.gameConfirm(t):Promise.resolve(window.confirm(t));
   const alertBox=t=>typeof window.gameAlert==='function'?window.gameAlert(t):Promise.resolve(window.alert(t));
   async function run(fn){if(busy)return;busy=true;try{return await fn();}catch(e){console.warn('[MRSteam shop]',e);}finally{busy=false;await refresh();}}
+  // 마지막 STEAM 사본이 빠지면 도감·강화가 내려간다 → 확인창에 미리 보여준다
+  function powerWarn(ids){
+    try{
+      const left=new Map();for(const x of inv.editions){const key=x.category+'::'+x.localId;left.set(key,(left.get(key)||0)+1);}
+      const over={};for(const id of ids){const x=inv.editions.find(e=>e.itemId===id);if(!x)continue;const key=x.category+'::'+x.localId;left.set(key,left.get(key)-1);over['steam_'+key]=left.get(key);}
+      const lost=Object.values(over).filter(v=>v===0).length;if(!lost)return '';
+      const a=calculateCollectionPower().multiplier,b=calculateCollectionPower(over).multiplier;
+      return '\n'+k('steam.warn.drop',{n:lost,a:a.toFixed(2),b:b.toFixed(2)});
+    }catch(e){return '';}
+  }
 
-  panel.addEventListener('click',async e=>{
-    const f=e.target.closest('[data-filter]');if(f){filter=f.dataset.filter;render();return;}
-    const sel=e.target.closest('[data-select]');
-    if(sel)return run(async()=>{
-      const d=S.findEdition(Number(sel.dataset.select)),cost=C.SELECT_COST[d.tier];
-      if(inv.shards<cost){await alertBox(k('steam.shortage',{need:cost,have:inv.shards}));return;}
-      if(!await confirmBox(k('steam.confirm.select',{tier:d.tier,cost})))return;
-      const r=await S.select(d.defId);
-      if(r.ok)await U.reveal(r.granted,{pill:'STEAM · '+k('steam.select'),title:k('steam.got')});
+  function addToCraft(key){
+    const slotted=new Set(slots),g=groups(null,slotted).find(x=>x.key===key);if(!g)return;
+    if(slots.length>=C.CRAFT_COUNT){float('칸이 꽉 찼습니다!');return;}
+    const first=inv.editions.find(x=>x.itemId===slots[0]);
+    if(first&&first.tier!==g.tier){float('같은 등급만 올릴 수 있습니다!');return;}
+    slots.push(g.ids[0]);render();
+  }
+  function autofill(){
+    const slotted=new Set(slots),first=inv.editions.find(x=>x.itemId===slots[0]);
+    let tier=first?.tier;
+    if(!tier)tier=CRAFT_TIERS.find(t=>inv.editions.filter(x=>x.tier===t).length>=C.CRAFT_COUNT);
+    if(!tier){float('여유 있는 등급(10개 이상)이 없습니다.');return;}
+    craftTier=tier;
+    // 여러 개 가진 것부터 채운다 (마지막 1개는 최대한 남김)
+    const gs=groups(tier,slotted).sort((a,b)=>b.ids.length-a.ids.length);
+    for(let pass=0;pass<2&&slots.length<C.CRAFT_COUNT;pass++)
+      for(const g of gs){while(slots.length<C.CRAFT_COUNT&&g.ids.length>(pass===0?1:0))slots.push(g.ids.shift());}
+    render();
+  }
+  async function doCraft(){
+    if(slots.length<C.CRAFT_COUNT){float('합성 칸을 10개 채워주세요!');return;}
+    const tier=inv.editions.find(x=>x.itemId===slots[0])?.tier,to=C.CRAFT_NEXT[tier];
+    await run(async()=>{
+      if(!await confirmBox(k('steam.confirm.craft',{from:tier,count:C.CRAFT_COUNT,to})+powerWarn(slots)))return;
+      const used=slots.slice(),r=await S.craft(used);
+      if(r.ok){slots=[];await U.reveal(r.granted,{source:'craft',consumed:used.map(()=>tier),title:'STEAM · '+k('steam.craft'),subtitle:k('steam.tradable')});}
       else await alertBox(k('steam.fail'));
     });
-    const pk=e.target.closest('[data-pick]');
-    if(pk&&pick){const id=pk.dataset.pick;
-      if(pick.ids.has(id))pick.ids.delete(id);else if(pick.type!=='craft'||pick.ids.size<C.CRAFT.count)pick.ids.add(id);
-      render();return;}
-    const act=e.target.closest('[data-act]')?.dataset.act;if(!act)return;
-    if(act==='craft'||act==='dismantle'){pick={type:act,ids:new Set()};render();panel.scrollIntoView({block:'start'});return;}
-    if(act==='cancel'){pick=null;render();return;}
-    if(act==='do-craft')return run(async()=>{
-      if(!await confirmBox(k('steam.confirm.craft',{from:C.CRAFT.from,count:C.CRAFT.count,to:C.CRAFT.to})))return;
-      const r=await S.craft([...pick.ids]);pick=null;
-      if(r.ok)await U.reveal(r.granted,{pill:'STEAM · '+k('steam.craft'),title:k('steam.got')});else await alertBox(k('steam.fail'));
+  }
+  async function dismantle(key){
+    const slotted=new Set(slots),g=groups(null,slotted).find(x=>x.key===key);if(!g)return;
+    const id=g.ids[0],gain=C.DISMANTLE_SHARDS[g.tier];
+    await run(async()=>{
+      if(!await confirmBox(k('steam.confirm.dismantle',{count:1,shards:num(gain)})+powerWarn([id])))return;
+      const r=await S.dismantle(id);
+      if(r.ok){try{window.playSfx?.('dismantle');}catch(e){}float(`+${num(r.shards)} ${k('steam.shards')}`,'#8cc8ff');}
+      else await alertBox(k('steam.fail'));
     });
-    if(act==='do-dismantle')return run(async()=>{
-      const ids=[...pick.ids],gain=ids.reduce((a,id)=>a+(C.DISMANTLE_SHARDS[inv.editions.find(x=>x.itemId===id)?.tier]||0),0);
-      // 마지막 STEAM 사본이 빠지면 도감·강화가 내려간다 → 확인창에 미리 보여준다
-      let warn='';
-      try{
-        const left=new Map();for(const x of inv.editions){const key=x.category+'::'+x.localId;left.set(key,(left.get(key)||0)+1);}
-        const over={};for(const id of ids){const x=inv.editions.find(e=>e.itemId===id);const key=x.category+'::'+x.localId;left.set(key,left.get(key)-1);over['steam_'+key]=left.get(key);}
-        const lost=Object.values(over).filter(v=>v===0).length;
-        if(lost){const a=calculateCollectionPower().multiplier,b=calculateCollectionPower(over).multiplier;warn='\n'+k('steam.warn.drop',{n:lost,a:a.toFixed(2),b:b.toFixed(2)});}
-      }catch(e){}
-      if(!await confirmBox(k('steam.confirm.dismantle',{count:ids.length,shards:gain})+warn))return;
-      let got=0;for(const id of ids){const r=await S.dismantle(id);if(r.ok)got+=r.shards;}
-      pick=null;try{window.playSfx?.('dismantle');}catch(e){}
-      if(got!==gain)await alertBox(k('steam.fail'));
+  }
+  async function select(defId){
+    const d=S.findEdition(Number(defId)),cost=C.SELECT_COST[d.tier];
+    if(inv.shards<cost){await alertBox(k('steam.shortage',{need:num(cost),have:num(inv.shards)}));return;}
+    await run(async()=>{
+      if(!await confirmBox(k('steam.confirm.select',{tier:d.tier,cost:num(cost)})))return;
+      const r=await S.select(d.defId);
+      if(r.ok)await U.reveal(r.granted,{source:'selector',title:'STEAM · '+k('steam.selector'),subtitle:k('steam.tradable')});
+      else await alertBox(k('steam.fail'));
     });
-  });
+  }
+
+  function onActivate(e){
+    const t=e.target.closest('[data-craft-tier],[data-dis-tier],[data-sel-tier],[data-craft-add],[data-slot],[data-dis],[data-sel],[data-act]');if(!t||busy)return;
+    const d=t.dataset;
+    if(d.craftTier){craftTier=d.craftTier;render();return;}
+    if(d.disTier){disTier=d.disTier;render();return;}
+    if(d.selTier){selTier=d.selTier;render();return;}
+    if(d.craftAdd){addToCraft(d.craftAdd);return;}
+    if(d.slot!=null){slots.splice(Number(d.slot),1);render();return;}
+    if(d.dis){dismantle(d.dis);return;}
+    if(d.sel){select(d.sel);return;}
+    if(d.act==='autofill')autofill();else if(d.act==='clear'){slots=[];render();}else if(d.act==='craft')doCraft();
+  }
+  panel.addEventListener('click',onActivate);
+  panel.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[role="button"]')){e.preventDefault();onActivate(e);}});
 
   window.MRSteamUI.showShopTab=m=>setMode(m);
 })();
@@ -12691,7 +12733,8 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
 <style id="mr-steam-codex-style">
 #app .codex-source-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:6px 0 8px;}
 #app .codex-source-btn{min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border-radius:12px;border:1px solid #2f4560;background:#15233a!important;color:#9fb1c4;font:inherit;cursor:pointer;box-shadow:none!important;}
-#app .codex-source-btn span{font-size:12px;font-weight:700;}
+#app .codex-source-btn span{font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;min-height:16px;}
+#app .codex-source-btn span .menu-line-icon{width:16px;height:16px;}
 #app .codex-source-btn b{font-size:17px;font-weight:900;color:#e6eef5;}
 #app .codex-source-btn.src-local b{color:var(--local);}
 #app .codex-source-btn.src-steam{border-color:var(--steam-line);}
