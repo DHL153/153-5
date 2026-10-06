@@ -3288,7 +3288,7 @@ html body #game-startup-screen.is-leaving{opacity:0!important;transition:opacity
 <div class="free-badge" id="daily-free-badge">FREE</div>
 <div class="title">🎁 오늘의 무료 뽑기</div>
 <div class="cost-row"><div class="cost"><span id="daily-free-status" style="color:#6fe0c1;">오늘 1회 무료</span></div></div>
-<div style="font-size:10px;color:#9fb1c4;">N 75% · R 15% · SR 8% · SSR 1.999% · UR 0.001%</div>
+<div style="font-size:10px;color:#9fb1c4;">N 73% · R 15% · SR 8% · SSR 2% · UR 2%</div>
 </button>
 <button class="btn-gacha" id="btn-premium-gacha" onclick="pullPremiumGacha()" style="border-color:#a29bfe; box-shadow:0 6px 0 #6c5ce7;">
 <div class="title" style="color:#b3a4ff;">✨ 프리미엄 뽑기</div>
@@ -3296,7 +3296,7 @@ html body #game-startup-screen.is-leaving{opacity:0!important;transition:opacity
 <div class="cost-row">
 <div class="cost"><span style="color:#f3a35c;">🪙 3K</span></div>
 <div class="cost"><span style="color:#c9b8f2;">🔄 300</span></div>
-<div class="cost"><span style="color:#d29bf0;">R 84% · SR 14% · SSR 1.99% · UR 0.01%</span></div>
+<div class="cost"><span style="color:#d29bf0;">R 82% · SR 14% · SSR 2% · UR 2%</span></div>
 <div class="cost"><span id="premium-gacha-timer-display" style="color:#27ae60;">⏳ 20:00</span></div>
 </div>
 </button>
@@ -3944,7 +3944,7 @@ window.MRBattleFX=(()=>{
     let collectionPowerMultiplier = 1;
     let fragments = 0;
     const FRAGMENT_VALUES = {N:1, R:8, SR:64, SSR:512, UR:4096};
-    const SELECTOR_COSTS = {N:10, R:80, SR:600, SSR:4000, UR:30000};
+    const SELECTOR_COSTS = {N:10, R:80, SR:600, SSR:4000, UR:10000}; // UR 선택 = 1만 조각 (스팀과 동일, 2026-10-07)
     const ECONOMY_STORAGE_KEY = 'mergeRoll.economy.v1';
     const BALANCE_MIGRATION_KEY = 'mergeRoll.balanceMigration.v6_0_20260909';
 
@@ -5668,10 +5668,12 @@ window.MRBattleFX=(()=>{
     const TIER_ORDER = ['N', 'R', 'SR', 'SSR', 'UR'];
     const LEGACY_TIER_MAP = { C:'N', B:'R', A:'SR', S:'SSR', SS:'UR', N:'N', R:'R', SR:'SR', SSR:'SSR', UR:'UR' };
     function normalizeTier(tier) { return LEGACY_TIER_MAP[String(tier || '').toUpperCase()] || null; }
-    // 무료 뽑기: 기존 확률 그대로 (UR까지 가능)
-    const GACHA_WEIGHTS = { N:75, R:15, SR:8, SSR:1.999, UR:0.001 };
+    // 2026-10-07 확률 개편: 스팀 장터 분리에 맞춰 로컬을 관대하게 (UR 1개 ≈ 스팀의 60~70% 기간, 헤비 유저 기준)
+    // 오늘의(무료) 뽑기: UR 0.001% → 2%
+    const GACHA_WEIGHTS = { N:73, R:15, SR:8, SSR:2, UR:2 };
     const EMOJI_GACHA_WEIGHTS = { N:95, R:5 };
-    const PREMIUM_GACHA_WEIGHTS = { R:84, SR:14, SSR:1.99, UR:0.01 };
+    // 프리미엄 뽑기: UR 0.01% → 2%
+    const PREMIUM_GACHA_WEIGHTS = { R:82, SR:14, SSR:2, UR:2 };
     function rollWeightedTier(weights, order=TIER_ORDER) {
         const total = Object.values(weights).reduce((a,b)=>a+b,0);
         let r = Math.random() * total;
@@ -11370,7 +11372,7 @@ html body #app.mini-mode .mini-score-stat{grid-area:score!important;}
 html body #app.mini-mode .mini-fragment-stat{grid-area:fragments!important;}
 html body #app.mini-mode .mini-merge-stat{grid-area:merge!important;}
 html body #app.mini-mode .mini-gold-stat{grid-area:gold!important;}
-/* STEAM 칸: 남은 시간만 (n/6·리셋은 마우스 올리면), 선물이 오면 '🎁 STEAM'으로 반짝 */
+/* STEAM 칸: 남은 시간만 (n/4·리셋은 마우스 올리면), 선물이 오면 '🎁 STEAM'으로 반짝 */
 #mini-steam{display:none;}
 html body #app.mini-mode #mini-steam{grid-area:steam!important;display:inline-flex!important;align-items:center;gap:4px;padding:0 8px;border-radius:8px;color:var(--steam-text)!important;font-variant-numeric:tabular-nums;white-space:nowrap;cursor:default;}
 html body #app.mini-mode #mini-steam .ui-icon{width:14px;height:14px;color:var(--steam);}
@@ -12230,7 +12232,7 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
  *
  * 원칙
  *  - 로컬 경제(머지·골드·로컬 조각·지금 뽑기)는 읽거나 쓰지 않는다. 완전 분리.
- *  - STEAM 쪽은 오직 "플레이 시간"으로만 얻는다. (30분마다, 하루 최대 6번)
+ *  - STEAM 쪽은 오직 "플레이 시간"으로만 얻는다. (30분마다, 하루 최대 4번)
  *  - 대상: 캐릭터, 전투 캐릭터만. 결과물 = 같은 아이템의 "STEAM 에디션"(거래 가능)
  *  - STEAM 순환: STEAM 에디션 → 분해 → STEAM 조각(거래 불가) → 원하는 에디션 선택 / 같은 등급 10개 합성 → 윗등급 랜덤
  *  - 백엔드만 갈아끼우면 된다.
@@ -12239,7 +12241,7 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
  *  - 숫자(간격·확률·분해량·비용)는 전부 아래 CONFIG 한 곳에만. 지금 값은 모두 임시값.
  *
  * 콘솔 테스트
- *  MRSteam.getStatus()                 → 다음 지급까지 남은 시간, n/6
+ *  MRSteam.getStatus()                 → 다음 지급까지 남은 시간, n/4
  *  MRSteam.dev.addPlaytime(30)         → 플레이 시간 30분 추가 → '받기' 상태
  *  await MRSteam.claim()               → 받기 (화면의 받기 버튼과 같음)
  *  await MRSteam.getInventory()        → STEAM 에디션·STEAM 조각 목록
@@ -12258,11 +12260,11 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
     DEV_TOOLS:true,                  // 콘솔 테스트 도구. 출시 전 false
     DROP_INTERVAL_MIN:30,            // itemdef drop_interval
     DROP_WINDOW_MIN:1200,            // itemdef drop_window (20시간)
-    DROP_MAX_PER_WINDOW:6,           // itemdef drop_max_per_window
+    DROP_MAX_PER_WINDOW:4,           // itemdef drop_max_per_window (2026-10-07: 6 → 4)
     RETRY_SEC:60,                    // 시간이 됐는데 스팀이 빈 결과를 주면 재시도 간격
     CATEGORIES:['char','battle_char'],
     TIERS:['SR','SSR','UR'],         // STEAM 에디션이 존재하는 등급 (N·R은 로컬 전용) [가정]
-    DROP_WEIGHTS:{SR:80,SSR:18,UR:2},// 공개 확률 (%)
+    DROP_WEIGHTS:{SR:81,SSR:18,UR:1},// 공개 확률 (%) (2026-10-07: UR 2 → 1)
     // 수량 규칙 (2026-10-06 확정): 100 단위, UR 선택 = 1만
     //  선택 = 합성 재료 가치의 2배 (SSR 2,000 > SR 10개 분해 1,000) · 분해 = 선택가의 1/4
     DISMANTLE_SHARDS:{SR:100,SSR:500,UR:2500},   // 분해 1개 → STEAM 조각 수
@@ -12797,7 +12799,7 @@ html body #app #view-shop .gacha-btn-container > #btn-daily-free:disabled{backgr
       </div></div>
       <div class="panel" style="margin:0 15px 18px 15px;">
       <div class="panel-title"><span>${icon('layers')}${esc(k('shop.craftMaterials'))}</span></div>
-      <div class="craft-filter-row">${['N','R',...CRAFT_TIERS].map(t=>CRAFT_TIERS.includes(t)?`<button type="button" class="craft-filter-btn${craftTier===t?' active':''}" data-craft-tier="${t}">${t} ${totals[t]}</button>`:`<button type="button" class="craft-filter-btn" disabled aria-disabled="true" title="STEAM: SR+">${t} 0</button>`).join('')}</div>
+      <div class="craft-filter-row">${CRAFT_TIERS.map(t=>`<button type="button" class="craft-filter-btn${craftTier===t?' active':''}" data-craft-tier="${t}">${t} ${totals[t]}</button>`).join('')}</div>
       <div class="inventory-grid compact-collection-grid" id="steam-inventory-grid">${list.length?list.map(g=>`<div class="inv-item tier-box-${g.tier}" data-shop-category="${g.category}" data-craft-add="${esc(g.key)}" role="button" tabindex="0">${tierLabel(g.tier)}${art(g.category,g.localId)}<div class="count">${g.ids.length}</div></div>`).join(''):`<div class="empty-state" style="grid-column:1/-1;">${esc(k('steam.emptyTier'))}</div>`}</div>
       </div>`;
   }
