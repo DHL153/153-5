@@ -5462,7 +5462,7 @@ window.MRBattleFX=(()=>{
         if (label) setUiText(label,`오늘 ${mergePackDaily.count}회 · 무제한`);
         if (priceLabel) setUiText(priceLabel,`🪙 ${formatCompactNumber(price)}`);
         if (btn) {
-            btn.disabled = gold < price;
+            setShopCardState(btn,gold<price?'noGold':'');
             btn.title = `현재 가격 ${price.toLocaleString(typeof gameLocale==="function"?gameLocale():undefined)} Gold → ${MERGE_PACK_AMOUNT} Merge · 구매 후 다음 가격 x1.1`;
         }
     }
@@ -5504,7 +5504,7 @@ window.MRBattleFX=(()=>{
         const label=document.getElementById('fragment-pack-price');
         if(label)setUiText(label,'🪙 '+formatCompactNumber(price));
         const btn=document.getElementById('btn-buy-fragment');
-        if(btn)btn.disabled=!Number.isFinite(price)||gold<price;
+        if(btn)setShopCardState(btn,!Number.isFinite(price)||gold<price?'noGold':'');
     }
     window.buyFragmentPack=function(){
         if(resetInProgress)return;
@@ -5549,7 +5549,7 @@ window.MRBattleFX=(()=>{
         const cost=document.getElementById('gold-pack-price');
         if(label)setUiText(label,`오늘 ${goldPackDaily.count}회 · 무제한`);
         if(cost)setUiText(cost,`🔄 ${formatCompactNumber(price)}`);
-        if(btn){btn.disabled=mergeCount<price;btn.title=`머지 ${price.toLocaleString(typeof gameLocale==="function"?gameLocale():undefined)} → 골드 1,000 · 다음 가격 x1.1 · 매일 초기화`;}
+        if(btn){setShopCardState(btn,mergeCount<price?'noMerge':'');btn.title=`머지 ${price.toLocaleString(typeof gameLocale==="function"?gameLocale():undefined)} → 골드 1,000 · 다음 가격 x1.1 · 매일 초기화`;}
     }
     window.buyGoldPack=function(){
         const price=getGoldPackPrice();
@@ -5656,12 +5656,10 @@ window.MRBattleFX=(()=>{
         updateGoldPackUI();
         updateFragmentPackUI();
         if(emojiBtn) {
-            emojiBtn.disabled = !(gold >= EMOJI_GACHA_GOLD_COST && isEmojiGachaReady);
-            emojiBtn.style.opacity = '';
+            setShopCardState(emojiBtn,!isEmojiGachaReady?'wait':gold<EMOJI_GACHA_GOLD_COST?'noGold':'');
         }
         if(premiumBtn) {
-            premiumBtn.disabled = !(gold >= PREMIUM_GACHA_GOLD_COST && mergeCount >= PREMIUM_GACHA_MERGE_COST && isPremiumGachaReady);
-            premiumBtn.style.opacity = '';
+            setShopCardState(premiumBtn,!isPremiumGachaReady?'wait':gold<PREMIUM_GACHA_GOLD_COST?'noGold':mergeCount<PREMIUM_GACHA_MERGE_COST?'noMerge':'');
         }
     }
 
@@ -6647,14 +6645,21 @@ function createSocialDataFoundation(assets, emojis) {
         }
     }
 
+    // 상점 카드 상태 통일: 사용할 수 없으면 카드를 차분하게 + 오른쪽 위에 이유 배지 (완료·대기·골드 부족·머지 부족)
+    function setShopCardState(btn,reasonKey){
+        if(!btn)return;
+        btn.disabled=!!reasonKey;btn.style.opacity='';
+        const text=reasonKey?(window.MRLocale?.k?.('shop.state.'+reasonKey)||reasonKey):'';
+        if(btn.dataset.reason!==text){if(text)btn.dataset.reason=text;else delete btn.dataset.reason;}
+        btn.classList.toggle('is-unavailable',!!reasonKey);btn.classList.remove('is-claimed');
+    }
     function updateDailyFreeUI() {
         ensureDailyFreeDay();
         const btn=document.getElementById('btn-daily-free');
         const badge=document.getElementById('daily-free-badge');
         const status=document.getElementById('daily-free-status');
         if(!btn) return;
-        btn.disabled=!!dailyFreeState.claimed;
-        btn.style.opacity='';btn.classList.toggle('is-claimed',!!dailyFreeState.claimed);
+        setShopCardState(btn,dailyFreeState.claimed?'done':'');
         if(badge) badge.style.display=dailyFreeState.claimed?'none':'block';
         if(status) setUiText(status,dailyFreeState.claimed?'오늘 무료 뽑기 완료 ✓':'오늘 접속 보상 · 1회 무료');
     }
@@ -10951,7 +10956,11 @@ function createSocialDataFoundation(assets, emojis) {
  "steam.help.dismantle": {"ko": "STEAM 에디션을 분해해 STEAM 조각을 얻어요.", "en": "Dismantle STEAM Editions to earn STEAM Shards.", "ja": "STEAMエディションを分解してSTEAMかけらを入手。", "zh-CN": "分解 STEAM 版获得 STEAM 碎片。", "zh-TW": "分解 STEAM 版獲得 STEAM 碎片。", "es": "Desmonta ediciones STEAM para obtener fragmentos STEAM.", "pt-BR": "Desmonte edições STEAM para ganhar fragmentos STEAM.", "fr": "Démontez des éditions STEAM pour obtenir des fragments STEAM.", "ru": "Разбирайте STEAM-издания, чтобы получить STEAM-осколки.", "it": "Smonta le edizioni STEAM per ottenere frammenti STEAM.", "pl": "Rozkładaj edycje STEAM, by zdobyć odłamki STEAM.", "de": "Zerlege STEAM-Editionen für STEAM-Splitter."},
  "steam.help.selector": {"ko": "원하는 STEAM 에디션을 STEAM 조각으로 교환하세요.", "en": "Exchange STEAM Shards for the STEAM Edition you want.", "ja": "欲しいSTEAMエディションをSTEAMかけらで交換。", "zh-CN": "用 STEAM 碎片兑换想要的 STEAM 版。", "zh-TW": "用 STEAM 碎片兌換想要的 STEAM 版。", "es": "Canjea fragmentos STEAM por la edición STEAM que quieras.", "pt-BR": "Troque fragmentos STEAM pela edição STEAM que quiser.", "fr": "Échangez des fragments STEAM contre l’édition STEAM voulue.", "ru": "Обменяйте STEAM-осколки на нужное STEAM-издание.", "it": "Scambia frammenti STEAM con l’edizione STEAM che vuoi.", "pl": "Wymień odłamki STEAM na wybraną edycję STEAM.", "de": "Tausche STEAM-Splitter gegen die gewünschte STEAM-Edition."},
  "local.shards": {"ko": "로컬 조각", "en": "Local Shards", "ja": "ローカルかけら", "zh-CN": "本地碎片", "zh-TW": "本地碎片", "es": "Fragmentos locales", "pt-BR": "Fragmentos locais", "fr": "Fragments locaux", "ru": "Локальные осколки", "it": "Frammenti locali", "pl": "Odłamki lokalne", "de": "Lokale Splitter"},
- "shop.craftMaterials": {"ko": "합성 재료", "en": "Combine materials", "ja": "合成素材", "zh-CN": "合成材料", "zh-TW": "合成材料", "es": "Materiales", "pt-BR": "Materiais", "fr": "Matériaux", "ru": "Материалы", "it": "Materiali", "pl": "Materiały", "de": "Materialien"}
+ "shop.craftMaterials": {"ko": "합성 재료", "en": "Combine materials", "ja": "合成素材", "zh-CN": "合成材料", "zh-TW": "合成材料", "es": "Materiales", "pt-BR": "Materiais", "fr": "Matériaux", "ru": "Материалы", "it": "Materiali", "pl": "Materiały", "de": "Materialien"},
+ "shop.state.done": {"ko": "완료", "en": "Done", "ja": "完了", "zh-CN": "已完成", "zh-TW": "已完成", "es": "Hecho", "pt-BR": "Feito", "fr": "Fait", "ru": "Готово", "it": "Fatto", "pl": "Gotowe", "de": "Erledigt"},
+ "shop.state.wait": {"ko": "대기", "en": "Wait", "ja": "待機", "zh-CN": "等待", "zh-TW": "等待", "es": "Espera", "pt-BR": "Aguarde", "fr": "Attente", "ru": "Ждать", "it": "Attesa", "pl": "Czekaj", "de": "Warten"},
+ "shop.state.noGold": {"ko": "골드 부족", "en": "Need gold", "ja": "ゴールド不足", "zh-CN": "金币不足", "zh-TW": "金幣不足", "es": "Falta oro", "pt-BR": "Falta ouro", "fr": "Or insuffisant", "ru": "Мало золота", "it": "Oro insufficiente", "pl": "Za mało złota", "de": "Zu wenig Gold"},
+ "shop.state.noMerge": {"ko": "머지 부족", "en": "Need merges", "ja": "マージ不足", "zh-CN": "合成次数不足", "zh-TW": "合成次數不足", "es": "Faltan fusiones", "pt-BR": "Faltam fusões", "fr": "Fusions insuffisantes", "ru": "Мало слияний", "it": "Fusioni insufficienti", "pl": "Za mało łączeń", "de": "Zu wenig Fusionen"}
 }
 </script>
 <script id="mr-localization">
@@ -12514,10 +12523,15 @@ html body #app .collection-owned-icon svg{width:18px;height:18px;}
 #view-shop .economy-item .count{position:absolute;top:4px;right:4px;min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;border-radius:999px;background:#ff477e;color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;z-index:2;}
 #view-shop .economy-item .small-count.is-owned{color:var(--local);}
 #view-shop #steam-shop .economy-item .small-count.is-owned{color:var(--steam-text);}
-html body #app #view-shop .gacha-btn-container > .btn-gacha:disabled,html body #app #view-shop .gacha-btn-container > .btn-gacha.is-claimed{opacity:1!important;filter:none!important;cursor:not-allowed;}
-html body #app #main-content #view-shop .gacha-btn-container > .btn-gacha:disabled .title,html body #app #main-content #view-shop .gacha-btn-container > .btn-gacha:disabled .title *:not(svg):not(svg *){color:#f4f8fb!important;opacity:1!important;text-shadow:0 1px 2px rgba(0,0,0,.35);}
-html body #app #view-shop .gacha-btn-container > .btn-gacha:disabled svg{opacity:1!important;}
-html body #app #view-shop .gacha-btn-container > .btn-gacha:disabled .cost-row,html body #app #view-shop .gacha-btn-container > .btn-gacha.is-claimed .cost-row{opacity:.6;}
+/* 사용 불가 카드: 강조색·그림자를 빼고 차분하게, 이유는 오른쪽 위 배지로 (흐려서 고장처럼 보이지 않게, 활성처럼 보이지도 않게) */
+html body #app #view-shop .gacha-btn-container > .btn-gacha:disabled{opacity:1!important;filter:none!important;cursor:not-allowed;background:#161f2c!important;border-color:#2a3647!important;box-shadow:none!important;transform:none!important;}
+html body #app #main-content #view-shop .gacha-btn-container > .btn-gacha:disabled .title,html body #app #main-content #view-shop .gacha-btn-container > .btn-gacha:disabled .title *:not(svg):not(svg *){color:#9aa8b8!important;opacity:1!important;text-shadow:none!important;}
+html body #app #view-shop .gacha-btn-container > .btn-gacha:disabled svg{opacity:.55!important;filter:grayscale(1);}
+html body #app #view-shop .gacha-btn-container > .btn-gacha:disabled > :not(.title):not(.free-badge){opacity:.7;}
+html body #app #view-shop .gacha-btn-container > .btn-gacha[data-reason]{position:relative;}
+html body #app #view-shop .gacha-btn-container > .btn-gacha[data-reason]::after{content:attr(data-reason);position:absolute;top:8px;right:8px;padding:3px 8px;border-radius:999px;background:#2a3647;color:#d5dee8;font-size:11px;font-weight:900;line-height:1.3;pointer-events:none;}
+html body #app #view-shop .gacha-btn-container > .btn-gacha.is-unavailable:hover{border-color:#2a3647!important;}
+html body #app #view-shop .gacha-btn-container > #btn-daily-free:disabled{background:#161f2c!important;border-color:#2a3647!important;}
 </style>
 <style id="mr-steam-shop-style">
 /* 상점 로컬 | STEAM 탭. STEAM 탭은 로컬과 같은 패널·카드 구조를 쓰고, 파랑 포인트만 다르다. */
