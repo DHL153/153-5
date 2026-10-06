@@ -2772,10 +2772,10 @@ html.game-booting #app{visibility:hidden!important;}
 </style>
 <style id="mr-daily-comfort-controls">
 /* DAILY and low-glare controls — v20261001 daily update */
-#game-brand #nav-daily{display:inline-flex!important;align-items:center;justify-content:center;gap:4px;width:auto!important;min-width:0!important;padding:5px 7px!important;height:31px;border:1px solid #42616d!important;border-radius:8px;background:#213a46!important;color:#a9e0d5!important;cursor:pointer;font-family:inherit;font-size:10px;font-weight:800;line-height:1.1;flex:0 0 auto;}
-#game-brand #nav-daily .daily-icon{width:15px;height:15px;flex:none;}
+#nav-daily{display:inline-flex!important;align-items:center;justify-content:center;gap:4px;width:auto!important;min-width:0!important;padding:5px 7px!important;height:31px;border:1px solid #42616d!important;border-radius:8px;background:#213a46!important;color:#a9e0d5!important;cursor:pointer;font-family:inherit;font-size:10px;font-weight:800;line-height:1.1;flex:0 0 auto;}
+#nav-daily .daily-icon{width:15px;height:15px;flex:none;}
 #daily-nav-count{font-size:9px;color:#c4d2df;}
-#game-brand #nav-daily.active,#game-brand #nav-daily.daily-complete{border-color:#68b5a8!important;background:#214c48!important;}
+#nav-daily.active,#nav-daily.daily-complete{border-color:#68b5a8!important;background:#214c48!important;}
 #app #view-daily{background:#141e2c;color:#e5edf4;overflow-y:auto;overscroll-behavior:contain;padding:0;}
 .daily-page{max-width:650px;width:100%;margin:auto;padding:18px 16px 28px;box-sizing:border-box;}
 
@@ -2861,7 +2861,7 @@ html.game-booting #app{visibility:hidden!important;}
 #app #view-battle #ui-section .btn-item:active,#app #merge-mini-item-bar .merge-mini-item-btn:active{transform:translateY(2px)!important;box-shadow:none!important;}
 #app #view-battle #ui-section .btn-item:focus-visible,#app #nav-daily:focus-visible,#daily-shop-link:focus-visible{outline:2px solid #b7d9e7;outline-offset:2px;}
 #app #view-battle #ui-section .btn-item:disabled{opacity:.45;cursor:not-allowed;}
-@media(max-width:400px){.daily-page{padding:13px 11px 24px;}#game-brand .brand-actions{gap:3px;}#game-brand #nav-daily{padding:4px 5px!important;font-size:9px;}#game-brand #nav-daily .daily-icon{display:none;}#daily-nav-count{font-size:8px;}}
+@media(max-width:400px){.daily-page{padding:13px 11px 24px;}#game-brand .brand-actions{gap:3px;}#nav-daily{padding:4px 5px!important;font-size:9px;}#nav-daily .daily-icon{display:none;}#daily-nav-count{font-size:8px;}}
 @media(prefers-reduced-motion:reduce){#daily-reward-toast{transition:none;}}
 
 .daily-fragment-icon{display:inline-flex;align-items:center;justify-content:center;color:#8ba3c5;line-height:1;}
@@ -3244,7 +3244,7 @@ html body #game-startup-screen.is-leaving{opacity:0!important;transition:opacity
 <!-- MR_ART_EDITION -->
 <div id="app">
 <div id="daily-reward-toast" role="status" aria-live="polite" aria-atomic="true"></div>
-<header id="game-brand"><div class="brand-lockup"><img class="mr-brand-logo" data-brand-logo alt="Merge &amp; Run Endless"></div><div class="brand-actions"><button id="nav-daily" type="button" onclick="openDailyMissions()" title="일일 미션" aria-label="일일 미션"><svg class="daily-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18m-13 5 2 2 5-5"/></svg><span data-no-i18n>DAILY</span><span id="daily-nav-count" data-no-i18n>0/3</span></button><button class="quiet-icon" onclick="MR.toggleSound()" id="quick-sound" title="소리 켜기 / 끄기" aria-label="소리 켜기 / 끄기"></button><button class="quiet-icon mini-shortcut" id="quick-mini-merge" onclick="setMiniMode(true,'merge')" title="머지 미니모드" aria-label="머지 미니모드"><span class="shortcut-label">머지</span></button><button class="quiet-icon mini-shortcut" id="quick-mini-battle" onclick="setMiniMode(true,'battle')" title="전투 미니모드" aria-label="전투 미니모드"><span class="shortcut-label">전투</span></button></div></header><script id="mr-brand-init">
+<header id="game-brand"><div class="brand-lockup"><img class="mr-brand-logo" data-brand-logo alt="Merge &amp; Run Endless"></div><div class="brand-actions"><button id="btn-test-unlock-all" class="test-unlock-btn" type="button" onclick="toggleTestUnlockAll()" title="테스트용: 모든 수집 리소스 보유 상태를 임시로 전환"><span class="unlock-line unlock-icon">🔒</span><span class="unlock-line">전체</span><span class="unlock-line">해금 OFF</span></button><button class="quiet-icon" onclick="MR.toggleSound()" id="quick-sound" title="소리 켜기 / 끄기" aria-label="소리 켜기 / 끄기"></button><button class="quiet-icon mini-shortcut" id="quick-mini-merge" onclick="setMiniMode(true,'merge')" title="머지 미니모드" aria-label="머지 미니모드"><span class="shortcut-label">머지</span></button><button class="quiet-icon mini-shortcut" id="quick-mini-battle" onclick="setMiniMode(true,'battle')" title="전투 미니모드" aria-label="전투 미니모드"><span class="shortcut-label">전투</span></button></div></header><script id="mr-brand-init">
 (()=>{const source=document.querySelector('.mr-startup-logo').src;document.querySelectorAll('[data-brand-logo]').forEach(el=>el.src=source);
  const custom=new Image();custom.onload=()=>document.querySelectorAll('[data-brand-logo]').forEach(el=>el.src=custom.src);custom.src='assets/ui/merge-and-run-endless-logo.png';
 
@@ -3253,7 +3253,7 @@ html body #game-startup-screen.is-leaving{opacity:0!important;transition:opacity
 <!-- 💡 상단 바 (에너지 완전 삭제, 타이머 복구) -->
 <div id="top-bar">
 <div class="stat-badge timer" id="top-gacha-timer"><span class="draw-label" aria-label="선물">🎁</span><span class="draw-countdown">😊10:00</span><span class="draw-countdown">✨20:00</span></div>
-<button id="btn-test-unlock-all" class="test-unlock-btn" type="button" onclick="toggleTestUnlockAll()" title="테스트용: 모든 수집 리소스 보유 상태를 임시로 전환"><span class="unlock-line unlock-icon">🔒</span><span class="unlock-line">전체</span><span class="unlock-line">해금 OFF</span></button>
+<button id="nav-daily" type="button" onclick="openDailyMissions()" title="일일 미션" aria-label="일일 미션"><svg class="daily-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18m-13 5 2 2 5-5"/></svg><span data-no-i18n>DAILY</span><span id="daily-nav-count" data-no-i18n>0/3</span></button>
 <div class="top-stats"><div class="stat-badge score">🏆 <span id="val-score">0</span></div>
 <div class="stat-badge piece" title="컬렉션 조각">🧩 <span id="val-fragments">0</span></div>
 <div class="stat-badge merge">🔄 <span id="val-merge">0</span></div>
@@ -14783,6 +14783,13 @@ html body #battle-stage.battle-action-pause[data-rush] #battle-panorama{animatio
 #menu-controls .mr-rebind-reset{appearance:none;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.06);color:#eef3fb;border-radius:999px;padding:6px 12px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;}
 #menu-controls .mr-rebind-reset:focus-visible{outline:2px solid #7ce3d1;outline-offset:2px;}
 @media (prefers-reduced-motion:reduce){#menu-controls .mr-key-btn.listening{animation:none;}}
+</style>
+<style id="mr-swap-daily-lock">
+/* Daily button now sits in the timer row; the art-unlock (lock) button moved to the header. */
+html body #app #top-bar{grid-template-columns:minmax(0,1fr) auto!important;}
+html body #app #top-bar #nav-daily{width:auto!important;height:28px!important;white-space:nowrap;}
+@media (max-width:420px){html body #app #top-bar #nav-daily{padding:4px 6px!important;gap:3px!important;}html body #app #top-bar #nav-daily>span:first-of-type{display:none!important;}html body #app #top-bar #nav-daily .daily-icon{display:block!important;width:14px;height:14px;}}
+html body #app #game-brand #btn-test-unlock-all{flex:0 0 auto!important;width:31px!important;min-width:31px!important;max-width:31px!important;height:31px!important;padding:1px 0!important;border-radius:9px!important;font-size:6px!important;}
 </style>
 </body>
 </html>
