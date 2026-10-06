@@ -3345,13 +3345,13 @@ html body #game-startup-screen.is-leaving{opacity:0!important;transition:opacity
 </div>
 <!-- 통합 합성 가능 인벤토리 -->
 <div class="panel" style="margin: 0 15px 18px 15px;">
-<div class="panel-title">합성 아이템 선택 </div>
+<div class="panel-title"><span>🎒 <span data-i18n="shop.craftMaterials">합성 재료</span></span></div>
 <div class="craft-filter-row" id="craft-tier-tabs"></div><div class="inventory-grid compact-collection-grid" id="global-inventory-grid"></div>
 </div>
 
 <div class="panel" style="margin:0 15px 18px 15px; background:#fffdf7;">
-<div class="panel-title"><span>컬렉션 조각 · 분해</span><span style="font-size:10px;color:#8d9fb2;font-weight:normal;">중복 수집품을 조각으로</span></div>
-<div class="economy-balance"><span>보유 컬렉션 조각</span><strong>🧩 <span id="fragment-balance">0</span></strong></div>
+<div class="panel-title"><span>🧩 분해</span><span style="font-size:10px;color:#8d9fb2;font-weight:normal;">중복 수집품을 조각으로</span></div>
+<div class="economy-balance"><span data-i18n="local.shards">로컬 조각</span><strong>🧩 <span id="fragment-balance">0</span></strong></div>
 <div class="economy-tabs" id="disassemble-tier-tabs"></div>
 <div style="display:flex; gap:8px; margin-bottom:9px;">
 <button class="action-btn-sub" style="flex:1;" onclick="disassembleAllDuplicates()">🧹 중복 전체 분해</button>
@@ -3361,9 +3361,9 @@ html body #game-startup-screen.is-leaving{opacity:0!important;transition:opacity
 </div>
 
 <div class="panel" style="margin:0 15px 30px 15px; background:#f8f5ff;">
-<div class="panel-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;"><span>🎫 선택권</span><span style="font-size:10px;color:#8d9fb2;font-weight:normal;text-align:right;">조각 → 아이템</span></div>
+<div class="panel-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;"><span><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2M13 17v2M13 11v2"/></svg> 선택권</span><span style="font-size:10px;color:#8d9fb2;font-weight:normal;text-align:right;">조각 → 아이템</span></div>
 <div class="selector-wallet">
-  <span class="selector-wallet-label">내 보유 조각</span>
+  <span class="selector-wallet-label" data-i18n="local.shards">로컬 조각</span>
   <strong>🧩 <span id="selector-fragment-balance">0</span></strong>
 </div>
 <div class="economy-tabs" id="selector-tier-tabs"></div>
@@ -5657,11 +5657,11 @@ window.MRBattleFX=(()=>{
         updateFragmentPackUI();
         if(emojiBtn) {
             emojiBtn.disabled = !(gold >= EMOJI_GACHA_GOLD_COST && isEmojiGachaReady);
-            emojiBtn.style.opacity = emojiBtn.disabled ? .5 : 1;
+            emojiBtn.style.opacity = '';
         }
         if(premiumBtn) {
             premiumBtn.disabled = !(gold >= PREMIUM_GACHA_GOLD_COST && mergeCount >= PREMIUM_GACHA_MERGE_COST && isPremiumGachaReady);
-            premiumBtn.style.opacity = premiumBtn.disabled ? .5 : 1;
+            premiumBtn.style.opacity = '';
         }
     }
 
@@ -6654,7 +6654,7 @@ function createSocialDataFoundation(assets, emojis) {
         const status=document.getElementById('daily-free-status');
         if(!btn) return;
         btn.disabled=!!dailyFreeState.claimed;
-        btn.style.opacity=dailyFreeState.claimed?.58:1;
+        btn.style.opacity='';btn.classList.toggle('is-claimed',!!dailyFreeState.claimed);
         if(badge) badge.style.display=dailyFreeState.claimed?'none':'block';
         if(status) setUiText(status,dailyFreeState.claimed?'오늘 무료 뽑기 완료 ✓':'오늘 접속 보상 · 1회 무료');
     }
@@ -6959,6 +6959,10 @@ function createSocialDataFoundation(assets, emojis) {
         if(tierIndex === -1 || currentTier === 'UR') { showFloatingText("합성 불가 등급입니다.", 210, 300, "#ff7675"); return; }
         
         const nextTier = TIER_ORDER[tierIndex + 1];
+        // UX 통일: 되돌릴 수 없는 동작은 모두 확인창 (분해·STEAM과 동일)
+        {const t=window.MRLocale?.k?.('steam.confirm.craft',{from:currentTier,count:10,to:nextTier})||`${currentTier} 10 → ${nextTier}`;
+         if(!await gameConfirm(t))return;
+         if(globalCraftSlots.length<10||globalCraftSlots[0].tier!==currentTier)return;}
         const categories = ['item','skin','char','battle_char','char_bg','bg_battle','bg_merge'];
         const validCats = categories.filter(cat => getPool(cat, nextTier).length > 0);
         if(!validCats.length)return; 
@@ -7059,7 +7063,7 @@ function createSocialDataFoundation(assets, emojis) {
             window.MRFX.reveal({source:'selector',title:'조각 교환',items:[getRevealItem({category,id,tier},!wasOwned)],lite:!gameSettings.ssEffect});
         }else{
             playSfx('selector');
-            showFloatingText(`🎫 ${tier} 선택 획득!`,210,330,'#6a4c9c');
+            showFloatingText(`${tier} 선택 획득!`,210,330,'#6a4c9c');
         }
     };
 
@@ -7078,7 +7082,7 @@ function createSocialDataFoundation(assets, emojis) {
                 const count=Number(x.inv[x.id].count||0);
                 const div=document.createElement('div');
                 div.className='economy-item';
-                div.innerHTML=renderEconomyItemHtml(x)+`<div class="small-count">×${count}</div>`;
+                div.innerHTML=renderEconomyItemHtml(x)+`<div class="count">${count}</div><div class="small-count">+${formatCompactNumber(FRAGMENT_VALUES[x.tier])}</div>`;
                 div.title=`${collectibleLabel(x.category)} · ${x.tier} · 분해 ${FRAGMENT_VALUES[x.tier]} 조각`;
                 div.onclick=()=>disassembleOne(x.category,x.id);
                 return div;
@@ -7090,7 +7094,7 @@ function createSocialDataFoundation(assets, emojis) {
         if(sTabs && sTabs.dataset.tier!==activeSelectorTier){sTabs.dataset.tier=activeSelectorTier;sTabs.innerHTML=TIER_ORDER.map(t=>`<button class="economy-tab ${activeSelectorTier===t?'active':''}" onclick="setSelectorTier('${t}')">${t}</button>`).join('');}
         const cost=SELECTOR_COSTS[activeSelectorTier];
         const costEl=document.getElementById('selector-cost'); if(costEl) costEl.innerText=formatCompactNumber(cost);
-        const costLabel=document.getElementById('selector-cost-label'); if(costLabel) costLabel.innerText=`${activeSelectorTier} · 조각 → 아이템`;
+        const costLabel=document.getElementById('selector-cost-label'); if(costLabel) costLabel.innerText=`${activeSelectorTier} · ${window.MRLocale?.k?.('local.shards')||'로컬 조각'} → ${window.MRLocale?.k?.('steam.item')||'아이템'}`;
 
         const sGrid=document.getElementById('selector-grid');
         if(sGrid) {
@@ -7099,7 +7103,7 @@ function createSocialDataFoundation(assets, emojis) {
                 const owned=Number(x.inv?.[x.id]?.count||0)>0;
                 const div=document.createElement('div');
                 div.className='economy-item';
-                div.innerHTML=renderEconomyItemHtml(x)+`<div class="small-count">${owned?'보유':'미보유'}</div>`;
+                const n=Number(x.inv?.[x.id]?.count||0);div.innerHTML=renderEconomyItemHtml(x)+(owned?`<div class="count">${n}</div>`:'')+`<div class="small-count${owned?' is-owned':''}">${owned?'보유':'미보유'}</div>`;
                 div.title=`${activeSelectorTier} · 조각 → 아이템 · ${cost.toLocaleString(typeof gameLocale==="function"?gameLocale():undefined)} 조각`;
                 div.onclick=()=>buySelectorItem(x.category,x.id,activeSelectorTier);
                 return div;
@@ -7905,8 +7909,10 @@ function createSocialDataFoundation(assets, emojis) {
 
     function makeOwnedOnlyButton(category, ownedCount, totalCount) {
         const btn=document.createElement('button');
-        btn.className=`owned-only-toggle ${charOwnedOnly[category]?'active':''}`;
-        btn.innerHTML=`<span class="check">✓</span> 보유만 <span class="owned-count">${ownedCount}/${totalCount}</span>`;
+        // UX 통일: 전투·구슬·도감과 같은 자물쇠 아이콘 버튼 (전체 버튼 바로 뒤)
+        btn.type='button';btn.className=`codex-tier-btn collection-owned-icon ${charOwnedOnly[category]?'active':''}`;
+        const label=ownershipText('보유만 보기')+` ${ownedCount}/${totalCount}`;btn.title=label;btn.setAttribute('aria-label',label);btn.setAttribute('aria-pressed',String(!!charOwnedOnly[category]));
+        btn.innerHTML='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0"/><path d="M12 14v3"/></svg>';
         btn.onclick=()=>toggleCharOwnedOnly(category);
         return btn;
     }
@@ -7980,8 +7986,8 @@ function createSocialDataFoundation(assets, emojis) {
             ownershipRow.className='char-bg-toolbar';
             const bodyAllIds=Object.keys(CHARACTER_META).map(Number).filter(id=>id>=0&&id<29);
             const bodyOwned=bodyAllIds.filter(id=>(charInventory[id]?.count||0)>0).length;
-            ownershipRow.appendChild(makeOwnedOnlyButton('body',bodyOwned,bodyAllIds.length));
-            controls.appendChild(ownershipRow);
+            tierTabs.insertBefore(makeOwnedOnlyButton('body',bodyOwned,bodyAllIds.length),tierTabs.children[1]||null);
+            
 
             const toolbar = document.createElement('div');
             toolbar.className = 'char-bg-toolbar';
@@ -8048,8 +8054,8 @@ function createSocialDataFoundation(assets, emojis) {
             const ownershipRow=document.createElement('div');ownershipRow.className='char-bg-toolbar';
             const emojiAll=referenceEmojiSymbols();
             const emojiOwned=emojiAll.filter(symbol=>(itemInventory[symbol]?.count||0)>0).length;
-            ownershipRow.appendChild(makeOwnedOnlyButton('emoji',emojiOwned,emojiAll.length));
-            controls.appendChild(ownershipRow);
+            tierTabs.insertBefore(makeOwnedOnlyButton('emoji',emojiOwned,emojiAll.length),tierTabs.children[1]||null);
+            
 
             const toolbar=document.createElement('div');toolbar.className='char-bg-toolbar';
             const rangeStart=allIds.length?start+1:0, rangeEnd=Math.min(start+CHAR_EMOJI_PAGE_SIZE,allIds.length);
@@ -8101,8 +8107,8 @@ function createSocialDataFoundation(assets, emojis) {
             ownershipRow.className='char-bg-toolbar';
             const bgAllIds=Object.keys(BACKGROUND_META.lobby).map(Number).filter(id=>id>=1&&id<=69);
             const bgOwned=bgAllIds.filter(id=>(charBgInventory[id]?.count||0)>0).length;
-            ownershipRow.appendChild(makeOwnedOnlyButton('bg',bgOwned,bgAllIds.length));
-            controls.appendChild(ownershipRow);
+            tierTabs.insertBefore(makeOwnedOnlyButton('bg',bgOwned,bgAllIds.length),tierTabs.children[1]||null);
+            
 
             const toolbar = document.createElement('div');
             toolbar.className = 'char-bg-toolbar';
@@ -8826,6 +8832,9 @@ function createSocialDataFoundation(assets, emojis) {
                 b.onclick=()=>setCodexTierFilter(tier);
                 tierTabs.appendChild(b);
             });
+            {const o=document.createElement('button');o.type='button';o.className='codex-tier-btn collection-owned-icon'+(codexOwnedOnly?' active':'');
+             const label=(window.MRLocale?.t?.('보유만 보기')||'보유만 보기');o.title=label;o.setAttribute('aria-label',label);o.setAttribute('aria-pressed',String(codexOwnedOnly));
+             o.innerHTML='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0"/><path d="M12 14v3"/></svg>';o.onclick=()=>toggleCodexOwnedOnly();tierTabs.insertBefore(o,tierTabs.children[1]||null);}
         }
 
         if(emojiTabs){
@@ -10940,7 +10949,9 @@ function createSocialDataFoundation(assets, emojis) {
  "steam.emptyTier": {"ko": "이 등급의 보유 아이템이 없습니다.", "en": "No owned items of this rarity.", "fr": "Aucun objet possédé de cette rareté.", "it": "Nessun oggetto posseduto di questa rarità.", "de": "Keine Gegenstände dieser Seltenheit vorhanden.", "es": "No tienes objetos de esta rareza.", "ru": "Нет предметов этой редкости.", "pt-BR": "Você não possui itens desta raridade.", "zh-CN": "尚未拥有此稀有度的物品。", "zh-TW": "尚未擁有此稀有度的物品。", "ja": "このレアリティのアイテムは未所持です。", "pl": "Nie posiadasz przedmiotów tej rzadkości."},
  "steam.item": {"ko": "아이템", "en": "Item", "ja": "アイテム", "zh-CN": "物品", "zh-TW": "物品", "es": "Objeto", "pt-BR": "Item", "fr": "Objet", "ru": "Предмет", "it": "Oggetto", "pl": "Przedmiot", "de": "Gegenstand"},
  "steam.help.dismantle": {"ko": "STEAM 에디션을 분해해 STEAM 조각을 얻어요.", "en": "Dismantle STEAM Editions to earn STEAM Shards.", "ja": "STEAMエディションを分解してSTEAMかけらを入手。", "zh-CN": "分解 STEAM 版获得 STEAM 碎片。", "zh-TW": "分解 STEAM 版獲得 STEAM 碎片。", "es": "Desmonta ediciones STEAM para obtener fragmentos STEAM.", "pt-BR": "Desmonte edições STEAM para ganhar fragmentos STEAM.", "fr": "Démontez des éditions STEAM pour obtenir des fragments STEAM.", "ru": "Разбирайте STEAM-издания, чтобы получить STEAM-осколки.", "it": "Smonta le edizioni STEAM per ottenere frammenti STEAM.", "pl": "Rozkładaj edycje STEAM, by zdobyć odłamki STEAM.", "de": "Zerlege STEAM-Editionen für STEAM-Splitter."},
- "steam.help.selector": {"ko": "원하는 STEAM 에디션을 STEAM 조각으로 교환하세요.", "en": "Exchange STEAM Shards for the STEAM Edition you want.", "ja": "欲しいSTEAMエディションをSTEAMかけらで交換。", "zh-CN": "用 STEAM 碎片兑换想要的 STEAM 版。", "zh-TW": "用 STEAM 碎片兌換想要的 STEAM 版。", "es": "Canjea fragmentos STEAM por la edición STEAM que quieras.", "pt-BR": "Troque fragmentos STEAM pela edição STEAM que quiser.", "fr": "Échangez des fragments STEAM contre l’édition STEAM voulue.", "ru": "Обменяйте STEAM-осколки на нужное STEAM-издание.", "it": "Scambia frammenti STEAM con l’edizione STEAM che vuoi.", "pl": "Wymień odłamki STEAM na wybraną edycję STEAM.", "de": "Tausche STEAM-Splitter gegen die gewünschte STEAM-Edition."}
+ "steam.help.selector": {"ko": "원하는 STEAM 에디션을 STEAM 조각으로 교환하세요.", "en": "Exchange STEAM Shards for the STEAM Edition you want.", "ja": "欲しいSTEAMエディションをSTEAMかけらで交換。", "zh-CN": "用 STEAM 碎片兑换想要的 STEAM 版。", "zh-TW": "用 STEAM 碎片兌換想要的 STEAM 版。", "es": "Canjea fragmentos STEAM por la edición STEAM que quieras.", "pt-BR": "Troque fragmentos STEAM pela edição STEAM que quiser.", "fr": "Échangez des fragments STEAM contre l’édition STEAM voulue.", "ru": "Обменяйте STEAM-осколки на нужное STEAM-издание.", "it": "Scambia frammenti STEAM con l’edizione STEAM che vuoi.", "pl": "Wymień odłamki STEAM na wybraną edycję STEAM.", "de": "Tausche STEAM-Splitter gegen die gewünschte STEAM-Edition."},
+ "local.shards": {"ko": "로컬 조각", "en": "Local Shards", "ja": "ローカルかけら", "zh-CN": "本地碎片", "zh-TW": "本地碎片", "es": "Fragmentos locales", "pt-BR": "Fragmentos locais", "fr": "Fragments locaux", "ru": "Локальные осколки", "it": "Frammenti locali", "pl": "Odłamki lokalne", "de": "Lokale Splitter"},
+ "shop.craftMaterials": {"ko": "합성 재료", "en": "Combine materials", "ja": "合成素材", "zh-CN": "合成材料", "zh-TW": "合成材料", "es": "Materiales", "pt-BR": "Materiais", "fr": "Matériaux", "ru": "Материалы", "it": "Materiali", "pl": "Materiały", "de": "Materialien"}
 }
 </script>
 <script id="mr-localization">
@@ -12389,7 +12400,6 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
 .steam-count{display:inline-block;padding:0 5px;border-radius:5px;background:var(--steam-deep);color:var(--steam-text);font-size:.85em;font-weight:900;line-height:1.5;}
 .steam-countdown.is-full .steam-count{opacity:.65;}
 /* 공용 카드 연출(MRFX)의 STEAM 에디션 표시 */
-.mrfx-reveal[data-edition="steam"] .rv-front{border-color:var(--steam)!important;box-shadow:0 0 26px rgba(108,184,255,.55),inset 0 0 30px rgba(108,184,255,.18)!important;}
 .mrfx-reveal .rv-edition{position:absolute;left:50%;top:10px;transform:translateX(-50%);padding:3px 9px;border-radius:999px;background:var(--steam-deep);color:var(--steam-text);border:1px solid var(--steam);font-size:11px;font-weight:1000;letter-spacing:.8px;z-index:2;}
 .mrfx-reveal .rv-sub{position:relative;z-index:2;font-size:13px;font-weight:800;color:var(--steam-text);opacity:0;transition:opacity .25s;white-space:pre-line;text-align:center;line-height:1.5;}
 .mrfx-reveal.p-show .rv-sub{opacity:1;}
@@ -12410,6 +12420,8 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
     shard:'<path d="M12 3l7 9-7 9-7-9z"/>',
     check:'<path d="M5 12l5 5L20 7"/>',
     up:'<path d="M12 19V5M5 12l7-7 7 7"/>',
+    layers:'<path d="m12 2 9 5-9 5-9-5z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/>',
+    ticket:'<path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2M13 17v2M13 11v2"/>',
     wand:'<path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8 19 13M15 9h.01M17.8 6.2 19 5M3 21l9-9M12.2 6.2 11 5"/>',
     trash:'<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
     zap:'<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>'
@@ -12488,6 +12500,25 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
   window.MRSteamUI=Object.assign(window.MRSteamUI||{},{topTimerHtml,miniText,icon,fmt,artPath,flush,reveal,esc,k,num,get shards(){return shards;}});
 })();
 </script>
+<style id="mr-ui-unify">
+/* 게임 전체 UX 통일 (2026-10-06)
+   - 등급 필터: 도감·마이룸·전투·구슬·상점 모두 같은 버튼 (선택 = 민트 채움, STEAM 탭은 파랑 채움)
+   - 수량: 오른쪽 위 빨간 원 / 보유만 보기: 자물쇠 아이콘 버튼
+   - 뽑기 카드: 쿨타임·재화 부족이어도 카드 전체를 흐리게 하지 않음 (가격·시간 줄만 흐림) */
+html body #app .codex-tier-btn,html body #app .char-bg-tier-btn,html body #app .economy-tab,html body #app .craft-filter-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:4px;min-width:38px;min-height:34px;height:auto!important;padding:5px 9px!important;border-radius:9px!important;border:1px solid var(--t-line)!important;background:var(--t-surface-2)!important;color:var(--t-sub)!important;font-size:11px!important;font-weight:900!important;white-space:nowrap;flex:none!important;box-shadow:none!important;}
+html body #app .codex-tier-btn.active,html body #app .char-bg-tier-btn.active,html body #app .economy-tab.active,html body #app .craft-filter-btn.active{background:var(--t-accent)!important;border-color:var(--t-accent)!important;color:var(--t-accent-ink)!important;}
+html body #app .economy-tabs,html body #app .craft-filter-row{display:flex!important;flex-wrap:wrap;gap:5px!important;overflow:visible!important;}
+html body #app #steam-shop .economy-tab.active,html body #app #steam-shop .craft-filter-btn.active{background:var(--steam)!important;border-color:var(--steam)!important;color:#0b1f33!important;}
+html body #app .collection-owned-icon svg{width:18px;height:18px;}
+#app .collection-filter-row,#app #codex-owned-only-btn,#app #codex-compact-bottom .codex-compact-owned{display:none!important;}
+#view-shop .economy-item .count{position:absolute;top:4px;right:4px;min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;border-radius:999px;background:#ff477e;color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;z-index:2;}
+#view-shop .economy-item .small-count.is-owned{color:var(--local);}
+#view-shop #steam-shop .economy-item .small-count.is-owned{color:var(--steam-text);}
+html body #app #view-shop .gacha-btn-container > .btn-gacha:disabled,html body #app #view-shop .gacha-btn-container > .btn-gacha.is-claimed{opacity:1!important;filter:none!important;cursor:not-allowed;}
+html body #app #main-content #view-shop .gacha-btn-container > .btn-gacha:disabled .title,html body #app #main-content #view-shop .gacha-btn-container > .btn-gacha:disabled .title *:not(svg):not(svg *){color:#f4f8fb!important;opacity:1!important;text-shadow:0 1px 2px rgba(0,0,0,.35);}
+html body #app #view-shop .gacha-btn-container > .btn-gacha:disabled svg{opacity:1!important;}
+html body #app #view-shop .gacha-btn-container > .btn-gacha:disabled .cost-row,html body #app #view-shop .gacha-btn-container > .btn-gacha.is-claimed .cost-row{opacity:.6;}
+</style>
 <style id="mr-steam-shop-style">
 /* 상점 로컬 | STEAM 탭. STEAM 탭은 로컬과 같은 패널·카드 구조를 쓰고, 파랑 포인트만 다르다. */
 #view-shop .shop-mode-tabs{position:sticky;top:0;z-index:5;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:10px 15px 12px;padding:4px;border-radius:12px;background:#131f2e;}
@@ -12602,7 +12633,7 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
         <button type="button" class="action-btn-main" data-act="craft" style="margin-bottom:0;flex:1.5;">${esc(k('steam.craft'))}</button>
       </div></div>
       <div class="panel" style="margin:0 15px 18px 15px;">
-      <div class="panel-title">${esc(k('steam.select'))}</div>
+      <div class="panel-title"><span>${icon('layers')}${esc(k('shop.craftMaterials'))}</span></div>
       <div class="craft-filter-row">${CRAFT_TIERS.map(t=>`<button type="button" class="craft-filter-btn${craftTier===t?' active':''}" data-craft-tier="${t}">${t} ${totals[t]}</button>`).join('')}</div>
       <div class="inventory-grid compact-collection-grid" id="steam-inventory-grid">${list.length?list.map(g=>`<div class="inv-item tier-box-${g.tier}" data-shop-category="${g.category}" data-craft-add="${esc(g.key)}" role="button" tabindex="0">${tierLabel(g.tier)}${art(g.category,g.localId)}<div class="count">${g.ids.length}</div></div>`).join(''):`<div class="empty-state" style="grid-column:1/-1;">${esc(k('steam.emptyTier'))}</div>`}</div>
       </div>`;
@@ -12621,7 +12652,7 @@ html body #app #view-battle #ui-section .btn-item .cost-label{margin-top:3px!imp
     const cost=C.SELECT_COST[selTier];
     const defs=S.editions().filter(d=>d.tier===selTier).sort((a,b)=>a.category.localeCompare(b.category)||a.localId-b.localId);
     return `<div class="panel" style="margin:0 15px 24px 15px;">
-      <div class="panel-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;"><span>${icon('check')}${esc(k('steam.selector'))}</span><span style="font-size:10px;color:#8d9fb2;font-weight:normal;text-align:right;">${esc(k('steam.shards'))} → ${esc(k('steam.item'))}</span></div>
+      <div class="panel-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;"><span>${icon('ticket')}${esc(k('steam.selector'))}</span><span style="font-size:10px;color:#8d9fb2;font-weight:normal;text-align:right;">${esc(k('steam.shards'))} → ${esc(k('steam.item'))}</span></div>
       <div class="selector-wallet"><span class="selector-wallet-label">${esc(k('steam.shards'))}</span><strong>${shardAmt(inv.shards)}</strong></div>
       <div class="economy-tabs">${TIERS.map(t=>`<button type="button" class="economy-tab${selTier===t?' active':''}" data-sel-tier="${t}">${t}</button>`).join('')}</div>
       <div class="economy-balance"><span>${esc(selTier)} · ${esc(k('steam.shards'))} → ${esc(k('steam.item'))}</span><strong>${shardAmt(cost)}</strong></div>
