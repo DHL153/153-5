@@ -14822,7 +14822,11 @@ html body #battle-stage.battle-action-pause[data-rush] #battle-panorama{animatio
 html body #app #top-bar{grid-template-columns:minmax(0,1fr) auto!important;}
 html body #app #top-bar #nav-daily{width:auto!important;height:28px!important;white-space:nowrap;}
 @media (max-width:420px){html body #app #top-bar #nav-daily{padding:4px 6px!important;gap:3px!important;}html body #app #top-bar #nav-daily>span:first-of-type{display:none!important;}html body #app #top-bar #nav-daily .daily-icon{display:block!important;width:14px;height:14px;}}
-html body #app #game-brand #btn-test-unlock-all{flex:0 0 auto!important;width:31px!important;min-width:31px!important;max-width:31px!important;height:31px!important;padding:1px 0!important;border-radius:9px!important;font-size:6px!important;}
+/* Header buttons share one size (same as 머지 / 전투): 50 x 42 */
+html body #app #game-brand #btn-test-unlock-all,html body #app #game-brand #quick-sound,html body #app #game-brand #quick-mini-merge,html body #app #game-brand #quick-mini-battle{
+ flex:0 0 50px!important;width:50px!important;min-width:50px!important;max-width:50px!important;height:42px!important;min-height:42px!important;max-height:42px!important;
+ border-radius:10px!important;border-width:1px!important;border-style:solid!important;box-sizing:border-box!important;display:inline-flex!important;flex-direction:column;align-items:center!important;justify-content:center!important;}
+html body #app #game-brand #btn-test-unlock-all{padding:1px 0!important;font-size:6px!important;}
 </style>
 </body>
 </html>
