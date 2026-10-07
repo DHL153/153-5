@@ -15077,5 +15077,55 @@ html body #app #view-shop > .shop-mode-tabs{padding:18px 19px 6px!important;marg
 html body #app #view-shop > .shop-mode-tabs::before{inset:14px 15px 2px!important;}
 html body #app #view-shop > .shop-mode-tabs > .smt-thumb{top:18px!important;bottom:6px!important;}
 </style>
+<style id="mr-shop-gacha-order">
+/* 하단 상점 아이콘: 지금 뽑을 수 있는 로컬 뽑기 개수 */
+#bottom-nav #nav-shop{position:relative;}
+/* 컬렉션 새 아이템 점(#ff5d6c)과 같은 색·위치, 숫자만 추가 */
+#bottom-nav #nav-shop .nav-ready-badge{position:absolute;top:3px;left:calc(50% + 9px);min-width:16px;height:16px;padding:0 4px;border-radius:8px;box-sizing:border-box;
+ background:#ff5d6c;color:#fff;font-size:10px;font-weight:800;line-height:16px;text-align:center;font-variant-numeric:tabular-nums;pointer-events:none;
+ box-shadow:0 0 0 2px #0f1824;}
+#bottom-nav #nav-shop .nav-ready-badge[hidden]{display:none;}
+</style>
+<script id="mr-shop-gacha-order-js">
+/* 상점 로컬 뽑기 정렬 (simplify-unlock-gacha.md 2번, 가벼운 버전)
+   - 상점을 "열 때"만 정렬: 지금 뽑을 수 있는 줄을 위로. 보고 있는 중에는 자리 고정(잘못 누르기 방지)
+   - 줄 단위: [오늘의 무료 뽑기] / [프리미엄 + 이모지]. 무료가 가능하면 기본 순서, 아니면 유료 줄이 가능할 때 위로
+   - 하단 상점 아이콘 배지 = 지금 뽑을 수 있는 로컬 뽑기 수 (exe 작업 표시줄 배지도 window.mrShopReadyCount 사용) */
+(function(){
+  'use strict';
+  const ids=['btn-daily-free','btn-premium-gacha','btn-emoji-gacha'];
+  const get=id=>document.getElementById(id);
+  const ready=b=>!!b&&!b.disabled;
+  window.mrShopReadyCount=function(){return ids.reduce((n,id)=>n+(ready(get(id))?1:0),0);};
+  function orderShopGacha(){
+    const daily=get('btn-daily-free'),prem=get('btn-premium-gacha'),emoji=get('btn-emoji-gacha');
+    if(!daily||!prem||!emoji||daily.parentElement!==prem.parentElement)return;
+    const box=daily.parentElement;
+    const paidFirst=!ready(daily)&&(ready(prem)||ready(emoji));
+    if(paidFirst){box.insertBefore(prem,daily);box.insertBefore(emoji,daily);}
+    else{box.insertBefore(daily,prem);}
+    box.dataset.order=paidFirst?'paid':'default';
+  }
+  window.mrOrderShopGacha=orderShopGacha;
+  const nav=get('nav-shop');let badge=null;
+  if(nav){badge=document.createElement('span');badge.className='nav-ready-badge';badge.setAttribute('data-no-i18n','');badge.hidden=true;nav.appendChild(badge);}
+  function updateBadge(){
+    if(!badge)return;const n=window.mrShopReadyCount();const t=n>0?String(n):'';
+    if(badge.textContent!==t)badge.textContent=t;badge.hidden=n<=0;
+  }
+  const mo=new MutationObserver(updateBadge);
+  ids.forEach(id=>{const b=get(id);if(b)mo.observe(b,{attributes:true,attributeFilter:['disabled']});});
+  updateBadge();
+  const orig=window.switchMenu;
+  if(typeof orig==='function'){
+    window.switchMenu=function(menuId){
+      const wasShop=get('view-shop')?.classList.contains('active');
+      if(menuId==='shop'&&!wasShop)orderShopGacha();
+      return orig.apply(this,arguments);
+    };
+  }
+  if(!get('view-shop')?.classList.contains('active'))orderShopGacha();
+})();
+</script>
 </body>
 </html>
