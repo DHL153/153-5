@@ -14929,5 +14929,17 @@ html body #app #top-bar #nav-daily.has-reward{color:#7ce3d1!important;}
  html body #app #top-bar .top-stats>.stat-badge:not(.score)>span[id]{font-size:14px!important;}
 }
 </style>
+<style id="mr-shop-tabs-sticky-fix">
+/* 상점 로컬|STEAM 탭: 고정될 때 좌우·위 여백으로 아래 카드가 비쳐 보이던 문제 수정
+   → 탭 줄 전체를 화면 폭 배경 띠로 만들고, 둥근 바탕은 안쪽 ::before로 그린다 */
+html body #app #view-shop > .shop-mode-tabs{
+ margin:0 0 12px!important;padding:14px 19px 10px!important;border-radius:0!important;
+ background:#0f1824!important;isolation:isolate;
+ box-shadow:0 6px 8px -6px rgba(0,0,0,.55);
+}
+html body #app #view-shop > .shop-mode-tabs::before{
+ content:"";position:absolute;inset:10px 15px 6px;border-radius:12px;background:#131f2e;z-index:-1;pointer-events:none;
+}
+</style>
 </body>
 </html>
